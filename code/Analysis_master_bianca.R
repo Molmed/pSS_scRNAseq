@@ -11,8 +11,6 @@
 knitr::opts_chunk$set(echo = TRUE)
 paste0("R script started at: ", Sys.time())
 
-#knitr::purl("/Users/gusarv/Documents/projekt/SjS/data/pss_bcells_scRNAseq/code/Analysis_master_bianca.Rmd", "/Users/gusarv/Documents/projekt/SjS/data/pss_bcells_scRNAseq/code/Analysis_master_bianca.R", documentation = 2)
-
 
 
 #' 
