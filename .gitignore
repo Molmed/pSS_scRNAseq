@@ -1,6 +1,16 @@
+
+**/data
+**/results
+**/analysis
+**/suppl
+**/log
+**/code/sauron
+
 # History files
-.Rhistory
-.Rapp.history
+*.Rhistory
+*.Rapp.history
+*.rds
+.DS_Store
 
 # Session Data files
 .RData
