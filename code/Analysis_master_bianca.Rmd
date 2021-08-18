@@ -109,7 +109,9 @@ rm(samples, samples.dirs, gex_data)
 
 ####-----  change orig.ident for P007 and P008; libraries were generated and sequenced twice
 gex@meta.data$orig.ident <- gsub("P007[ab]", "P007", gex@meta.data$orig.ident)
-gex@meta.data$orig.ident <- gsub("P008[ab]", "P008", gex@meta.data$orig.ident) table(gex@meta.data$orig.ident)
+gex@meta.data$orig.ident <- gsub("P008[ab]", "P008", gex@meta.data$orig.ident)
+
+table(gex@meta.data$orig.ident)
 
 ####-----  add pheno info
 pheno <- read.table("../suppl/pheno/pSS_pheno_210623.csv", sep = ";", header = TRUE)
@@ -145,7 +147,8 @@ gex1.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex1.dnsample.500, 
         file = paste0("../results/GEX1_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
-paste0("GEX1 size: ", print(object.size(gex), units = "GB"))
+print("GEX1 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -249,7 +252,8 @@ gex2.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex2.dnsample.500, 
         file = paste0("../results/GEX2_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
 
-paste0("GEX2 size: ", print(object.size(gex), units = "GB"))
+print("GEX2 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -386,7 +390,8 @@ gex3.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex3.dnsample.500, 
         file = paste0("../results/GEX3_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
 
-paste0("GEX3 size: ", print(object.size(gex), units = "GB"))
+print("GEX3 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -465,7 +470,8 @@ gex4.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex4.dnsample.500, 
         file = paste0("../results/GEX4_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
 
-paste0("GEX4 size: ", print(object.size(gex), units = "GB"))
+print("GEX4 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -506,7 +512,8 @@ gex5.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex5.dnsample.500, 
         file = paste0("../results/GEX5_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
 
-paste0("GEX5 size: ", print(object.size(gex), units = "GB"))
+print("GEX5 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -573,7 +580,8 @@ gex6.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex6.dnsample.500, 
         file = paste0("../results/GEX6_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
 
-paste0("GEX6 size: ", print(object.size(gex), units = "GB"))
+print("GEX6 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -616,7 +624,8 @@ gex7.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex7.dnsample.500, 
         file = paste0("../results/GEX7_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
 
-paste0("GEX7 size:", print(object.size(gex), units = "GB"))
+print("GEX7 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -664,7 +673,8 @@ gex8.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex8.dnsample.500, 
         file = paste0("../results/GEX8_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
-paste0("GEX8 size: ", print(object.size(gex), units = "GB"))
+print("GEX8 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -923,7 +933,8 @@ gex9.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex9.dnsample.500, 
         file = paste0("../results/GEX9_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
-paste0("GEX9 size: ", print(object.size(gex), units = "GB"))
+print("GEX9 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -1014,7 +1025,8 @@ gex10.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex10.dnsample.500, 
         file = paste0("../results/GEX10_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
-paste0("GEX10 size: ", print(object.size(gex), units = "GB"))
+print("GEX10 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -1052,7 +1064,8 @@ gex11.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex11.dnsample.500, 
         file = paste0("../results/GEX11_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
-paste0("GEX11 size: ", print(object.size(gex), units = "GB"))
+print("GEX11 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -1112,7 +1125,8 @@ gex12.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex12.dnsample.500, 
         file = paste0("../results/GEX12_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
-paste0("GEX12 size:", print(object.size(gex), units = "GB"))
+print("GEX12 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -1184,7 +1198,8 @@ gex13.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex13.dnsample.500, 
         file = paste0("../results/GEX13_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
-paste0("GEX13 size:", print(object.size(gex), units = "GB"))
+print("GEX13 size:")
+print(object.size(gex), units = "GB")
 
 
 ```
@@ -1231,7 +1246,8 @@ saveRDS(gex14.dnsample.500,
         file = paste0("../results/GEX14_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 #gex <- readRDS("../results/GEX14_dnsample.500_210628.rds")
 
-paste0("GEX14 size:", print(object.size(gex), units = "GB"))
+print("GEX14 size:")
+print(object.size(gex), units = "GB")
 
 #sort(sapply(ls(), function(x){format(object.size(get(x)), units = "Gb")}))
 

@@ -109,7 +109,9 @@ rm(samples, samples.dirs, gex_data)
 
 ####-----  change orig.ident for P007 and P008; libraries were generated and sequenced twice
 gex@meta.data$orig.ident <- gsub("P007[ab]", "P007", gex@meta.data$orig.ident)
-gex@meta.data$orig.ident <- gsub("P008[ab]", "P008", gex@meta.data$orig.ident) table(gex@meta.data$orig.ident)
+gex@meta.data$orig.ident <- gsub("P008[ab]", "P008", gex@meta.data$orig.ident)
+
+table(gex@meta.data$orig.ident)
 
 ####-----  add pheno info
 pheno <- read.table("../suppl/pheno/pSS_pheno_210623.csv", sep = ";", header = TRUE)
