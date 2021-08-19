@@ -8,7 +8,11 @@ chunk_output_type: console
 
 ```{r}
 
-knitr::opts_chunk$set(echo = TRUE)
+#knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, error = FALSE, 
+                      comment = NA, cache = TRUE, R.options=list(width = 220), 
+                      fig.align = 'center', out.width = '75%', fig.asp = .75)
+
 paste0("R script started at: ", Sys.time())
 
 
@@ -486,7 +490,7 @@ gex <- RunPCA(
   gex,
   assay = "RNA",
   features = VariableFeatures(gex),
-  npcs = 100,
+  npcs = 75,
   reduction.name = "pca_1",
   verbose = TRUE
 )
@@ -548,7 +552,7 @@ p.p <-
     group.by = "orig.ident",
     raster = FALSE) +
   NoLegend() +
-  ggtitle("PCA, by Sample")
+  ggtitle("PCA_1, by Sample")
 
 p.h <-
   DimPlot(
@@ -558,7 +562,7 @@ p.h <-
     group.by = "orig.ident",
     raster = FALSE) +
   NoLegend() +
-  ggtitle("Harmony, by Sample")
+  ggtitle("Harmony_1, by Sample")
 
 ggsave2(paste0("../results/PCA_harmony_allCells_", format(Sys.time(), "%y%m%d"), ".png"), 
         plot_grid(p.p, p.h, ncol = 2, labels = "AUTO", align = "h"), 
@@ -606,7 +610,7 @@ gex <- RunUMAP(
   n.components = 2
 )
 
-paste0("UMAP1done at: ", Sys.time())
+paste0("UMAP1 done at: ", Sys.time())
 
 
 ```
@@ -717,7 +721,7 @@ p1.u.s <- DimPlot(gex,
                   group.by = "orig.ident", 
                   raster=FALSE) + 
           NoLegend() + 
-          ggtitle("UMAP, by Sample")
+          ggtitle("UMAP_1, by Sample")
 
 p1.u.c <- DimPlot(gex, 
                   reduction = "umap_1", 
@@ -727,7 +731,7 @@ p1.u.c <- DimPlot(gex,
                   repel = TRUE, 
                   raster=FALSE) + 
           NoLegend() + 
-          ggtitle("UMAP, by Cluster")
+          ggtitle("UMAP_1, by Cluster")
 
 ggsave2(paste0("../results/UMAP_allCells_clustRes", res, "_", format(Sys.time(), "%y%m%d"), ".png"), 
         plot_grid(p1.u.s, p1.u.c, ncol = 2, labels = "AUTO", align = "h"), 
@@ -877,7 +881,6 @@ annotation <- c(
   B_cell = getcluster(gex, "IGHA1", "seurat_clusters"),
   B_cell = getcluster(gex, "SMARCB1", "seurat_clusters"),
   Plasma = getcluster(gex, "JCHAIN", "seurat_clusters")
-
 )
 
 gex$celltype <- names(annotation)[match(gex$seurat_clusters, annotation)] 
@@ -1041,7 +1044,7 @@ print(object.size(gex), units = "GB")
 gex <- RunPCA(gex,
               assay = "RNA",
               features = VariableFeatures(object = gex),
-              npcs = 100,
+              npcs = 75,
               reduction.name = "pca_2",
               verbose = TRUE)
 

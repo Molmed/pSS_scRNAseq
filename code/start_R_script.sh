@@ -4,6 +4,8 @@
 #SBATCH -p node
 #SBATCH -J process_gex
 
+#210818 G.Arvidsson
+
 ml R/4.0.4
 ml R_packages/4.0.4
 
