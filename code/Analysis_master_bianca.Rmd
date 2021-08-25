@@ -54,18 +54,18 @@ source("../../niceRplots/R/trajectory_plots.R")
 
 ####----- scRNAseq
 suppressMessages(library(Seurat)) #read and process scRNAseq data
-suppressMessages(library(scater))
 suppressMessages(library(scDblFinder))
 suppressMessages(library(harmony))
-suppressMessages(library(Nebulosa))
+#suppressMessages(library(scater))
+#suppressMessages(library(Nebulosa))
 
 
 plan("multiprocess", workers = 16) #parallellization for seurat using future package:
 options(future.globals.maxSize = 100000 * 1024 ^ 2) #resolve memory related issues related to parallellization 100000 here refers to approx 100GB memory
 
-setwd("/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/code")
+setwd("/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/code"); getwd()
 
-getwd()
+sessionInfo()
 
 paste0("Libraries loaded at: ", Sys.time())
 
@@ -490,13 +490,15 @@ gex <- RunPCA(
   gex,
   assay = "RNA",
   features = VariableFeatures(gex),
-  npcs = 75,
+  npcs = 100,
   reduction.name = "pca_1",
   verbose = TRUE
 )
 
 gex@assays$RNA@scale.data <- matrix(0)
 gc()
+
+gex
 
 paste0("PCA1 done at:", Sys.time())
 
@@ -527,12 +529,19 @@ print(object.size(gex), units = "GB")
 
 ```{r}
 
+#RunHarmony() takes around 1h for this data set
+
 gex <- RunHarmony(
   gex,
   group.by.vars = "orig.ident",
   reduction = "pca_1",
-  reduction.save = "harmony_1"
+  reduction.save = "harmony_1",
+  assay = "RNA",
+  project.dim = FALSE, #project.dim = FALSE needed for seurat object v4.0.0??
+  verbose = TRUE
 )
+
+gex
 
 paste0("Harmony1 done at:", Sys.time())
 
@@ -1044,7 +1053,7 @@ print(object.size(gex), units = "GB")
 gex <- RunPCA(gex,
               assay = "RNA",
               features = VariableFeatures(object = gex),
-              npcs = 75,
+              npcs = 100,
               reduction.name = "pca_2",
               verbose = TRUE)
 
@@ -1078,10 +1087,15 @@ print(object.size(gex), units = "GB")
 
 ```{r}
 
-gex <- RunHarmony(gex, 
-                  group.by.vars = "orig.ident",
-                  reduction = "pca_2",
-                  reduction.save = "harmony_2")
+gex <- RunHarmony(
+  gex,
+  group.by.vars = "orig.ident",
+  reduction = "pca_2",
+  reduction.save = "harmony_2",
+  assay = "RNA",
+  project.dim = FALSE, #project.dim = FALSE needed for seurat object v4.0.0??
+  verbose = TRUE
+)
 
 paste0("harmony2 done at: ", Sys.time())
 

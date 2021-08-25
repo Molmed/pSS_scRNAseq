@@ -43,18 +43,18 @@ source("../../niceRplots/R/trajectory_plots.R")
 
 ####----- scRNAseq
 suppressMessages(library(Seurat)) #read and process scRNAseq data
-suppressMessages(library(scater))
 suppressMessages(library(scDblFinder))
 suppressMessages(library(harmony))
-suppressMessages(library(Nebulosa))
+#suppressMessages(library(scater))
+#suppressMessages(library(Nebulosa))
 
 
 plan("multiprocess", workers = 16) #parallellization for seurat using future package:
 options(future.globals.maxSize = 100000 * 1024 ^ 2) #resolve memory related issues related to parallellization 100000 here refers to approx 100GB memory
 
-setwd("/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/code")
+setwd("/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/code"); getwd()
 
-getwd()
+sessionInfo()
 
 paste0("Libraries loaded at: ", Sys.time())
 
@@ -63,7 +63,7 @@ paste0("Libraries loaded at: ", Sys.time())
 
 ## ----------------------------------------------------------------------------------------------------------------
 
-# ####-----  List samples
+####-----  List samples
 # samples <- str_replace(str_sort(list.files("../data/counts_mx"), numeric = TRUE),
 #                        "_filtered_feature_bc_matrix",
 #                        "")
@@ -414,46 +414,48 @@ paste0("Libraries loaded at: ", Sys.time())
 #
 #
 #
+# ## ----include = FALSE---------------------------------------------------------------------------------------------
+#
+# saveRDS(gex, file = paste0("../results/GEX4_", format(Sys.time(), "%y%m%d"), ".rds"))
+# #gex <- readRDS("../results/GEX4_xxxxxx.rds")
+#
+# Idents(object = gex) <- "orig.ident"
+# gex4.dnsample.500 <-  subset(x = gex, downsample = 500)
+# saveRDS(gex4.dnsample.500,
+#         file = paste0("../results/GEX4_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
+#
+# print("GEX4 size:")
+# print(object.size(gex), units = "GB")
+#
+#
+#
+#
+# ## ----------------------------------------------------------------------------------------------------------------
+#
+# #RunPCA() takes around 2h for this data set
+# gex <- RunPCA(
+#   gex,
+#   assay = "RNA",
+#   features = VariableFeatures(gex),
+#   npcs = 100,
+#   reduction.name = "pca_1",
+#   verbose = TRUE
+# )
+#
+# gex@assays$RNA@scale.data <- matrix(0)
+# gc()
+#
+# gex
+#
+# paste0("PCA1 done at:", Sys.time())
+
+
+
+
 ## ----include = FALSE---------------------------------------------------------------------------------------------
 
-#saveRDS(gex, file = paste0("../results/GEX4_", format(Sys.time(), "%y%m%d"), ".rds"))
-gex <- readRDS("../results/GEX4_210818.rds")
-
-Idents(object = gex) <- "orig.ident"
-#gex4.dnsample.500 <-  subset(x = gex, downsample = 500)
-#saveRDS(gex4.dnsample.500,
-#        file = paste0("../results/GEX4_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
-
-print("GEX4 size:")
-print(object.size(gex), units = "GB")
-
-
-
-
-## ----------------------------------------------------------------------------------------------------------------
-
-#RunPCA() takes around 2h for this data set
-gex <- RunPCA(
-  gex,
-  assay = "RNA",
-  features = VariableFeatures(gex),
-  npcs = 75,
-  reduction.name = "pca_1",
-  verbose = TRUE
-)
-
-gex@assays$RNA@scale.data <- matrix(0)
-gc()
-
-paste0("PCA1 done at:", Sys.time())
-
-
-
-
-## ----include = FALSE---------------------------------------------------------------------------------------------
-
-saveRDS(gex, file = paste0("../results/GEX5_", format(Sys.time(), "%y%m%d"), ".rds"))
-#gex <- readRDS("../results/GEX5_xxxxxx.rds")
+#saveRDS(gex, file = paste0("../results/GEX5_", format(Sys.time(), "%y%m%d"), ".rds"))
+gex <- readRDS("../results/GEX5_210818.rds")
 
 Idents(object = gex) <- "orig.ident"
 gex5.dnsample.500 <-  subset(x = gex, downsample = 500)
@@ -468,12 +470,19 @@ print(object.size(gex), units = "GB")
 
 ## ----------------------------------------------------------------------------------------------------------------
 
+#RunHarmony() takes around 1h for this data set
+
 gex <- RunHarmony(
   gex,
   group.by.vars = "orig.ident",
   reduction = "pca_1",
-  reduction.save = "harmony_1"
+  reduction.save = "harmony_1",
+  assay = "RNA",
+  project.dim = FALSE, #project.dim = FALSE needed for seurat object v4.0.0??
+  verbose = TRUE
 )
+
+gex
 
 paste0("Harmony1 done at:", Sys.time())
 
@@ -928,7 +937,7 @@ print(object.size(gex), units = "GB")
 gex <- RunPCA(gex,
               assay = "RNA",
               features = VariableFeatures(object = gex),
-              npcs = 75,
+              npcs = 100,
               reduction.name = "pca_2",
               verbose = TRUE)
 
@@ -956,10 +965,15 @@ print(object.size(gex), units = "GB")
 
 ## ----------------------------------------------------------------------------------------------------------------
 
-gex <- RunHarmony(gex,
-                  group.by.vars = "orig.ident",
-                  reduction = "pca_2",
-                  reduction.save = "harmony_2")
+gex <- RunHarmony(
+  gex,
+  group.by.vars = "orig.ident",
+  reduction = "pca_2",
+  reduction.save = "harmony_2",
+  assay = "RNA",
+  project.dim = FALSE, #project.dim = FALSE needed for seurat object v4.0.0??
+  verbose = TRUE
+)
 
 paste0("harmony2 done at: ", Sys.time())
 
