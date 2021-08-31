@@ -45,7 +45,7 @@ source("../../niceRplots/R/trajectory_plots.R")
 suppressMessages(library(Seurat)) #read and process scRNAseq data
 suppressMessages(library(scDblFinder))
 suppressMessages(library(harmony))
-#suppressMessages(library(scater))
+suppressMessages(library(scater))
 #suppressMessages(library(Nebulosa))
 
 
@@ -64,403 +64,454 @@ paste0("Libraries loaded at: ", Sys.time())
 ## ----------------------------------------------------------------------------------------------------------------
 
 ####-----  List samples
-# samples <- str_replace(str_sort(list.files("../data/counts_mx"), numeric = TRUE),
-#                        "_filtered_feature_bc_matrix",
-#                        "")
-# print("Samples: ")
-# samples
-#
-# ####----- Create a named vector with paths to samples
-# samples.dirs <- sapply(samples, function(i) {
-#   d10x <- file.path('../data/counts_mx',
-#                     paste0(i, '_filtered_feature_bc_matrix'))
-#   d10x
-# })
-# print("Sample directories:")
-# samples.dirs
-#
-# ####----- Read count matrices
-# gex_data <- Read10X(data.dir = samples.dirs,
-#                     unique.features = TRUE,
-#                     strip.suffix = TRUE)
-# str(gex_data)
-#
-# ####----- Create seurat object
-# gex <- CreateSeuratObject(gex_data,
-#                           project = "pSS",
-#                           min.cells = 0,
-#                           min.features = 0,
-#                           names.field = 1)
-# table(gex@meta.data$orig.ident)
-# nrow(gex@meta.data)
-#
-# ####-----  rm tmp objects
-# rm(samples, samples.dirs, gex_data)
-#
-# ####-----  change orig.ident for P007 and P008; libraries were generated and sequenced twice
-# gex@meta.data$orig.ident <- gsub("P007[ab]", "P007", gex@meta.data$orig.ident)
-# gex@meta.data$orig.ident <- gsub("P008[ab]", "P008", gex@meta.data$orig.ident)
-#
-# table(gex@meta.data$orig.ident)
-#
-# ####-----  add pheno info
-# pheno <- read.table("../suppl/pheno/pSS_pheno_210623.csv", sep = ";", header = TRUE)
-# colnames(pheno)[c(1, 3)] <- c("Sample_id", "orig.ident")
-# pheno$orig.ident <- gsub("P007[ab]", "P007", pheno$orig.ident)
-# pheno$orig.ident <- gsub("P008[ab]", "P008", pheno$orig.ident)
-# pheno <- unique(pheno[, c(1, 3, 5, 7:8, 11:12)])
-# head(pheno); dim(pheno)
-#
-# meta.data.tmp <- gex@meta.data
-# meta.data.tmp$cell <- row.names(meta.data.tmp)
-# meta.data.tmp <- merge(meta.data.tmp, pheno, by = "orig.ident", all.x = TRUE)
-# row.names(meta.data.tmp) <- meta.data.tmp$cell
-# meta.data.tmp$cell <- NULL
-#
-# gex <- AddMetaData(gex, meta.data.tmp); head(gex@meta.data); table(gex@meta.data$orig.ident)
-#
-# paste0("Data loaded at: ", Sys.time())
-#
-#
-#
-#
-# ## ----include = FALSE---------------------------------------------------------------------------------------------
-#
-# saveRDS(gex, file = paste0("../results/GEX1_", format(Sys.time(), "%y%m%d"), ".rds"))
-# #gex <- readRDS("../results/GEX1_xxxxxx.rds"); gex; mem_used()
-#
-# Idents(object = gex) <- "orig.ident"
-# gex1.dnsample.500 <-  subset(x = gex, downsample = 500)
-# saveRDS(gex1.dnsample.500,
-#         file = paste0("../results/GEX1_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
-#
-# print("GEX1 size:")
-# print(object.size(gex), units = "GB")
-#
-#
-#
-#
-# ## ----------------------------------------------------------------------------------------------------------------
-#
-# #read GRCh38.98 .gtf file used during alignment
-# gtf.GRCh38.98 <- readGFF("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.gz")
-# #saveRDS(gtf.GRCh38.98, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.rds")
-# #annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.rds")
-#
-# annot <- unique(gtf.GRCh38.98[gtf.GRCh38.98$type == "gene", c(1, 9, 11, 12)])
-# colnames(annot) <- c("chromosome_name", "gene_id", "gene_biotype", "external_gene_name")
-# annot$chromosome_name <- as.character(annot$chromosome_name)
-# annot[!grepl("^chr[123456789XYMT]", annot[, "chromosome_name"]), "chromosome_name"] <- "other"
-# print("head(annot):")
-# head(annot)
-#
-# saveRDS(annot, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
-# #annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
-#
-#
-#
-#
-# ## ----------------------------------------------------------------------------------------------------------------
-#
-# #scDblFinder requires around 3 min for this data set
-# gex <-
-#   as.Seurat(
-#     scDblFinder(
-#       as.SingleCellExperiment(gex),
-#       samples = "orig.ident",
-#       BPPARAM = MulticoreParam(16)
-#     )
-#   )
-#
-# gex@meta.data$ident <- NULL
-#
-#
-#
-#
-# ## ----------------------------------------------------------------------------------------------------------------
-#
-# gex <- SplitObject(gex, split.by = "orig.ident")
-#
-# gex <- lapply(gex, annot = annot, function(x, annot) {
-#   total <- colSums(x) #Total number of cells
-#
-#   #Might need to rerun this as "INMT-FAM188B", "INHBB", "INHBA", "INHBA-AS1", "PRPS1L1" "TRPS1"   "PRPSAP2", "PRPSAP1", "PRPS2", "PRPS1"  were excluded
-#
-#   x$percent_mito <- colSums(x[grepl("^MT-", rownames(x)),]) / total * 100
-#   x$percent_ribo <- colSums(x[grepl("^RP[LS]", rownames(x)) |
-#                                 grepl("^MRP[LS]", rownames(x)),]) / total * 100
-#   x$percent_hb <- colSums(x[grepl("^HB[AB]", rownames(x)),]) / total * 100
-#
-#   gene_biotype <- annot[match(rownames(x), annot$external_gene_name), "gene_biotype"]
-#   x$percent_protein_coding <- colSums(x[(gene_biotype == "protein_coding") &
-#                 (!is.na(gene_biotype)),]) / total * 100
-#
-#
-#   x$count_th <- x$nCount_RNA > quantile(x$nCount_RNA, 0.98)
-#   x$feature_th <- (x$nFeature_RNA > quantile(x$nFeature_RNA, 0.98)) |
-#     (x$nFeature_RNA < 200)
-#   x$mito_th <- x$percent_mito > 25
-#   x$ribo_th <- x$percent_ribo < 5
-#   x$hb_th <- x$percent_hb > 1
-#
-#   return(x)
-#
-# })
-#
-# gex <- merge(gex[[1]] , gex[-1])
-#
-# gex$cells_discard <-
-#   rowSums(gex@meta.data[, grepl("_th", colnames(gex@meta.data))]) > 0
-#
-# paste0("QC calculated at: ", Sys.time())
-#
-#
-#
-#
-# ## ----include = FALSE---------------------------------------------------------------------------------------------
-#
-# saveRDS(gex, file = paste0("../results/GEX2_", format(Sys.time(), "%y%m%d"), ".rds"))
-# #gex <- readRDS("../results/GEX2_xxxxxx.rds"); gex; mem_used()
-#
-# Idents(object = gex) <- "orig.ident"
-# gex2.dnsample.500 <-  subset(x = gex, downsample = 500)
-# saveRDS(gex2.dnsample.500,
-#         file = paste0("../results/GEX2_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
-#
-# print("GEX2 size:")
-# print(object.size(gex), units = "GB")
-#
-#
-#
-#
-# ## ----------------------------------------------------------------------------------------------------------------
-#
-# discarded_stats <- as_tibble(gex@meta.data) %>%
-#   group_by(orig.ident) %>%
-#   summarise(
-#     cells = length(orig.ident),
-#     count_discarded = sum(count_th),
-#     feature_discarded = sum(feature_th),
-#     mito_discarded = sum(mito_th),
-#     ribo_discarded = sum(ribo_th),
-#     hb_discarded = sum(hb_th),
-#     pred_doublets = sum(scDblFinder.class == "doublet"),
-#     total_discarded = sum(cells_discard)
-#   )
-#
-# write.csv(discarded_stats,
-#           paste0("../results/stats_discarded_",format(Sys.time(), "%y%m%d"),".csv"),
-#           row.names = FALSE,
-#           quote = FALSE)
-#
-# p_discarded_stats <- discarded_stats %>%
-#   gather(discarded, cellcount, cells:total_discarded) %>%
-#   ggplot(aes(x = orig.ident,
-#              y = cellcount,
-#              fill = discarded)) +
-#   geom_bar(stat = "identity",
-#            color = "black",
-#            position = position_dodge()) +
-#   theme(legend.title = element_blank(),
-#         axis.text.x = element_text(face = "bold", angle = 90, vjust = 0.5, hjust = 1),
-#         axis.text.y = element_text(face = "bold")) +
-#   ggtitle(paste0("Number of cells total/number of discarded cells (",
-#                  sum(discarded_stats$cells), "/",
-#                  sum(discarded_stats$total_discarded), ")"))
-#
-# ggsave2(paste0("../results/Discarded_cellcounts_", format(Sys.time(), "%y%m%d"), ".png"),
-#           p_discarded_stats,
-#           width = 25, height = 20, unit = "cm")
-#
-# my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
-#
-# #violin and density plot
-# for (i in my_pars){
-#
-#   print(i)
-#
-#   p1 <- plotColData(as.SingleCellExperiment(gex),
-#                     x = "orig.ident",
-#                     y = i,
-#                     colour_by = "cells_discard") +
-#     theme(axis.text.x = element_text(angle = 90)) +
-#     ggtitle(i) +
-#     xlab("") +
-#     ylab(i)
-#
-#   p2 <- gex@meta.data %>% as_tibble() %>%
-#     ggplot(aes_string(x = i)) +
-#     geom_density(aes(color = orig.ident, fill= orig.ident), alpha = 0.1) +
-#     theme_classic() +
-#     scale_x_log10() +
-#     NoLegend() +
-#     ggtitle(paste0(i, " per sample"))
-#
-#   p3 <- gex@meta.data[!gex@meta.data$cells_discard,  ] %>% as_tibble() %>%
-#     ggplot(aes_string(x = i)) +
-#     geom_density(aes(color = orig.ident, fill= orig.ident), alpha = 0.1) +
-#     theme_classic() +
-#     scale_x_log10() +
-#     NoLegend() +
-#     ggtitle(paste0(i, " per sample, filtered"))
-#
-#
-#   ggsave2(paste0("../results/QCplot_", format(Sys.time(), "%y%m%d"), "_", i, ".png"),
-#           plot_grid(p1, p2, p3, ncol = 3, labels = "AUTO", align = "h"),
-#           width = 40, height = 12, unit = "cm")
-#
-#
-# }
-#
-# #QC overview plot
-# # png(paste0("./plots/QCplot_", format(Sys.time(), "%y%m%d"), "_mark_discarded.png"),
-# #     width = 2000, height = 2000, units = "px")
-# # rafalib::mypar(mar=c(5,6,1,1))
-# # barlist(data = gex, genes = my_pars,
-# #                     cex.axis = .8,
-# #                     srt = 45,
-# #                     orderby = "nFeature_RNA",
-# #                     clustering = "orig.ident",
-# #                     col = ifelse(gex$cells_discard, "red", "grey") )
-# # dev.off()
-#
-#
-#
-#
-# ## ----------------------------------------------------------------------------------------------------------------
-#
-# #filter annotation file to genes that should be kept
-# annot_coding <- unique(annot[!(annot$chromosome_name %in% c("chrY", "other", "chrM")) &
-#                        (annot$gene_biotype %in% c("protein_coding",
-#                                     "IG_V_gene", "IG_D_gene", "IG_J_gene", "IG_C_gene",
-#                                     "TR_V_gene", "TR_D_gene", "TR_J_gene", "TR_C_gene")), c("external_gene_name", "gene_biotype", "chromosome_name")])
-# genes_keep <- rownames(gex) %in% annot_coding$external_gene_name
-#
-# print("table(keep):")
-# table(genes_keep)
-#
-# gex <- gex[genes_keep, !gex$cells_discard]
-#
-# gex
-#
-#
-#
-#
-# ## ----include = FALSE---------------------------------------------------------------------------------------------
-#
-# saveRDS(gex, file = paste0("../results/GEX3_", format(Sys.time(), "%y%m%d"), ".rds"))
-# #gex <- readRDS("../results/GEX3_xxxxxx.rds")
-#
-# Idents(object = gex) <- "orig.ident"
-# gex3.dnsample.500 <-  subset(x = gex, downsample = 500)
-# saveRDS(gex3.dnsample.500,
-#         file = paste0("../results/GEX3_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
-#
-# print("GEX3 size:")
-# print(object.size(gex), units = "GB")
-#
-#
-#
-#
-# ## ----------------------------------------------------------------------------------------------------------------
-#
-# gex <- NormalizeData(gex, scale.factor = 10000)
-# gex <- FindVariableFeatures(gex, selection.method = "vst", nfeatures = 4000)
-#
-# p1 <- LabelPoints(plot = VariableFeaturePlot(gex),
-#                   points = head(VariableFeatures(gex), 80),
-#                   repel = TRUE,
-#                   xnudge = 0,
-#                   ynudge = 0,
-#                   max.overlaps = Inf) +
-#         theme_classic() +
-#         ggtitle(paste0(length(VariableFeatures(gex)), " Variable features - allCells"))
-#
-# ggsave2(paste0("../results/VariableFeatures_allCells_", length(VariableFeatures(gex)), "_", format(Sys.time(), "%y%m%d"), ".png"),
-#         p1, width = 25, height = 20, unit = "cm")
-#
-#
-#
-#
-# ## ----------------------------------------------------------------------------------------------------------------
-#
-# VariableFeatures(gex) <-
-#   VariableFeatures(gex)[VariableFeatures(gex) %in%
-#                           annot$external_gene_name[annot$gene_biotype == "protein_coding"]]
-#
-# p1 <- LabelPoints(plot = VariableFeaturePlot(gex),
-#                   points = head(VariableFeatures(gex), 80),
-#                   repel = TRUE,
-#                   xnudge = 0,
-#                   ynudge = 0,
-#                   max.overlaps = Inf) +
-#         theme_classic() +
-#         ggtitle(paste0(length(VariableFeatures(gex)), " Variable features - allCells (protein_coding)"))
-#
-# ggsave2(paste0("../results/VariableFeatures_allCells_", length(VariableFeatures(gex)), "_protein_coding_", format(Sys.time(), "%y%m%d"), ".png"),
-#         p1, width = 25, height = 20, unit = "cm")
-#
-#
-#
-#
-# ## ----------------------------------------------------------------------------------------------------------------
-#
-# gex <- ScaleData(gex,
-#                  features = VariableFeatures(gex),
-#                  vars.to.regress = c("nFeature_RNA", "percent_mito", "percent_ribo"))
-#
-# paste0("NormalizeData, FindVariableFeatures and ScaleData done at: ", Sys.time())
-#
-#
-#
-#
-# ## ----include = FALSE---------------------------------------------------------------------------------------------
-#
-# saveRDS(gex, file = paste0("../results/GEX4_", format(Sys.time(), "%y%m%d"), ".rds"))
-# #gex <- readRDS("../results/GEX4_xxxxxx.rds")
-#
-# Idents(object = gex) <- "orig.ident"
-# gex4.dnsample.500 <-  subset(x = gex, downsample = 500)
-# saveRDS(gex4.dnsample.500,
-#         file = paste0("../results/GEX4_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
-#
-# print("GEX4 size:")
-# print(object.size(gex), units = "GB")
-#
-#
-#
-#
-# ## ----------------------------------------------------------------------------------------------------------------
-#
-# #RunPCA() takes around 2h for this data set
-# gex <- RunPCA(
-#   gex,
-#   assay = "RNA",
-#   features = VariableFeatures(gex),
-#   npcs = 100,
-#   reduction.name = "pca_1",
-#   verbose = TRUE
-# )
-#
-# gex@assays$RNA@scale.data <- matrix(0)
-# gc()
-#
-# gex
-#
-# paste0("PCA1 done at:", Sys.time())
+samples <- str_replace(str_sort(list.files("../data/counts_mx"), numeric = TRUE),
+                       "_filtered_feature_bc_matrix",
+                       "")
+print("Samples: ")
+samples
+
+####----- Create a named vector with paths to samples
+samples.dirs <- sapply(samples, function(i) {
+  d10x <- file.path('../data/counts_mx',
+                    paste0(i, '_filtered_feature_bc_matrix'))
+  d10x
+})
+print("Sample directories:")
+samples.dirs
+
+####----- Read count matrices
+gex_data <- Read10X(data.dir = samples.dirs,
+                    unique.features = TRUE,
+                    strip.suffix = TRUE)
+str(gex_data)
+
+####----- Create seurat object
+gex <- CreateSeuratObject(gex_data,
+                          project = "pSS",
+                          min.cells = 0,
+                          min.features = 0,
+                          names.field = 1)
+table(gex@meta.data$orig.ident)
+nrow(gex@meta.data)
+
+####-----  rm tmp objects
+rm(samples, samples.dirs, gex_data)
+
+####-----  change orig.ident for P007 and P008; libraries were generated and sequenced twice
+gex@meta.data$orig.ident <- gsub("P007[ab]", "P007", gex@meta.data$orig.ident)
+gex@meta.data$orig.ident <- gsub("P008[ab]", "P008", gex@meta.data$orig.ident)
+
+table(gex@meta.data$orig.ident)
+
+####-----  add pheno info
+pheno <- read.table("../suppl/pheno/pSS_pheno_210623.csv", sep = ";", header = TRUE)
+colnames(pheno)[c(1, 3)] <- c("Sample_id", "orig.ident")
+pheno$orig.ident <- gsub("P007[ab]", "P007", pheno$orig.ident)
+pheno$orig.ident <- gsub("P008[ab]", "P008", pheno$orig.ident)
+pheno <- unique(pheno[, c(1, 3, 5, 7:8, 11:12)])
+head(pheno); dim(pheno)
+
+meta.data.tmp <- gex@meta.data
+meta.data.tmp$cell <- row.names(meta.data.tmp)
+meta.data.tmp <- merge(meta.data.tmp, pheno, by = "orig.ident", all.x = TRUE)
+row.names(meta.data.tmp) <- meta.data.tmp$cell
+meta.data.tmp$cell <- NULL
+
+gex <- AddMetaData(gex, meta.data.tmp); head(gex@meta.data); table(gex@meta.data$orig.ident)
+
+paste0("Data loaded at: ", Sys.time())
 
 
 
 
 ## ----include = FALSE---------------------------------------------------------------------------------------------
 
-#saveRDS(gex, file = paste0("../results/GEX5_", format(Sys.time(), "%y%m%d"), ".rds"))
-gex <- readRDS("../results/GEX5_210818.rds")
+saveRDS(gex, file = paste0("../results/GEX1_", format(Sys.time(), "%y%m%d"), ".rds"))
+#gex <- readRDS("../results/GEX1_xxxxxx.rds"); gex; mem_used()
+
+Idents(object = gex) <- "orig.ident"
+gex1.dnsample.500 <-  subset(x = gex, downsample = 500)
+saveRDS(gex1.dnsample.500,
+        file = paste0("../results/GEX1_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
+
+print("GEX1 size:")
+print(object.size(gex), units = "GB")
+
+
+
+
+## ----------------------------------------------------------------------------------------------------------------
+
+#read GRCh38.98 .gtf file used during alignment
+gtf.GRCh38.98 <- readGFF("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.gz")
+#saveRDS(gtf.GRCh38.98, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.rds")
+#annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.rds")
+
+annot <- unique(gtf.GRCh38.98[gtf.GRCh38.98$type == "gene", c(1, 9, 11, 12)])
+colnames(annot) <- c("chromosome_name", "gene_id", "gene_biotype", "external_gene_name")
+annot$chromosome_name <- as.character(annot$chromosome_name)
+annot[!grepl("^chr[123456789XYMT]", annot[, "chromosome_name"]), "chromosome_name"] <- "other"
+print("head(annot):")
+head(annot)
+
+saveRDS(annot, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
+#annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
+
+
+
+
+## ----------------------------------------------------------------------------------------------------------------
+
+#scDblFinder requires around 3 min for this data set
+gex <-
+  as.Seurat(
+    scDblFinder(
+      as.SingleCellExperiment(gex),
+      samples = "orig.ident",
+      BPPARAM = MulticoreParam(16)
+    )
+  )
+
+gex@meta.data$ident <- NULL
+
+
+
+
+## ----------------------------------------------------------------------------------------------------------------
+
+gex <- SplitObject(gex, split.by = "orig.ident")
+
+counts_features_quantile <- 0.98
+mito_cutoff <- 20
+ribo_cutoff <-5
+hb_cutoff <- 1
+
+
+gex <- lapply(gex, annot = annot, function(x, annot) {
+  total <- colSums(x) #Total number of cells
+
+  x$percent_mito <- colSums(x[grepl("^MT-", rownames(x)), ]) / total * 100
+  x$percent_ribo <- colSums(x[grepl("^RP[LS]", rownames(x)), ]) / total * 100
+  x$percent_hb <- colSums(x[grepl("^HB[AB]", rownames(x)), ]) / total * 100
+
+  gene_biotype <- annot[match(rownames(x), annot$external_gene_name), "gene_biotype"]
+  x$percent_protein_coding <- colSums(x[(gene_biotype == "protein_coding") &
+                (!is.na(gene_biotype)), ]) / total * 100
+
+
+  x$count_th <- x$nCount_RNA > quantile(x$nCount_RNA, counts_features_quantile)
+  x$feature_th <- (x$nFeature_RNA > quantile(x$nFeature_RNA, counts_features_quantile)) |
+    (x$nFeature_RNA < 200)
+  x$mito_th <- x$percent_mito > mito_cutoff
+  x$ribo_th <- x$percent_ribo < ribo_cutoff
+  x$hb_th <- x$percent_hb > hb_cutoff
+
+  return(x)
+
+})
+
+gex <- merge(gex[[1]] , gex[-1])
+
+gex$cells_discard <-
+  rowSums(gex@meta.data[, grepl("_th", colnames(gex@meta.data))]) > 0
+
+paste0("QC calculated at: ", Sys.time())
+
+
+
+
+## ----------------------------------------------------------------------------------------------------------------
+
+png(paste0("../results/QC_nCount_",format(Sys.time(), "%y%m%d"),".png"),
+    w = 20, h = 20, units = "cm", res = 200)
+plot(sort(gex@meta.data$nCount_RNA),
+     xlab = "cell",
+     ylab ="nCount",
+     main = "nCount")
+dev.off()
+
+png(paste0("../results/QC_nFeature_",format(Sys.time(), "%y%m%d"),".png"),
+    w = 20, h = 20, units = "cm", res = 200)
+plot(sort(gex@meta.data$nFeature_RNA),
+     xlab = "cell",
+     ylab ="nFeature",
+     main = "nFeature")
+dev.off()
+
+png(paste0("../results/QC_perc.mito_",format(Sys.time(), "%y%m%d"),".png"),
+    w = 20, h = 20, units = "cm", res = 200)
+plot(sort(gex@meta.data$percent_mito),
+     xlab = "cell",
+     ylab = "percent mito",
+     main = "percent mito")
+abline(h = mito_cutoff, col = "red")
+dev.off()
+
+png(paste0("../results/QC_perc.ribo_",format(Sys.time(), "%y%m%d"),".png"),
+    w = 20, h = 20, units = "cm", res = 200)
+plot(sort(gex@meta.data$percent_ribo),
+     xlab = "cell",
+     ylab = "percent ribo",
+     main = "percent ribo")
+abline(h = ribo_cutoff, col = "red")
+dev.off()
+
+png(paste0("../results/QC_perc.hb_",format(Sys.time(), "%y%m%d"),".png"),
+    w = 20, h = 20, units = "cm", res = 200)
+plot(sort(gex@meta.data$percent_hb),
+     xlab = "cell",
+     ylab = "percent hb",
+     main = "percent hb")
+abline(h = hb_cutoff, col = "red")
+dev.off()
+
+
+
+
+## ----include = FALSE---------------------------------------------------------------------------------------------
+
+saveRDS(gex, file = paste0("../results/GEX2_", format(Sys.time(), "%y%m%d"), ".rds"))
+#gex <- readRDS("../results/GEX2_xxxxxx.rds"); gex; mem_used()
+
+Idents(object = gex) <- "orig.ident"
+gex2.dnsample.500 <-  subset(x = gex, downsample = 500)
+saveRDS(gex2.dnsample.500,
+        file = paste0("../results/GEX2_dnsample.500_", format(Sys.time(), "%y%m%d"),".rds"))
+
+print("GEX2 size:")
+print(object.size(gex), units = "GB")
+
+
+
+
+## ----------------------------------------------------------------------------------------------------------------
+
+discarded_stats <- as_tibble(gex@meta.data) %>%
+  group_by(orig.ident) %>%
+  summarise(
+    cells = length(orig.ident),
+    count_discarded = sum(count_th),
+    feature_discarded = sum(feature_th),
+    mito_discarded = sum(mito_th),
+    ribo_discarded = sum(ribo_th),
+    hb_discarded = sum(hb_th),
+    pred_doublets = sum(scDblFinder.class == "doublet"),
+    total_discarded = sum(cells_discard)
+  )
+
+write.csv(discarded_stats,
+          paste0("../results/stats_discarded_",format(Sys.time(), "%y%m%d"),".csv"),
+          row.names = FALSE,
+          quote = FALSE)
+
+p_discarded_stats <- discarded_stats %>%
+  gather(discarded, cellcount, cells:total_discarded) %>%
+  ggplot(aes(x = orig.ident,
+             y = cellcount,
+             fill = discarded)) +
+  geom_bar(stat = "identity",
+           color = "black",
+           position = position_dodge()) +
+  theme(legend.title = element_blank(),
+        axis.text.x = element_text(face = "bold", angle = 90, vjust = 0.5, hjust = 1),
+        axis.text.y = element_text(face = "bold")) +
+  ggtitle(paste0("Number of cells total/number of discarded cells (",
+                 sum(discarded_stats$cells), "/",
+                 sum(discarded_stats$total_discarded), ")"))
+
+ggsave2(paste0("../results/Discarded_cellcounts_", format(Sys.time(), "%y%m%d"), ".png"),
+          p_discarded_stats,
+          width = 25, height = 20, unit = "cm")
+
+my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
+
+#violin and density plot
+for (i in my_pars){
+
+  print(i)
+
+  p1 <- plotColData(as.SingleCellExperiment(gex),
+                    x = "orig.ident",
+                    y = i,
+                    colour_by = "cells_discard") +
+    theme(axis.text.x = element_text(angle = 90)) +
+    ggtitle(i) +
+    xlab("") +
+    ylab(i)
+
+  p2 <- gex@meta.data %>% as_tibble() %>%
+    ggplot(aes_string(x = i)) +
+    geom_density(aes(color = orig.ident, fill= orig.ident), alpha = 0.1) +
+    theme_classic() +
+    scale_x_log10() +
+    NoLegend() +
+    ggtitle(paste0(i, " per sample"))
+
+  p3 <- gex@meta.data[!gex@meta.data$cells_discard,  ] %>% as_tibble() %>%
+    ggplot(aes_string(x = i)) +
+    geom_density(aes(color = orig.ident, fill= orig.ident), alpha = 0.1) +
+    theme_classic() +
+    scale_x_log10() +
+    NoLegend() +
+    ggtitle(paste0(i, " per sample, filtered"))
+
+
+  ggsave2(paste0("../results/QCplot_perSample", "_", i, format(Sys.time(), "%y%m%d"), ".png"),
+          plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"),
+          width = 28, height = 12, unit = "cm")
+
+
+}
+
+#QC overview plot
+# png(paste0("./plots/QCplot_", format(Sys.time(), "%y%m%d"), "_mark_discarded.png"),
+#     width = 2000, height = 2000, units = "px")
+# rafalib::mypar(mar=c(5,6,1,1))
+# barlist(data = gex, genes = my_pars,
+#                     cex.axis = .8,
+#                     srt = 45,
+#                     orderby = "nFeature_RNA",
+#                     clustering = "orig.ident",
+#                     col = ifelse(gex$cells_discard, "red", "grey") )
+# dev.off()
+
+
+
+
+## ----------------------------------------------------------------------------------------------------------------
+
+#filter annotation file, keeping proteing coding plus VDJ genes
+annot_coding <- unique(annot[!(annot$chromosome_name %in% c("chrY", "other", "chrM")) &
+                       (annot$gene_biotype %in% c("protein_coding",
+                                    "IG_V_gene", "IG_D_gene", "IG_J_gene", "IG_C_gene",
+                                    "TR_V_gene", "TR_D_gene", "TR_J_gene", "TR_C_gene")), c("external_gene_name", "gene_biotype", "chromosome_name")])
+genes_keep <- rownames(gex) %in% annot_coding$external_gene_name
+
+print("table(keep):")
+table(genes_keep)
+
+gex <- gex[genes_keep, !gex$cells_discard]
+
+gex
+
+
+
+
+## ----include = FALSE---------------------------------------------------------------------------------------------
+
+saveRDS(gex, file = paste0("../results/GEX3_", format(Sys.time(), "%y%m%d"), ".rds"))
+#gex <- readRDS("../results/GEX3_xxxxxx.rds")
+
+Idents(object = gex) <- "orig.ident"
+gex3.dnsample.500 <-  subset(x = gex, downsample = 500)
+saveRDS(gex3.dnsample.500,
+        file = paste0("../results/GEX3_dnsample.500_", format(Sys.time(), "%y%m%d"),".rds"))
+
+print("GEX3 size:")
+print(object.size(gex), units = "GB")
+
+
+
+
+## ----------------------------------------------------------------------------------------------------------------
+
+gex <- NormalizeData(gex, scale.factor = 10000)
+gex <- FindVariableFeatures(gex, selection.method = "vst", nfeatures = 4000)
+
+p1 <- LabelPoints(plot = VariableFeaturePlot(gex),
+                  points = head(VariableFeatures(gex), 80),
+                  repel = TRUE,
+                  xnudge = 0,
+                  ynudge = 0,
+                  max.overlaps = Inf) +
+        theme_classic() +
+        ggtitle(paste0(length(VariableFeatures(gex)), " Variable features - allCells"))
+
+ggsave2(paste0("../results/VariableFeatures_allCells_", length(VariableFeatures(gex)), "_", format(Sys.time(), "%y%m%d"), ".png"),
+        p1, width = 25, height = 20, unit = "cm")
+
+
+
+
+## ----------------------------------------------------------------------------------------------------------------
+
+VariableFeatures(gex) <-
+  VariableFeatures(gex)[VariableFeatures(gex) %in%
+                          annot$external_gene_name[annot$gene_biotype == "protein_coding"]]
+
+p1 <- LabelPoints(plot = VariableFeaturePlot(gex),
+                  points = head(VariableFeatures(gex), 80),
+                  repel = TRUE,
+                  xnudge = 0,
+                  ynudge = 0,
+                  max.overlaps = Inf) +
+        theme_classic() +
+        ggtitle(paste0(length(VariableFeatures(gex)), " Variable features - allCells (protein_coding)"))
+
+ggsave2(paste0("../results/VariableFeatures_allCells_", length(VariableFeatures(gex)), "_protein_coding_", format(Sys.time(), "%y%m%d"), ".png"),
+        p1, width = 25, height = 20, unit = "cm")
+
+
+
+
+## ----------------------------------------------------------------------------------------------------------------
+
+gex <- ScaleData(gex,
+                 features = VariableFeatures(gex),
+                 vars.to.regress = c("nFeature_RNA", "percent_mito", "percent_ribo"))
+
+paste0("NormalizeData, FindVariableFeatures and ScaleData done at: ", Sys.time())
+
+
+
+
+## ----include = FALSE---------------------------------------------------------------------------------------------
+
+saveRDS(gex, file = paste0("../results/GEX4_", format(Sys.time(), "%y%m%d"), ".rds"))
+#gex <- readRDS("../results/GEX4_xxxxxx.rds")
+
+Idents(object = gex) <- "orig.ident"
+gex4.dnsample.500 <-  subset(x = gex, downsample = 500)
+saveRDS(gex4.dnsample.500,
+        file = paste0("../results/GEX4_dnsample.500_", format(Sys.time(), "%y%m%d"),".rds"))
+
+print("GEX4 size:")
+print(object.size(gex), units = "GB")
+
+
+
+
+## ----------------------------------------------------------------------------------------------------------------
+
+#RunPCA() takes around 2h for this data set
+gex <- RunPCA(
+  gex,
+  assay = "RNA",
+  features = VariableFeatures(gex),
+  npcs = 100,
+  reduction.name = "pca_1",
+  verbose = TRUE
+)
+
+gex@assays$RNA@scale.data <- matrix(0)
+gc()
+
+gex
+
+paste0("PCA1 done at:", Sys.time())
+
+
+
+
+## ----include = FALSE---------------------------------------------------------------------------------------------
+
+saveRDS(gex, file = paste0("../results/GEX5_", format(Sys.time(), "%y%m%d"), ".rds"))
+#gex <- readRDS("../results/GEX5_xxxxxx.rds")
 
 Idents(object = gex) <- "orig.ident"
 gex5.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex5.dnsample.500,
-        file = paste0("../results/GEX5_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
+        file = paste0("../results/GEX5_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
 print("GEX5 size:")
 print(object.size(gex), units = "GB")
@@ -526,7 +577,7 @@ saveRDS(gex, file = paste0("../results/GEX6_", format(Sys.time(), "%y%m%d"), ".r
 Idents(object = gex) <- "orig.ident"
 gex6.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex6.dnsample.500,
-        file = paste0("../results/GEX6_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
+        file = paste0("../results/GEX6_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
 print("GEX6 size:")
 print(object.size(gex), units = "GB")
@@ -564,7 +615,7 @@ saveRDS(gex, file = paste0("../results/GEX7_", format(Sys.time(), "%y%m%d"), ".r
 Idents(object = gex) <- "orig.ident"
 gex7.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex7.dnsample.500,
-        file = paste0("../results/GEX7_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
+        file = paste0("../results/GEX7_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
 print("GEX7 size:")
 print(object.size(gex), units = "GB")
@@ -585,7 +636,7 @@ gex <- FindNeighbors(gex,
 #res <- 0.15 #RNA_snn res local
 #res <- 0.6 #RNA_nn res local (knn, similar graph generated during UMAP)
 #res <- 0.05 #Bianca RNA_snn resolution
-res <- 0.4 #Bianca RNA_nn resolution
+res <- 0.3 #Bianca RNA_nn resolution
 
 gex <- FindClusters(gex,
                     resolution = res,
@@ -630,8 +681,8 @@ h <- hclust(as.dist(adj), method = "ward.D2")
 # pheatmap::pheatmap(adj)
 
 png(paste0("../results/hclust_clusters_allCells_clustRes_", res, "_", format(Sys.time(), "%y%m%d"), ".png"),
-    width = 2000,
-    height = 2000,
+    width = 1500,
+    height = 1500,
     units = "px")
 plot(as.dendrogram(h))
 dev.off()
@@ -668,8 +719,10 @@ ggsave2(paste0("../results/UMAP_allCells_clustRes", res, "_", format(Sys.time(),
 
 ## ----------------------------------------------------------------------------------------------------------------
 
-ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM" )
-b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27", "IGHA1", "IGHD", "IGHM", "JCHAIN", "MME")
+ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3",
+                 "IGHG4",  "IGHD", "IGHE", "IGHM" )
+b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27",
+               "IGHA1", "IGHD", "IGHM", "JCHAIN", "MME")
 pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", "CD3E", "CD14", "LYZ", "CD8A")
 my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
 
@@ -720,6 +773,8 @@ ggsave2(paste0("../results/FeaturePlot_allCells_myPars", format(Sys.time(), "%y%
 
 ## ----------------------------------------------------------------------------------------------------------------
 
+# !!!! start here !!!!
+
 sample_size <- table(gex$seurat_clusters)
 sample_size[sample_size > 100] <- 100
 
@@ -734,17 +789,17 @@ DGE_temp <- SetIdent(DGE_temp, value = "seurat_clusters")
 detable <- FindAllMarkers( DGE_temp,
                            min.pct = 0.1,
                            min.cells.feature = 0.1,
-                           max.cells.per.ident = 50 ,
-                           only.pos = T ,
+                           max.cells.per.ident = 50,
+                           only.pos = TRUE,
                            logfc.threshold = 0.1,
                            assay = "RNA")
 
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 write.csv(detable,
-          paste0("../results/DGE_allCells_seurat_clusters_",format(Sys.time(), "%y%m%d"),".csv"))
+          paste0("../results/DGE_allCells_seurat_clusters_", format(Sys.time(), "%y%m%d"), ".csv"))
 
-detable <- detable[ detable$p_val < 0.05,  ]
 detable$log.pct.diff <- log2(detable$pct.1 / (detable$pct.2 + 0.01) )
+detable <- detable[ detable$p_val < 0.05, ]
 
 #markers_allCells <- FindAllMarkers(gex, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 #markers_allCells_top <- markers_allCells %>% group_by(cluster) %>% top_n(n = 9, wt = avg_log2FC)
@@ -1121,7 +1176,6 @@ saveRDS(gex, file = paste0("../results/GEX14_", format(Sys.time(), "%y%m%d"), ".
 gex14.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex14.dnsample.500,
         file = paste0("../results/GEX14_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
-#gex <- readRDS("../results/GEX14_dnsample.500_210628.rds")
 
 print("GEX14 size:")
 print(object.size(gex), units = "GB")
@@ -1146,8 +1200,8 @@ h <- hclust(as.dist(adj), method = "ward.D2")
 # pheatmap::pheatmap(adj)
 
 png(paste0("../results/hclust_clusters_B-cells_clustRes_", res, "_", format(Sys.time(), "%y%m%d"), ".png"),
-    width = 2000,
-    height = 2000,
+    width = 1500,
+    height = 1500,
     units = "px")
 plot(as.dendrogram(h))
 dev.off()

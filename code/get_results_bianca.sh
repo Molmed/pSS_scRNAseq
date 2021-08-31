@@ -5,12 +5,29 @@
 #########################################
 
 #empty wharf
+ll /proj/sens2020501/nobackup/wharf/gustava/gustava-sens2020501/
 rm -r /proj/sens2020501/nobackup/wharf/gustava/gustava-sens2020501/*
+ll /proj/sens2020501/nobackup/wharf/gustava/gustava-sens2020501/
 
-#cp results
+#cp result plots
 cp -r \
-/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/results/* \
+/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/results/*27.png \
 /proj/sens2020501/nobackup/wharf/gustava/gustava-sens2020501/
+
+cp -r \
+/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/results/*.pdf \
+/proj/sens2020501/nobackup/wharf/gustava/gustava-sens2020501/
+
+cp -r \
+/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/results/*.csv \
+/proj/sens2020501/nobackup/wharf/gustava/gustava-sens2020501/
+
+#cp gex
+cp -r \
+/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/results/GEX8* \
+/proj/sens2020501/nobackup/wharf/gustava/gustava-sens2020501/
+
+ll /proj/sens2020501/nobackup/wharf/gustava/gustava-sens2020501/
 
 
 

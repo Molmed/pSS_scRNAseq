@@ -207,27 +207,30 @@ gex@meta.data$ident <- NULL
 
 gex <- SplitObject(gex, split.by = "orig.ident")
 
+counts_features_quantile <- 0.98
+mito_cutoff <- 20
+ribo_cutoff <-5
+hb_cutoff <- 1
+
+
 gex <- lapply(gex, annot = annot, function(x, annot) {
   total <- colSums(x) #Total number of cells
   
-  #Might need to rerun this as "INMT-FAM188B", "INHBB", "INHBA", "INHBA-AS1", "PRPS1L1" "TRPS1"   "PRPSAP2", "PRPSAP1", "PRPS2", "PRPS1"  were excluded
-  
-  x$percent_mito <- colSums(x[grepl("^MT-", rownames(x)),]) / total * 100
-  x$percent_ribo <- colSums(x[grepl("^RP[LS]", rownames(x)) |
-                                grepl("^MRP[LS]", rownames(x)),]) / total * 100
-  x$percent_hb <- colSums(x[grepl("^HB[AB]", rownames(x)),]) / total * 100
+  x$percent_mito <- colSums(x[grepl("^MT-", rownames(x)), ]) / total * 100
+  x$percent_ribo <- colSums(x[grepl("^RP[LS]", rownames(x)), ]) / total * 100
+  x$percent_hb <- colSums(x[grepl("^HB[AB]", rownames(x)), ]) / total * 100
   
   gene_biotype <- annot[match(rownames(x), annot$external_gene_name), "gene_biotype"]
   x$percent_protein_coding <- colSums(x[(gene_biotype == "protein_coding") &
-                (!is.na(gene_biotype)),]) / total * 100
+                (!is.na(gene_biotype)), ]) / total * 100
   
   
-  x$count_th <- x$nCount_RNA > quantile(x$nCount_RNA, 0.98)
-  x$feature_th <- (x$nFeature_RNA > quantile(x$nFeature_RNA, 0.98)) |
+  x$count_th <- x$nCount_RNA > quantile(x$nCount_RNA, counts_features_quantile)
+  x$feature_th <- (x$nFeature_RNA > quantile(x$nFeature_RNA, counts_features_quantile)) |
     (x$nFeature_RNA < 200)
-  x$mito_th <- x$percent_mito > 25
-  x$ribo_th <- x$percent_ribo < 5
-  x$hb_th <- x$percent_hb > 1
+  x$mito_th <- x$percent_mito > mito_cutoff
+  x$ribo_th <- x$percent_ribo < ribo_cutoff
+  x$hb_th <- x$percent_hb > hb_cutoff
   
   return(x)
   
@@ -243,6 +246,56 @@ paste0("QC calculated at: ", Sys.time())
 
 ```
 
+# plot filter params
+
+```{r}
+
+png(paste0("../results/QC_nCount_",format(Sys.time(), "%y%m%d"),".png"), 
+    w = 20, h = 20, units = "cm", res = 200)
+plot(sort(gex@meta.data$nCount_RNA),
+     xlab = "cell",
+     ylab ="nCount",
+     main = "nCount")
+dev.off()
+
+png(paste0("../results/QC_nFeature_",format(Sys.time(), "%y%m%d"),".png"), 
+    w = 20, h = 20, units = "cm", res = 200)
+plot(sort(gex@meta.data$nFeature_RNA),
+     xlab = "cell",
+     ylab ="nFeature",
+     main = "nFeature")
+dev.off()
+
+png(paste0("../results/QC_perc.mito_",format(Sys.time(), "%y%m%d"),".png"), 
+    w = 20, h = 20, units = "cm", res = 200)
+plot(sort(gex@meta.data$percent_mito),
+     xlab = "cell",
+     ylab = "percent mito",
+     main = "percent mito")
+abline(h = mito_cutoff, col = "red")
+dev.off()
+
+png(paste0("../results/QC_perc.ribo_",format(Sys.time(), "%y%m%d"),".png"), 
+    w = 20, h = 20, units = "cm", res = 200)
+plot(sort(gex@meta.data$percent_ribo),
+     xlab = "cell",
+     ylab = "percent ribo",
+     main = "percent ribo")
+abline(h = ribo_cutoff, col = "red")
+dev.off()
+
+png(paste0("../results/QC_perc.hb_",format(Sys.time(), "%y%m%d"),".png"), 
+    w = 20, h = 20, units = "cm", res = 200)
+plot(sort(gex@meta.data$percent_hb),
+     xlab = "cell",
+     ylab = "percent hb",
+     main = "percent hb")
+abline(h = hb_cutoff, col = "red")
+dev.off()
+
+
+```
+
 
 # save rds GEX2
 
@@ -254,7 +307,7 @@ saveRDS(gex, file = paste0("../results/GEX2_", format(Sys.time(), "%y%m%d"), ".r
 Idents(object = gex) <- "orig.ident"
 gex2.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex2.dnsample.500, 
-        file = paste0("../results/GEX2_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
+        file = paste0("../results/GEX2_dnsample.500_", format(Sys.time(), "%y%m%d"),".rds"))
 
 print("GEX2 size:")
 print(object.size(gex), units = "GB")
@@ -337,9 +390,9 @@ for (i in my_pars){
     ggtitle(paste0(i, " per sample, filtered"))
   
   
-  ggsave2(paste0("../results/QCplot_", format(Sys.time(), "%y%m%d"), "_", i, ".png"), 
-          plot_grid(p1, p2, p3, ncol = 3, labels = "AUTO", align = "h"),
-          width = 40, height = 12, unit = "cm")
+  ggsave2(paste0("../results/QCplot_perSample", "_", i, format(Sys.time(), "%y%m%d"), ".png"), 
+          plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"),
+          width = 28, height = 12, unit = "cm")
   
   
 }
@@ -364,7 +417,7 @@ for (i in my_pars){
 
 ```{r}
 
-#filter annotation file to genes that should be kept
+#filter annotation file, keeping proteing coding plus VDJ genes
 annot_coding <- unique(annot[!(annot$chromosome_name %in% c("chrY", "other", "chrM")) & 
                        (annot$gene_biotype %in% c("protein_coding", 
                                     "IG_V_gene", "IG_D_gene", "IG_J_gene", "IG_C_gene",
@@ -392,7 +445,7 @@ saveRDS(gex, file = paste0("../results/GEX3_", format(Sys.time(), "%y%m%d"), ".r
 Idents(object = gex) <- "orig.ident"
 gex3.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex3.dnsample.500, 
-        file = paste0("../results/GEX3_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
+        file = paste0("../results/GEX3_dnsample.500_", format(Sys.time(), "%y%m%d"),".rds"))
 
 print("GEX3 size:")
 print(object.size(gex), units = "GB")
@@ -472,7 +525,7 @@ saveRDS(gex, file = paste0("../results/GEX4_", format(Sys.time(), "%y%m%d"), ".r
 Idents(object = gex) <- "orig.ident"
 gex4.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex4.dnsample.500, 
-        file = paste0("../results/GEX4_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
+        file = paste0("../results/GEX4_dnsample.500_", format(Sys.time(), "%y%m%d"),".rds"))
 
 print("GEX4 size:")
 print(object.size(gex), units = "GB")
@@ -516,7 +569,7 @@ saveRDS(gex, file = paste0("../results/GEX5_", format(Sys.time(), "%y%m%d"), ".r
 Idents(object = gex) <- "orig.ident"
 gex5.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex5.dnsample.500, 
-        file = paste0("../results/GEX5_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
+        file = paste0("../results/GEX5_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
 print("GEX5 size:")
 print(object.size(gex), units = "GB")
@@ -591,7 +644,7 @@ saveRDS(gex, file = paste0("../results/GEX6_", format(Sys.time(), "%y%m%d"), ".r
 Idents(object = gex) <- "orig.ident"
 gex6.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex6.dnsample.500, 
-        file = paste0("../results/GEX6_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
+        file = paste0("../results/GEX6_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
 print("GEX6 size:")
 print(object.size(gex), units = "GB")
@@ -635,7 +688,7 @@ saveRDS(gex, file = paste0("../results/GEX7_", format(Sys.time(), "%y%m%d"), ".r
 Idents(object = gex) <- "orig.ident"
 gex7.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex7.dnsample.500, 
-        file = paste0("../results/GEX7_dnsample.500_",format(Sys.time(), "%y%m%d"),".rds"))
+        file = paste0("../results/GEX7_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
 print("GEX7 size:")
 print(object.size(gex), units = "GB")
@@ -659,7 +712,7 @@ gex <- FindNeighbors(gex,
 #res <- 0.15 #RNA_snn res local
 #res <- 0.6 #RNA_nn res local (knn, similar graph generated during UMAP)
 #res <- 0.05 #Bianca RNA_snn resolution
-res <- 0.4 #Bianca RNA_nn resolution
+res <- 0.3 #Bianca RNA_nn resolution
 
 gex <- FindClusters(gex, 
                     resolution = res, 
@@ -710,8 +763,8 @@ h <- hclust(as.dist(adj), method = "ward.D2")
 # pheatmap::pheatmap(adj)
 
 png(paste0("../results/hclust_clusters_allCells_clustRes_", res, "_", format(Sys.time(), "%y%m%d"), ".png"), 
-    width = 2000, 
-    height = 2000, 
+    width = 1500, 
+    height = 1500, 
     units = "px")
 plot(as.dendrogram(h))
 dev.off()
@@ -720,7 +773,7 @@ dev.off()
 ```
 
 
-# plot UMAP 2D
+# plot UMAP 2D all cells
 
 ```{r}
 
@@ -754,8 +807,10 @@ ggsave2(paste0("../results/UMAP_allCells_clustRes", res, "_", format(Sys.time(),
 
 ```{r}
 
-ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM" )
-b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27", "IGHA1", "IGHD", "IGHM", "JCHAIN", "MME")
+ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", 
+                 "IGHG4",  "IGHD", "IGHE", "IGHM" )
+b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27", 
+               "IGHA1", "IGHD", "IGHM", "JCHAIN", "MME")
 pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", "CD3E", "CD14", "LYZ", "CD8A")
 my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
 
@@ -809,6 +864,8 @@ ggsave2(paste0("../results/FeaturePlot_allCells_myPars", format(Sys.time(), "%y%
 
 ```{r}
 
+# !!!! start here !!!!
+
 sample_size <- table(gex$seurat_clusters)
 sample_size[sample_size > 100] <- 100
 
@@ -823,17 +880,17 @@ DGE_temp <- SetIdent(DGE_temp, value = "seurat_clusters")
 detable <- FindAllMarkers( DGE_temp, 
                            min.pct = 0.1, 
                            min.cells.feature = 0.1, 
-                           max.cells.per.ident = 50 , 
-                           only.pos = T , 
+                           max.cells.per.ident = 50, 
+                           only.pos = TRUE, 
                            logfc.threshold = 0.1, 
                            assay = "RNA")
 
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 write.csv(detable, 
-          paste0("../results/DGE_allCells_seurat_clusters_",format(Sys.time(), "%y%m%d"),".csv"))
+          paste0("../results/DGE_allCells_seurat_clusters_", format(Sys.time(), "%y%m%d"), ".csv"))
 
-detable <- detable[ detable$p_val < 0.05,  ]
 detable$log.pct.diff <- log2(detable$pct.1 / (detable$pct.2 + 0.01) )
+detable <- detable[ detable$p_val < 0.05, ]
 
 #markers_allCells <- FindAllMarkers(gex, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 #markers_allCells_top <- markers_allCells %>% group_by(cluster) %>% top_n(n = 9, wt = avg_log2FC)
@@ -1261,7 +1318,6 @@ saveRDS(gex, file = paste0("../results/GEX14_", format(Sys.time(), "%y%m%d"), ".
 gex14.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex14.dnsample.500, 
         file = paste0("../results/GEX14_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
-#gex <- readRDS("../results/GEX14_dnsample.500_210628.rds")
 
 print("GEX14 size:")
 print(object.size(gex), units = "GB")
@@ -1289,8 +1345,8 @@ h <- hclust(as.dist(adj), method = "ward.D2")
 # pheatmap::pheatmap(adj)
 
 png(paste0("../results/hclust_clusters_B-cells_clustRes_", res, "_", format(Sys.time(), "%y%m%d"), ".png"), 
-    width = 2000, 
-    height = 2000, 
+    width = 1500, 
+    height = 1500, 
     units = "px")
 plot(as.dendrogram(h))
 dev.off()
