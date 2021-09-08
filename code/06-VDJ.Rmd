@@ -50,13 +50,14 @@ names(cl_vdj_B) <- sub("_.*", "", fl_vdj_B)
 #str(cl_vdj_B)
 #head(cl_vdj_B[[1]])
 
+combineBCR()
 
 combined <- combineBCR(cl_vdj_B, 
                        samples = sub("_.*", "", fl_vdj_B), 
                        #ID = sub("_.*", "", fl_vdj_B),
                        ID = rep("", times = length(cl_vdj_B)),
                        removeNA = FALSE,
-                       removeMulti = TRUE)
+                       removeMulti = TRUE) #Error: vector memory exhausted (limit reached?)
 
 
 # read 10x VDJ TCR files
