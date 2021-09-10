@@ -45,8 +45,8 @@ source("../../niceRplots/R/trajectory_plots.R")
 suppressMessages(library(Seurat)) #read and process scRNAseq data
 suppressMessages(library(scDblFinder))
 suppressMessages(library(harmony))
-suppressMessages(library(scater))
 suppressMessages(library(SingleR))
+suppressMessages(library(scater))
 #suppressMessages(library(Nebulosa))
 
 
@@ -55,7 +55,7 @@ options(future.globals.maxSize = 100000 * 1024 ^ 2) #resolve memory related issu
 
 setwd("/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/code"); getwd()
 
-sessionInfo()
+#sessionInfo()
 
 paste0("Libraries loaded at: ", Sys.time())
 
@@ -146,7 +146,7 @@ paste0("Libraries loaded at: ", Sys.time())
 # #read GRCh38.98 .gtf file used during alignment
 # gtf.GRCh38.98 <- readGFF("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.gz")
 # #saveRDS(gtf.GRCh38.98, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.rds")
-# annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.rds")
+# #annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.rds")
 #
 # annot <- unique(gtf.GRCh38.98[gtf.GRCh38.98$type == "gene", c(1, 9, 11, 12)])
 # colnames(annot) <- c("chromosome_name", "gene_id", "gene_biotype", "external_gene_name")
@@ -157,7 +157,6 @@ paste0("Libraries loaded at: ", Sys.time())
 #
 # saveRDS(annot, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
 annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
-head(annot)
 #
 #
 #
@@ -657,17 +656,16 @@ head(annot)
 
 ## ----include = FALSE----------------------------------------------------------------------------------------------------
 
+#Idents(object = gex) <- "orig.ident"
+#saveRDS(gex, file = paste0("../results/GEX8_", format(Sys.time(), "%y%m%d"), ".rds"))
+gex <- readRDS("../results/GEX8_210903.rds")
 
-# #saveRDS(gex, file = paste0("../results/GEX8_", format(Sys.time(), "%y%m%d"), ".rds"))
-# gex <- readRDS("../results/GEX8_210903.rds")
-# Idents(object = gex) <- "orig.ident"
-#
-# #gex8.dnsample.500 <-  subset(x = gex, downsample = 500)
-# #saveRDS(gex8.dnsample.500,
-# #        file = paste0("../results/GEX8_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
-#
-# print("GEX8 size:")
-# print(object.size(gex), units = "GB")
+# gex8.dnsample.500 <-  subset(x = gex, downsample = 500)
+# saveRDS(gex8.dnsample.500,
+#         file = paste0("../results/GEX8_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
+
+print("GEX8 size:")
+print(object.size(gex), units = "GB")
 
 
 
@@ -692,39 +690,39 @@ head(annot)
 #     units = "px")
 # plot(as.dendrogram(h))
 # dev.off()
-#
-#
-#
-#
-# ## -----------------------------------------------------------------------------------------------------------------------
 
-# p1.u.s <- DimPlot(gex,
-#                   reduction = "umap_1",
-#                   pt.size = .1,
-#                   group.by = "orig.ident",
-#                   raster=FALSE) +
-#           NoLegend() +
-#           ggtitle("UMAP_1, by Sample")
-#
-# p1.u.c <- DimPlot(gex,
-#                   reduction = "umap_1",
-#                   pt.size = .1,
-#                   group.by = "seurat_clusters",
-#                   label = TRUE,
-#                   repel = TRUE,
-#                   raster=FALSE) +
-#           NoLegend() +
-#           ggtitle("UMAP_1, by Cluster")
+
+
+
+## -----------------------------------------------------------------------------------------------------------------------
+
+p1.u.s <- DimPlot(gex,
+                  reduction = "umap_1",
+                  pt.size = .1,
+                  group.by = "orig.ident",
+                  raster=FALSE) +
+          NoLegend() +
+          ggtitle("UMAP_1, by Sample")
+
+p1.u.c <- DimPlot(gex,
+                  reduction = "umap_1",
+                  pt.size = .1,
+                  group.by = "seurat_clusters",
+                  label = TRUE,
+                  repel = TRUE,
+                  raster=FALSE) +
+          NoLegend() +
+          ggtitle("UMAP_1, by Cluster")
 #
 # ggsave2(paste0("../results/UMAP_allCells_clustRes", res, "_", format(Sys.time(), "%y%m%d"), ".png"),
 #         plot_grid(p1.u.s, p1.u.c, ncol = 2, labels = "AUTO", align = "h"),
 #         width = 30, height = 15, unit = "cm")
-#
-#
-#
-#
-# ## -----------------------------------------------------------------------------------------------------------------------
-#
+
+
+
+
+## -----------------------------------------------------------------------------------------------------------------------
+
 # ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3",
 #                  "IGHG4",  "IGHD", "IGHE", "IGHM" )
 # b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27",
@@ -834,242 +832,244 @@ head(annot)
 
 ## -----------------------------------------------------------------------------------------------------------------------
 #manual cluster annotation
+annotation <- c(
+  B_cell = 0,
+  B_cell = 1,
+  B_cell = 2,
+  B_cell = 3,
+  B_cell = 4,
+  B_cell = 5,
+  B_cell = 8,
+  T_cell = 6,
+  Mono = 7,
+  Plasma = 9
+)
+
+#auto annotation
 # annotation <- c(
-#   B_cell = 0,
-#   B_cell = 1,
-#   B_cell = 2,
-#   B_cell = 3,
-#   B_cell = 4,
-#   B_cell = 5,
-#   T_cell = 6,
-#   Mono = 7,
-#   Plasma = 9
+#   T_cell = getcluster(gex, "IL7R", "seurat_clusters"),
+#   T_cell = getcluster(gex, "CD3E", "seurat_clusters"),
+#   T_cell = getcluster(gex, "IL32", "seurat_clusters"),
+#   NK_cell = getcluster(gex, "GZMA", "seurat_clusters"),
+#   NK_cell = getcluster(gex, "NKG7", "seurat_clusters"),
+#   NK_cell = getcluster(gex, "GNLY", "seurat_clusters"),
+#   Mono = getcluster(gex, "CST3", "seurat_clusters"),
+#   Mono = getcluster(gex, "LYZ", "seurat_clusters"),
+#   Mono = getcluster(gex, "FCN1", "seurat_clusters"),
+#   B_cell = getcluster(gex, "PF4", "seurat_clusters"),
+#   B_cell = getcluster(gex, "BACH2", "seurat_clusters"),
+#   B_cell = getcluster(gex, "TCL1A", "seurat_clusters"),
+#   B_cell = getcluster(gex, "IGHA1", "seurat_clusters"),
+#   B_cell = getcluster(gex, "SMARCB1", "seurat_clusters"),
+#   Plasma = getcluster(gex, "JCHAIN", "seurat_clusters"),
+#   Plasma = getcluster(gex, "GZMB", "seurat_clusters"),
+#   Plasma = getcluster(gex, "MZB1", "seurat_clusters")
 # )
-#
-# #auto annotation
-# # annotation <- c(
-# #   T_cell = getcluster(gex, "IL7R", "seurat_clusters"),
-# #   T_cell = getcluster(gex, "CD3E", "seurat_clusters"),
-# #   T_cell = getcluster(gex, "IL32", "seurat_clusters"),
-# #   NK_cell = getcluster(gex, "GZMA", "seurat_clusters"),
-# #   NK_cell = getcluster(gex, "NKG7", "seurat_clusters"),
-# #   NK_cell = getcluster(gex, "GNLY", "seurat_clusters"),
-# #   Mono = getcluster(gex, "CST3", "seurat_clusters"),
-# #   Mono = getcluster(gex, "LYZ", "seurat_clusters"),
-# #   Mono = getcluster(gex, "FCN1", "seurat_clusters"),
-# #   B_cell = getcluster(gex, "PF4", "seurat_clusters"),
-# #   B_cell = getcluster(gex, "BACH2", "seurat_clusters"),
-# #   B_cell = getcluster(gex, "TCL1A", "seurat_clusters"),
-# #   B_cell = getcluster(gex, "IGHA1", "seurat_clusters"),
-# #   B_cell = getcluster(gex, "SMARCB1", "seurat_clusters"),
-# #   Plasma = getcluster(gex, "JCHAIN", "seurat_clusters"),
-# #   Plasma = getcluster(gex, "GZMB", "seurat_clusters"),
-# #   Plasma = getcluster(gex, "MZB1", "seurat_clusters")
-# # )
-#
-# gex$celltype <- names(annotation)[match(gex$seurat_clusters, annotation)]
-#
-# p1.celltype <- DimPlot(gex,
-#                   reduction = "umap_1",
-#                   pt.size = .1,
-#                   group.by = "celltype",
-#                   label = TRUE,
-#                   repel = TRUE,
-#                   raster = FALSE) +
-#               NoLegend() +
-#               ggtitle("UMAP, by celltype")
-#
-# ggsave2(paste0("../results/UMAP_celltypes_allCells_", format(Sys.time(), "%y%m%d"), ".png"),
-#         plot_grid(p1.u.s, p1.u.c, p1.celltype, ncol = 3, labels = "AUTO", align = "h"),
-#         width = 32, height = 12, unit = "cm")
-#
-#
-#
-#
-# ## -----------------------------------------------------------------------------------------------------------------------
-#
-# ####------- read references
-# load('../../singleR/singleR_ExprData.Rd')
-#
-# #remove ambigous B_cell from HPCAD fine labeles
-# HPCAD <- HPCAD[, !colData(HPCAD)$label.fine == "B_cell"]
-#
-# ref.cells.list <- list(BPED = BPED, ICED = ICED, HPCAD = HPCAD)
-#
-# labels.list.main <-
-#   list(
-#     BPED = BPED$label.main,
-#     ICED = ICED$label.main,
-#     HPCAD = HPCAD$label.main
-#   )
-#
-# labels.list.main <-
-#   list(
-#     BPED = BPED$label.main,
-#     ICED = ICED$label.main,
-#     HPCAD = HPCAD$label.main
-#   )
-#
-#
-# ####----- determine celltypes HPCAD
-# cell.types.main.clust.HPCAD <- SingleR(
-#   as.SingleCellExperiment(gex),
-#   ref = ref.cells.list[[3]],
-#   labels = labels.list.main[[3]],
-#   method = c("cluster"),
-#   clusters = as.SingleCellExperiment(gex)$seurat_clusters
-# )
-# ####----- determine celltypes BPED
-# cell.types.main.clust.BPED <- SingleR(
-#   as.SingleCellExperiment(gex),
-#   ref = ref.cells.list[[1]],
-#   labels = labels.list.main[[1]],
-#   method = c("cluster"),
-#   clusters = as.SingleCellExperiment(gex)$seurat_clusters
-# )
-#
-# ####----- add celltypes to GEX meta data
-# gex@meta.data[, "cluster.label.main.HPCAD"] <- NA
-# for (i in 1:length(unique(gex@meta.data$seurat_clusters))) {
-#   gex@meta.data[gex@meta.data$seurat_clusters == row.names(cell.types.main.clust.HPCAD)[i], "cluster.label.main.HPCAD"] <-
-#     cell.types.main.clust.HPCAD$pruned.labels[i]
-# }
-#
-# print(table(gex@meta.data$cluster.label.main.HPCAD))
-#
-# gex@meta.data[, "cluster.label.main.BPED"] <- NA
-# for (i in 1:length(unique(gex@meta.data$seurat_clusters))) {
-#   gex@meta.data[gex@meta.data$seurat_clusters == row.names(cell.types.main.clust.BPED)[i], "cluster.label.main.BPED"] <-
-#     cell.types.main.clust.BPED$pruned.labels[i]
-# }
-#
-# print(table(gex@meta.data$cluster.label.main.BPED))
-#
-# write.csv(
-#   as.data.frame.matrix(
-#     table(
-#       gex@meta.data$cluster.label.main.HPCAD,
-#       gex@meta.data$orig.ident
-#     )
-#   ),
-#   paste0(
-#     "../results/cell.types.main.clust.per.sample.HPCAD_",
-#     format(Sys.time(), "%y%m%d"),
-#     ".csv"
-#   ),
-#   row.names = TRUE
-# )
-#
-# write.csv(
-#   as.data.frame.matrix(
-#     table(
-#       gex@meta.data$cluster.label.main.BPED,
-#       gex@meta.data$orig.ident
-#     )
-#   ),
-#   paste0(
-#     "../results/cell.types.main.clust.per.sample.BPED_",
-#     format(Sys.time(), "%y%m%d"),
-#     ".csv"
-#   ),
-#   row.names = TRUE
-# )
-#
-# p1.umap.s <- DimPlot(
-#   object = gex,
-#   reduction = "umap_1",
-#   pt.size = .1,
-#   group.by = "seurat_clusters",
-#   label = TRUE,
-#   repel = TRUE
-# ) +
-#   NoLegend() + ggtitle("UMAP, by Cluster")
-#
-# p1.umap.c.H <- DimPlot(
-#   object = gex,
-#   reduction = "umap_1",
-#   pt.size = .1,
-#   group.by = "cluster.label.main.HPCAD",
-#   label = TRUE,
-#   repel = TRUE
-# ) +
-#   NoLegend() + ggtitle("UMAP, by Cluster cell type (HPCAD)")
-#
-# p1.umap.c.B <- DimPlot(
-#   object = gex,
-#   reduction = "umap_1",
-#   pt.size = .1,
-#   group.by = "cluster.label.main.BPED",
-#   label = TRUE,
-#   repel = TRUE
-# ) +
-#   NoLegend() + ggtitle("UMAP, by Cluster cell type (BPED)")
-#
-# ggsave2(
-#   paste0(
-#     "../results/UMAP_CellType_prediction_",
-#     format(Sys.time(), "%y%m%d"),
-#     ".png"
-#   ),
-#   plot_grid(
-#     p1.u.c,
-#     p1.umap.c.H,
-#     p1.umap.c.B,
-#     p1.celltype,
-#     labels = "AUTO",
-#     align = "h",
-#     ncol = 2
-#   ),
-#   width = 30,
-#   height = 30,
-#   unit = "cm"
-# )
-#
-#
-#
-#
-# ## ----include = FALSE----------------------------------------------------------------------------------------------------
-#
-# saveRDS(gex, file = paste0("../results/GEX9_", format(Sys.time(), "%y%m%d"), ".rds"))
-# #gex <- readRDS("../results/GEX9_xxxxxx.rds")
-#
-# gex9.dnsample.500 <-  subset(x = gex, downsample = 500)
-# saveRDS(gex9.dnsample.500,
-#         file = paste0("../results/GEX9_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
-#
-# print("GEX9 size:")
-# print(object.size(gex), units = "GB")
-#
-#
-#
-#
-# ## -----------------------------------------------------------------------------------------------------------------------
-#
-# Idents(object = gex) <- "celltype"
-# gex <- subset(gex, idents = c("B_cell", "Plasma"))
-#
-# colnames(gex@meta.data)[colnames(gex@meta.data) == "seurat_clusters"] <- "seurat_clusters_1"
-# DefaultAssay(object = gex) <- "RNA"; gex
-# Idents(object = gex) <- "orig.ident"
-#
-# # An object of class Seurat
-# # 19707 features across 232563 samples within 1 assay
-# # Active assay: RNA (19707 features, 3734 variable features)
-# #  3 dimensional reductions calculated: pca_1, harmony_1, umap_1
-#
-# paste0("B-cell subset done at: ", Sys.time())
+
+gex$celltype <- names(annotation)[match(gex$seurat_clusters, annotation)]
+
+p1.celltype <- DimPlot(gex,
+                  reduction = "umap_1",
+                  pt.size = .1,
+                  group.by = "celltype",
+                  label = TRUE,
+                  repel = TRUE,
+                  raster = FALSE) +
+              NoLegend() +
+              ggtitle("UMAP, by celltype")
+
+ggsave2(paste0("../results/UMAP_allCells_celltypes_", format(Sys.time(), "%y%m%d"), ".png"),
+        plot_grid(p1.u.s, p1.u.c, p1.celltype, ncol = 3, labels = "AUTO", align = "h"),
+        width = 32, height = 12, unit = "cm")
+
+
+
+
+## -----------------------------------------------------------------------------------------------------------------------
+
+####------- read references
+load('../../singleR/singleR_ExprData.Rd')
+
+#remove ambigous B_cell from HPCAD fine labeles
+HPCAD <- HPCAD[,!colData(HPCAD)$label.fine == "B_cell"]
+
+ref.cells.list <- list(BPED = BPED, ICED = ICED, HPCAD = HPCAD)
+labels.list.main <-
+  list(
+    BPED = BPED$label.main,
+    ICED = ICED$label.main,
+    HPCAD = HPCAD$label.main
+  )
+labels.list.main <-
+  list(
+    BPED = BPED$label.main,
+    ICED = ICED$label.main,
+    HPCAD = HPCAD$label.main
+  )
+
+
+####----- determine celltypes HPCAD
+cell.types.main.clust.HPCAD <- SingleR(
+  as.SingleCellExperiment(gex),
+  ref = ref.cells.list[[3]],
+  labels = labels.list.main[[3]],
+  method = c("cluster"),
+  clusters = as.SingleCellExperiment(gex)$seurat_clusters
+)
+####----- determine celltypes BPED
+cell.types.main.clust.BPED <- SingleR(
+  as.SingleCellExperiment(gex),
+  ref = ref.cells.list[[1]],
+  labels = labels.list.main[[1]],
+  method = c("cluster"),
+  clusters = as.SingleCellExperiment(gex)$seurat_clusters
+)
+
+####----- add celltypes to GEX meta data
+gex@meta.data[, "cluster.label.main.HPCAD"] <- NA
+for (i in 1:length(unique(gex@meta.data$seurat_clusters))) {
+  gex@meta.data[gex@meta.data$seurat_clusters == row.names(cell.types.main.clust.HPCAD)[i], "cluster.label.main.HPCAD"] <-
+    cell.types.main.clust.HPCAD$pruned.labels[i]
+}
+
+print(table(gex@meta.data$cluster.label.main.HPCAD))
+
+gex@meta.data[, "cluster.label.main.BPED"] <- NA
+for (i in 1:length(unique(gex@meta.data$seurat_clusters))) {
+  gex@meta.data[gex@meta.data$seurat_clusters == row.names(cell.types.main.clust.BPED)[i], "cluster.label.main.BPED"] <-
+    cell.types.main.clust.BPED$pruned.labels[i]
+}
+
+print(table(gex@meta.data$cluster.label.main.BPED))
+
+write.csv(
+  as.data.frame.matrix(
+    table(
+      gex@meta.data$cluster.label.main.HPCAD,
+      gex@meta.data$orig.ident
+    )
+  ),
+  paste0(
+    "../results/cell.types.main.clust.per.sample.HPCAD_",
+    format(Sys.time(), "%y%m%d"),
+    ".csv"
+  ),
+  row.names = TRUE
+)
+
+write.csv(
+  as.data.frame.matrix(
+    table(
+      gex@meta.data$cluster.label.main.BPED,
+      gex@meta.data$orig.ident
+    )
+  ),
+  paste0(
+    "../results/cell.types.main.clust.per.sample.BPED_",
+    format(Sys.time(), "%y%m%d"),
+    ".csv"
+  ),
+  row.names = TRUE
+)
+
+p1.umap.s <- DimPlot(
+  object = gex,
+  reduction = "umap_1",
+  pt.size = .1,
+  group.by = "seurat_clusters",
+  label = TRUE,
+  repel = TRUE,
+  raster=FALSE
+) +
+  NoLegend() + ggtitle("UMAP, by Cluster")
+
+p1.umap.c.H <- DimPlot(
+  object = gex,
+  reduction = "umap_1",
+  pt.size = .1,
+  group.by = "cluster.label.main.HPCAD",
+  label = TRUE,
+  repel = TRUE,
+  raster=FALSE
+) +
+  NoLegend() + ggtitle("UMAP, by Cluster cell type (HPCAD)")
+
+p1.umap.c.B <- DimPlot(
+  object = gex,
+  reduction = "umap_1",
+  pt.size = .1,
+  group.by = "cluster.label.main.BPED",
+  label = TRUE,
+  repel = TRUE,
+  raster=FALSE
+) +
+  NoLegend() + ggtitle("UMAP, by Cluster cell type (BPED)")
+
+ggsave2(
+  paste0(
+    "../results/UMAP_CellType_prediction_",
+    format(Sys.time(), "%y%m%d"),
+    ".png"
+  ),
+  plot_grid(
+    p1.u.c,
+    p1.umap.c.H,
+    p1.umap.c.B,
+    p1.celltype,
+    labels = "AUTO",
+    align = "h",
+    ncol = 2
+  ),
+  width = 30,
+  height = 30,
+  unit = "cm"
+)
 
 
 
 
 ## ----include = FALSE----------------------------------------------------------------------------------------------------
 
-#saveRDS(gex, file = paste0("../results/GEX10_", format(Sys.time(), "%y%m%d"), ".rds"))
-gex <- readRDS("../results/GEX10_210906.rds")
+saveRDS(gex, file = paste0("../results/GEX9_", format(Sys.time(), "%y%m%d"), ".rds"))
+#gex <- readRDS("../results/GEX9_xxxxxx.rds")
 
-#gex10.dnsample.500 <-  subset(x = gex, downsample = 500)
-#saveRDS(gex9.dnsample.500,
-#        file = paste0("../results/GEX10_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
+gex9.dnsample.500 <-  subset(x = gex, downsample = 500)
+saveRDS(gex9.dnsample.500,
+        file = paste0("../results/GEX9_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
+
+print("GEX9 size:")
+print(object.size(gex), units = "GB")
+
+
+
+
+## -----------------------------------------------------------------------------------------------------------------------
+
+Idents(object = gex) <- "celltype"
+gex <- subset(gex, idents = c("B_cell", "Plasma"))
+
+colnames(gex@meta.data)[colnames(gex@meta.data) == "seurat_clusters"] <- "seurat_clusters_1"
+DefaultAssay(object = gex) <- "RNA"; gex
+Idents(object = gex) <- "orig.ident"
+
+# An object of class Seurat
+# 19707 features across 232563 samples within 1 assay
+# Active assay: RNA (19707 features, 3734 variable features)
+#  3 dimensional reductions calculated: pca_1, harmony_1, umap_1
+
+paste0("B-cell subset done at: ", Sys.time())
+
+
+
+
+## ----include = FALSE----------------------------------------------------------------------------------------------------
+
+saveRDS(gex, file = paste0("../results/GEX10_", format(Sys.time(), "%y%m%d"), ".rds"))
+#gex <- readRDS("../results/GEX9_xxxxxx.rds")
+
+gex10.dnsample.500 <-  subset(x = gex, downsample = 500)
+saveRDS(gex9.dnsample.500,
+        file = paste0("../results/GEX10_dnsample.500_", format(Sys.time(), "%y%m%d"), ".rds"))
 
 print("GEX10 size:")
 print(object.size(gex), units = "GB")
@@ -1099,9 +1099,6 @@ p1 <- LabelPoints(plot = VariableFeaturePlot(gex),
         theme_classic() +
         ggtitle(paste0(" Variable features - B-cells n=4000"))
 
-# ggsave2(paste0("../results/VariableFeatures_B-cells_", length(VariableFeatures(gex)), "_", format(Sys.time(), "%y%m%d"), ".png"),
-#         p1, width = 25, height = 20, unit = "cm")
-
 
 
 
@@ -1113,17 +1110,19 @@ VariableFeatures(gex) <-
 
 length(VariableFeatures(gex)) #
 
-p1 <- LabelPoints(plot = VariableFeaturePlot(gex),
+p2 <- LabelPoints(plot = VariableFeaturePlot(gex),
                   points = head(VariableFeatures(gex), 80),
                   repel = TRUE,
                   xnudge = 0,
                   ynudge = 0,
                   max.overlaps = Inf) +
         theme_classic() +
-  ggtitle(paste0(" Variable features - B-cells (protein_coding) n="), length(VariableFeatures(gex)))
+        ggtitle(paste0(" Variable features - B-cells (protein_coding) n="), length(VariableFeatures(gex)))
 
-ggsave2(paste0("../results/VariableFeatures_B-cells_", length(VariableFeatures(gex)), "_protein_coding_", format(Sys.time(), "%y%m%d"), ".png"),
-        p1, width = 25, height = 20, unit = "cm")
+
+ggsave2(paste0("../results/VariableFeatures_B-cells_", length(VariableFeatures(gex)), "_", format(Sys.time(), "%y%m%d"), ".png"),
+        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
+        , width = 30, height = 15, unit = "cm")
 
 
 
@@ -1266,10 +1265,10 @@ gex <- RunUMAP(
   reduction = "harmony_2",
   metric = "correlation",
   reduction.name = "umap_2",
-  min.dist = 0.01, #local cell separation
+  min.dist = 0.05, #local cell separation
   spread = .3, #global cell separation
-  n.neighbors = 15,
-  repulsion.strength = 0.02, #~2x min.dist, repulsion to cells fr annat cluster, global
+  n.neighbors = 30,
+  repulsion.strength = 0.1, #~2x min.dist, repulsion to cells fr annat cluster, global
   negative.sample.rate = 50, #ant ggr n.neighbors celler, global distance
   n.epochs = 100,
   n.components = 2
@@ -1281,10 +1280,10 @@ gex <- RunUMAP(
   reduction = "harmony_2",
   metric = "correlation",
   reduction.name = "umap_2_3d",
-  min.dist = 0.01, #local cell separation
+  min.dist = 0.05, #local cell separation
   spread = .3, #global cell separation
-  n.neighbors = 15,
-  repulsion.strength = 0.02, #~2x min.dist, repulsion to cells fr annat cluster, global
+  n.neighbors = 30,
+  repulsion.strength = 0.1, #~2x min.dist, repulsion to cells fr annat cluster, global
   negative.sample.rate = 50, #ant ggr n.neighbors celler, global distance
   n.epochs = 100,
   n.components = 3,
@@ -1323,7 +1322,7 @@ gex <- FindNeighbors(gex,
 #res <- 0.15 #RNA_snn res local
 #res <- 0.6 #RNA_nn res local (knn, similar graph generated during UMAP)
 #res <- 0.05 #Bianca RNA_snn resolution
-res <- 0.4 #Bianca RNA_nn resolution
+res <- 0.5 #Bianca RNA_nn resolution
 
 gex <- FindClusters(gex,
                     resolution = res,
@@ -1340,7 +1339,7 @@ paste0("Clustering2 done at: ", Sys.time())
 ## ----include = FALSE----------------------------------------------------------------------------------------------------
 
 saveRDS(gex, file = paste0("../results/GEX15_", format(Sys.time(), "%y%m%d"), ".rds"))
-gex <- readRDS("../results/GEX15_210906.rds")
+#gex <- readRDS("../results/GEX15_210628.rds")
 
 gex15.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex15.dnsample.500,
@@ -1449,10 +1448,10 @@ htmlwidgets::saveWidget(p_State,
 
 ## -----------------------------------------------------------------------------------------------------------------------
 
-#ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
-#b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27", "IGHA1", "IGHD", "IGHM", "JCHAIN", "MME")
-#pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", "CD3E", "CD14", "LYZ", "CD8A")
-#my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
+ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
+b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27", "IGHA1", "IGHD", "IGHM", "JCHAIN", "MME")
+pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", "CD3E", "CD14", "LYZ", "CD8A")
+my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
 
 #pbmc
 p.pbmc.markers.f <- FeaturePlot(gex,

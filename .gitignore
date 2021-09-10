@@ -5,6 +5,7 @@
 **/suppl
 **/log
 **/code/sauron
+**/code/tmp
 
 # History files
 *.Rhistory

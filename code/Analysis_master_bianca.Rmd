@@ -56,7 +56,7 @@ source("../../niceRplots/R/trajectory_plots.R")
 suppressMessages(library(Seurat)) #read and process scRNAseq data
 suppressMessages(library(scDblFinder))
 suppressMessages(library(harmony))
-suppressMessages(library(singleR))
+suppressMessages(library(SingleR))
 suppressMessages(library(scater))
 #suppressMessages(library(Nebulosa))
 
@@ -972,7 +972,7 @@ p1.celltype <- DimPlot(gex,
               NoLegend() + 
               ggtitle("UMAP, by celltype")
 
-ggsave2(paste0("../results/UMAP_celltypes_allCells_", format(Sys.time(), "%y%m%d"), ".png"), 
+ggsave2(paste0("../results/UMAP_allCells_celltypes_", format(Sys.time(), "%y%m%d"), ".png"), 
         plot_grid(p1.u.s, p1.u.c, p1.celltype, ncol = 3, labels = "AUTO", align = "h"), 
         width = 32, height = 12, unit = "cm")
 
@@ -1093,7 +1093,7 @@ p1.umap.c.H <- DimPlot(
 
 p1.umap.c.B <- DimPlot(
   object = gex,
-  reduction = "umap",
+  reduction = "umap_1",
   pt.size = .1,
   group.by = "cluster.label.main.BPED",
   label = TRUE,
@@ -1110,9 +1110,9 @@ ggsave2(
   ),
   plot_grid(
     p1.u.c,
+    p1.celltype,
     p1.umap.c.H,
     p1.umap.c.B,
-    p1.celltype,
     labels = "AUTO",
     align = "h",
     ncol = 2
@@ -1418,10 +1418,10 @@ gex <- RunUMAP(
   reduction = "harmony_2",
   metric = "correlation",
   reduction.name = "umap_2_3d",
-  min.dist = 0.01, #local cell separation
+  min.dist = 0.05, #local cell separation
   spread = .3, #global cell separation
-  n.neighbors = 15,
-  repulsion.strength = 0.02, #~2x min.dist, repulsion to cells fr annat cluster, global
+  n.neighbors = 30,
+  repulsion.strength = 0.1, #~2x min.dist, repulsion to cells fr annat cluster, global
   negative.sample.rate = 50, #ant ggr n.neighbors celler, global distance
   n.epochs = 100,
   n.components = 3,
