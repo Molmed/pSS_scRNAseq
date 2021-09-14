@@ -1104,7 +1104,7 @@ p1.umap.c.B <- DimPlot(
 
 ggsave2(
   paste0(
-    "../results/UMAP_CellType_prediction_",
+    "../results/UMAP_allCells_CellType_prediction_",
     format(Sys.time(), "%y%m%d"),
     ".png"
   ),
@@ -1486,7 +1486,9 @@ paste0("Clustering2 done at: ", Sys.time())
 ```{r include = FALSE}
 
 saveRDS(gex, file = paste0("../results/GEX15_", format(Sys.time(), "%y%m%d"), ".rds"))
-#gex <- readRDS("../results/GEX15_210628.rds")
+gex <- readRDS("../results/GEX15_210908.rds")
+gex <- readRDS("/Users/gusarv/Documents/projekt/SjS/data/pss_bcells_scRNAseq/results/GEX15_210908.rds")
+
 
 gex15.dnsample.500 <-  subset(x = gex, downsample = 500)
 saveRDS(gex15.dnsample.500, 
@@ -1496,6 +1498,9 @@ print("GEX15 size:")
 print(object.size(gex), units = "GB")
 
 #sort(sapply(ls(), function(x){format(object.size(get(x)), units = "Gb")}))
+
+#gex <- DietSeurat(gex,
+#                  dimreducs = c("umap_1", "harmony_2", "umap_2", "umap_2_3d")) #saves ~800mb memory usage
 
 
 ```

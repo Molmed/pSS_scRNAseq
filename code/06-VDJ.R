@@ -1,4 +1,4 @@
-## ----include = FALSE----------------------------------------------------------------------------------------------------
+## ----include = FALSE---------------------------------------------------------
 
 #source("./00_dependencies.R")
 #devtools::install_github("ncborcherding/scRepertoire")
@@ -9,7 +9,7 @@ library(scRepertoire)
 
 
 
-## ----include = FALSE----------------------------------------------------------------------------------------------------
+## ----include = FALSE---------------------------------------------------------
 # library(niceRplots)
 # saveRDS(gex, file = paste0("../suppl/GEX14_", format(Sys.time(), "%y%m%d"), ".rds"))
 # gex <- readRDS("../suppl/GEX14_210628.rds")
@@ -18,86 +18,96 @@ library(scRepertoire)
 # gex@assays$RNA@scale.data <- matrix(0); gc()
 # # gex@assays$RNA@scale.data <- matrix(0)
 # saveRDS(gex,"../results/B-cells.rds")
-#
+# 
 # plot_meta(gex,"umap_2",feat = "seurat_clusters")
 
 
 
-## -----------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------
 
 # read 10x VDJ BCR files
-fl_vdj_B <- list.files("../data/clono_VDJ", pattern = "_B_")
+samples_B <- list.files("../data/clono_B_VDJ")
+#samples_B <- list.files("/Users/gusarv/Documents/projekt/SjS/data/pss_bcells_scRNAseq/data/clono_B_VDJ")
 
-cl_vdj_B <- lapply(fl_vdj_B, function(x) {
-  return(read.csv(paste0("../data/clono_VDJ/", x), stringsAsFactors = FALSE))
+clono_B <- lapply(samples_B, function(x) {
+  return(read.csv(paste0("../data/clono_B_VDJ/", x, "/", x, "_B_filtered_contig_annotations.csv"), 
+                  stringsAsFactors = FALSE))
 })
 
-names(cl_vdj_B) <- sub("_.*", "", fl_vdj_B)
+# clono_B <- lapply(samples_B, function(x) {
+#   
+#   return(read.csv(paste0("/Users/gusarv/Documents/projekt/SjS/data/pss_bcells_scRNAseq/data/clono_B_VDJ/", x, "/", x, "_B_filtered_contig_annotations.csv"), 
+#                   stringsAsFactors = FALSE))
+#   
+# })
 
-cl_vdj_B <- lapply(seq_along(cl_vdj_B), function(i) {
-  cl_vdj_B[[i]]$barcode <-
-    paste0(names(cl_vdj_B)[i], "_", gsub("-1", "", cl_vdj_B[[i]]$barcode))
-  return(cl_vdj_B[[i]])
+names(clono_B) <- samples_B
+
+clono_B <- lapply(seq_along(clono_B), function(i) {
+  clono_B[[i]]$barcode <-
+    paste0(names(clono_B)[i], "_", gsub("-1", "", clono_B[[i]]$barcode))
+  return(clono_B[[i]])
 })
 
-names(cl_vdj_B) <- sub("_.*", "", fl_vdj_B)
+names(clono_B) <- samples_B
 
-#handle samples where libraries were made twice
-cl_vdj_B[["P007"]] <- rbind(cl_vdj_B[["P007a"]], cl_vdj_B[["P007b"]])
-cl_vdj_B[["P007a"]] <- NULL
-cl_vdj_B[["P007b"]] <- NULL
+#handle samples where libraries were created and sequenced twice
+clono_B[["P007"]] <- rbind(clono_B[["P007a"]], clono_B[["P007b"]])
+clono_B[["P007a"]] <- NULL
+clono_B[["P007b"]] <- NULL
 
-cl_vdj_B[["P008"]] <- rbind(cl_vdj_B[["P008a"]], cl_vdj_B[["P008b"]])
-cl_vdj_B[["P008a"]] <- NULL
-cl_vdj_B[["P008b"]] <- NULL
+clono_B[["P008"]] <- rbind(clono_B[["P008a"]], clono_B[["P008b"]])
+clono_B[["P008a"]] <- NULL
+clono_B[["P008b"]] <- NULL
 
-names(cl_vdj_B)
-cl_vdj_B <- cl_vdj_B[order(names(cl_vdj_B))]
-names(cl_vdj_B)
+clono_B <- clono_B[order(names(clono_B))]
 
-saveRDS(cl_vdj_B, paste0("../results/cl_vdj_B_test_",format(Sys.time(), "%y%m%d"),".rds"))
+print(object.size(clono_B), units = "GB")
+saveRDS(clono_B, paste0("../results/clono_B_list_",format(Sys.time(), "%y%m%d"),".rds"))
 
-# names(cl_vdj_B[1])
-# head(cl_vdj_B[[1]])
-# length(cl_vdj_B)
+# lapply(clono_B, function(x){
+#   #print(head(x, n = 2))
+#   print(dim(x))
+# })
 
-lapply(cl_vdj_B, function(x){
-  print(head(x, n = 2))
-  print(dim(x))
-})
 
-#using scRepertoire to generate a combined data frame
-combined <- combineBCR(cl_vdj_B,
-                       samples = names(cl_vdj_B),
+
+
+## ----------------------------------------------------------------------------
+
+combined <- combineBCR(clono_B, 
+                       samples = names(clono_B), 
                        #ID = sub("_.*", "", fl_vdj_B),
-                       ID = rep("", times = length(cl_vdj_B)),
+                       ID = rep("", times = length(clono_B)),
                        removeNA = TRUE,
                        removeMulti = TRUE) #Error: vector memory exhausted (limit reached?)
 
 str(combined)
 head(combined)
 
-
 saveRDS(combined, paste0("../results/combined_BCR_scRepertoire_test_",format(Sys.time(), "%y%m%d"),".rds"))
 write.csv(combined, paste0("../results/combined_BCR_scRepertoire_test_",format(Sys.time(), "%y%m%d"),".csv"))
 
 
-# # read 10x VDJ TCR files
+
+
+## ----------------------------------------------------------------------------
+
 # fl_vdj_T <- list.files("../data/clono_VDJ",pattern = "_T_")
 # cl_vdj_T <- lapply(fl_vdj_T, function(x){
 #   return(read.csv(paste0("../data/clono_VDJ/", x)))
 # })
 # names(cl_vdj_T) <- sub("_.*", "", fl_vdj_T)
 # head(cl_vdj_T[[1]])
-#
-# combined <- combineTCR(cl_vdj_T,
-#                        samples = sub("_.*", "", fl_vdj_T),
+# 
+# combined <- combineTCR(cl_vdj_T, 
+#                        samples = sub("_.*", "", fl_vdj_T), 
 #                        #ID = sub("_.*", "", fl_vdj_T),
 #                        ID = rep("", times = length(cl_vdj_T)),
 #                        removeNA = FALSE,
 #                        removeMulti = TRUE,
 #                        cells = c("T-AB"))
-#
+# 
 # # read TRUST4 files
 # fl_TRUST4 <- list.files("../data/clono_TRUST4")
 # cl_TRUST4 <- lapply(fl_TRUST4, function(x){
@@ -105,7 +115,7 @@ write.csv(combined, paste0("../results/combined_BCR_scRepertoire_test_",format(S
 # })
 # names(cl_TRUST4) <- sub("_.*", "", fl_TRUST4)
 # head(cl_TRUST4[[1]])
-#
+# 
 # combineTRUST4(cl_TRUST4)
 
 
@@ -115,7 +125,7 @@ write.csv(combined, paste0("../results/combined_BCR_scRepertoire_test_",format(S
 
 
 # library(immunarch)
-#
+# 
 # immdata_10x <- repLoad("../data/clono_VDJ")
 # immdata_trust4 <- repLoad("../data/clono_TRUST4")
 # str(immdata_10x)
@@ -131,7 +141,7 @@ write.csv(combined, paste0("../results/combined_BCR_scRepertoire_test_",format(S
 
 
 
-## -----------------------------------------------------------------------------------------------------------------------
+## ----------------------------------------------------------------------------
 
 
 
