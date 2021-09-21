@@ -1,0 +1,366 @@
+# Dimensionality reduction and clustering of B-cells {#Dimred2}
+
+## Load packages
+
+```{r}
+
+source("./00_dependencies.R")
+
+```
+
+
+## Load data
+
+```{r}
+
+gex <- readRDS("../results/GEX_BCELLS.rds")
+annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
+
+gex
+
+```
+
+
+## Get variable features B-cells
+ 
+```{r}
+
+gex <- FindVariableFeatures(gex, 
+                            selection.method = "vst", 
+                            nfeatures = 4000)
+
+p1 <- LabelPoints(plot = VariableFeaturePlot(gex), 
+                  points = head(VariableFeatures(gex), 80), 
+                  repel = TRUE,
+                  xnudge = 0,
+                  ynudge = 0,
+                  max.overlaps = Inf) + 
+        theme_classic() +
+        ggtitle(paste0(length(VariableFeatures(gex)), " Variable features - B-cells"))
+
+
+```
+
+
+## Subset VariableFeatures(gex) to only include biotype == "protein_coding"
+
+```{r}
+
+VariableFeatures(gex) <-
+  VariableFeatures(gex)[VariableFeatures(gex) %in%
+                          annot$external_gene_name[annot$gene_biotype == "protein_coding"]]
+
+p2 <- LabelPoints(plot = VariableFeaturePlot(gex), 
+                  points = head(VariableFeatures(gex), 80), 
+                  repel = TRUE,
+                  xnudge = 0,
+                  ynudge = 0,
+                  max.overlaps = Inf) + 
+        theme_classic() +
+        ggtitle(paste0(length(VariableFeatures(gex), " Variable features - B-cells (protein_coding)")))
+
+
+ggsave2("../results/VariableFeatures_B-cells.png",
+        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
+        , width = 30, height = 15, unit = "cm")
+
+
+```
+
+
+## Scale data B-cells
+
+```{r}
+
+gex <- ScaleData(gex, 
+                 features = VariableFeatures(object = gex),
+                 vars.to.regress = c("nFeature_RNA"))
+
+
+```
+
+
+## PCA B-cells
+
+```{r}
+
+#RunPCA() takes around 2h for this data set using 16 cores
+
+gex <- RunPCA(gex,
+              assay = "RNA",
+              features = VariableFeatures(object = gex),
+              npcs = 100,
+              reduction.name = "pca_2",
+              verbose = TRUE)
+
+gex@assays$RNA@scale.data <- matrix(0); gc() #remove scale.data to reduce object size
+
+
+```
+
+
+## Run Harmony B-cells
+
+```{r}
+
+gex <- RunHarmony(
+  gex,
+  group.by.vars = "orig.ident",
+  reduction = "pca_2",
+  reduction.save = "harmony_2",
+  assay = "RNA",
+  project.dim = FALSE, #project.dim = FALSE needed for seurat object v4.0.0??
+  verbose = TRUE
+)
+
+
+```
+
+
+## plot PCA and harmony B-cells
+
+```{r}
+
+p1 <- DimPlot(object = gex, 
+               reduction = "pca_2", 
+               pt.size = .1, 
+               group.by = "orig.ident", 
+               raster = FALSE) + 
+            NoLegend() + 
+            ggtitle("PCA B-cells, by Sample")
+
+p2 <- DimPlot(object = gex, 
+               reduction = "harmony_2", 
+               pt.size = .1, 
+               group.by = "orig.ident", 
+               raster=FALSE) + 
+                NoLegend() + 
+                ggtitle("Harmony B-cells, by Sample")
+
+ggsave2("../results/PCA_harmony_B-cells.png", 
+        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
+        width = 30, height = 15, unit = "cm")
+
+
+```
+
+
+## Run UMAP for B-cells in 2D and 3D
+
+```{r}
+
+#2D
+gex <- RunUMAP(
+  gex,
+  dims = 1:50,
+  reduction = "harmony_2",
+  metric = "correlation",
+  reduction.name = "umap_2",
+  min.dist = 0.05, #local cell separation
+  spread = .3, #global cell separation
+  n.neighbors = 30,
+  repulsion.strength = 0.1, #~2x min.dist, repulsion to cells fr annat cluster, global
+  negative.sample.rate = 50, #ant ggr n.neighbors celler, global distance
+  n.epochs = 100,
+  n.components = 2
+)
+
+#3D
+gex <- RunUMAP(
+  gex,
+  dims = 1:50,
+  reduction = "harmony_2",
+  metric = "correlation",
+  reduction.name = "umap_2_3d",
+  min.dist = 0.05, #local cell separation
+  spread = .3, #global cell separation
+  n.neighbors = 30,
+  repulsion.strength = 0.1, #~2x min.dist, repulsion to cells fr annat cluster, global
+  negative.sample.rate = 50, #ant ggr n.neighbors celler, global distance
+  n.epochs = 100,
+  n.components = 3,
+  ret_extra = c("model", "nn", "fgraph")
+)
+
+
+```
+
+
+## Clustering B-cells
+
+```{r}
+
+gex <- FindNeighbors(gex, 
+                     reduction = "harmony_2", 
+                     dims = 1:50,
+                     k.param = 15,
+                     verbose = TRUE)
+
+gex <- FindClusters(gex, 
+                    resolution = 1.5, 
+                    verbose = TRUE, 
+                    graph.name = "RNA_snn")
+
+table(gex@meta.data$seurat_clusters)
+
+pdf("../results/UMAP_B-cells_clusters.pdf", width = 12, height = 12, useDingbats = F)
+mypar()
+plot_meta(gex, "umap_2", "seurat_clusters", label = T)
+dev.off()
+
+
+```
+
+
+## hclust 
+### test cluster relations for B-cell clusters
+
+```{r}
+
+cluster_means <-
+  sapply(as.character(unique(gex$seurat_clusters)), function(x) {
+    rowMeans(gex@assays$RNA@data[, gex$seurat_clusters == x])
+  })
+
+adj <- (1 - cor(cluster_means)) / 2
+h <- hclust(as.dist(adj), method = "ward.D2")
+
+png("../results/hclust_clusters_B-cells_clustRes.png", 
+    width = 1000, 
+    height = 1000, 
+    units = "px",
+    pointsize = 20)
+par(las=2)
+plot(as.dendrogram(h))
+dev.off()
+
+
+```
+
+
+## Plot 2D UMAP B-cells
+
+```{r}
+
+p1 <- DimPlot(gex, 
+                  reduction = "umap_2", 
+                  pt.size = .1, 
+                  group.by = "orig.ident", 
+                  raster=FALSE) + 
+              NoLegend() + 
+              ggtitle("UMAP B-cells, by Sample")
+
+p2 <- DimPlot(gex, 
+                  reduction = "umap_2", 
+                  pt.size = .1, 
+                  group.by = "seurat_clusters", 
+                  label = TRUE, 
+                  repel = TRUE, 
+                  raster=FALSE) + 
+              NoLegend() + 
+              ggtitle("UMAP B-cells, by Cluster")
+
+ggsave2("../results/UMAP_B-cells.png", 
+        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
+        width = 30, height = 15, unit = "cm")
+
+
+```
+
+
+## Plot 3D UMAP B-cells
+ 
+```{r}
+
+df <- data.frame(gex@reductions$umap_2_3d@cell.embeddings)
+df <- data.frame(df, seurat_clusters = gex$seurat_clusters, orig.ident = gex$orig.ident)
+colnames(df)[1:3] <- c("UMAP_1","UMAP_2","UMAP_3")
+pal <- c(scales::hue_pal()(8), 
+         RColorBrewer::brewer.pal(9, "Set1"),  
+         RColorBrewer::brewer.pal(8, "Set2") )
+
+
+####------- by cluster
+p_State <- plot_ly(df, 
+                   x = ~UMAP_1, 
+                   y = ~UMAP_2, 
+                   z = ~UMAP_3, 
+                   color = ~seurat_clusters,
+                   colors = pal, size=.5) %>%  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'UMAP_1'), 
+                      yaxis = list(title = 'UMAP_2'), 
+                      zaxis = list(title = 'UMAP_3')))
+
+htmlwidgets::saveWidget(p_State, "../results/UMAP_B-cells_3d_clusters.html")
+
+
+####------- by orig.ident
+p_State <- plot_ly(df, 
+                   x = ~UMAP_1, 
+                   y = ~UMAP_2, 
+                   z = ~UMAP_3, 
+                   color = ~orig.ident,
+                   colors = pal, size = .5) %>%  add_markers() %>%
+  layout(scene = list(xaxis = list(title = 'UMAP_1'), 
+                      yaxis = list(title = 'UMAP_2'), 
+                      zaxis = list(title = 'UMAP_3')))
+
+htmlwidgets::saveWidget(p_State, "../results/UMAP_B-cells_3d_orig.ident.html")
+
+
+```
+
+
+## Plot marker genes B-cells
+
+```{r}
+
+ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
+b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27", "IGHA1", "IGHD", "IGHM", "JCHAIN", "MME")
+pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", "CD3E", "CD14", "LYZ", "CD8A")
+my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
+
+#pbmc
+p.pbmc.markers <- FeaturePlot(gex, 
+                                features = pbmc.markers, 
+                                reduction = "umap_2", 
+                                raster = FALSE)
+
+ggsave2("../results/FeaturePlot_B-cells_pbmcMarkers.png", 
+        p.pbmc.markers, 
+        width = 25, height = 25, unit = "cm")
+
+####-----  B markers
+p.b.markers <- FeaturePlot(gex, 
+                             features = b.markers, 
+                             reduction = "umap_2", 
+                             raster = FALSE)
+
+ggsave2("../results/FeaturePlot_B-cells_BMarkers.png",
+        p.b.markers, 
+        width = 25, height = 25, unit = "cm")
+
+####-----  ig markers
+p.ig.markers <- FeaturePlot(gex, 
+                              features = ig.features, 
+                              reduction = "umap_2", 
+                              raster = FALSE)
+
+ggsave2("../results/FeaturePlot_B-cells_IGMarkers.png",
+        p.ig.markers, 
+        width = 25, height = 25, unit = "cm")
+
+####-----  my_pars
+p.myPars <- FeaturePlot(gex, 
+                          features = my_pars , 
+                          reduction = "umap_2", 
+                          raster = FALSE, 
+                          order = TRUE)
+ggsave2("../results/FeaturePlot_B-cells_myPars.png", 
+        p.myPars, 
+        width = 25, height = 25, unit = "cm")
+
+
+```
+
+

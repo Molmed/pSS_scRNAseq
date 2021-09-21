@@ -1,0 +1,66 @@
+# Subset B-cells {#Subset_B-cells}
+
+## Load packages
+
+```{r}
+
+source("./00_dependencies.R")
+
+
+```
+
+
+## Load data
+
+```{r}
+
+gex <- readRDS("../results/GEX_DIMRED1.rds")
+
+gex
+
+
+```
+
+
+## subset Seurat object to only include B-cell clusters
+
+```{r}
+
+Idents(object = gex) <- "celltype"
+gex <- subset(gex, idents = c("B_cell", "Plasma"))
+
+colnames(gex@meta.data)[colnames(gex@meta.data) == "seurat_clusters"] <- "seurat_clusters_1"
+DefaultAssay(object = gex) <- "RNA"; gex
+Idents(object = gex) <- "orig.ident"
+
+gex
+
+print("GEX_BCELLS size:")
+print(object.size(gex), units = "GB")
+
+
+```
+
+
+## Save rds GEX_BCELLS
+
+```{r}
+
+saveRDS(gex, file = "../results/GEX_BCELLS.rds")
+
+#this is gex10
+
+```
+
+
+## Print sessionInfo()
+
+```{r}
+
+sessionInfo()
+
+
+```
+
+
+

@@ -1,0 +1,126 @@
+# Read data {#Read Data}
+
+## Load packages
+
+```{r}
+
+source("./00_dependencies.R")
+
+
+```
+
+
+## Load data
+
+```{r}
+
+####-----  List samples
+samples <- str_replace(str_sort(list.files("../data/counts_mx"), numeric = TRUE),
+                       "_filtered_feature_bc_matrix",
+                       "")
+print("Samples: ")
+samples
+
+####----- Create a named vector with paths to samples
+samples.dirs <- sapply(samples, function(i) {
+  d10x <- file.path('../data/counts_mx',
+                    paste0(i, '_filtered_feature_bc_matrix'))
+  d10x
+})
+print("Sample directories:")
+samples.dirs
+
+####----- Read count matrices
+gex_data <- Read10X(data.dir = samples.dirs,
+                    unique.features = TRUE,
+                    strip.suffix = TRUE)
+str(gex_data)
+
+####----- Create seurat object
+gex <- CreateSeuratObject(gex_data, 
+                          project = "pSS",
+                          min.cells = 0,
+                          min.features = 0,
+                          names.field = 1)
+table(gex@meta.data$orig.ident)
+nrow(gex@meta.data)
+
+####-----  rm tmp objects
+rm(samples, samples.dirs, gex_data)
+
+####-----  change orig.ident for P007 and P008; libraries were generated and sequenced twice
+gex@meta.data$orig.ident <- gsub("P007[ab]", "P007", gex@meta.data$orig.ident)
+gex@meta.data$orig.ident <- gsub("P008[ab]", "P008", gex@meta.data$orig.ident)
+
+table(gex@meta.data$orig.ident)
+
+####-----  add pheno info
+pheno <- read.table("../suppl/pheno/pSS_pheno_210623.csv", sep = ";", header = TRUE)
+colnames(pheno)[c(1, 3)] <- c("Sample_id", "orig.ident")
+pheno$orig.ident <- gsub("P007[ab]", "P007", pheno$orig.ident)
+pheno$orig.ident <- gsub("P008[ab]", "P008", pheno$orig.ident)
+pheno <- unique(pheno[, c(1, 3, 5, 7:8, 11:12)])
+head(pheno); dim(pheno)
+
+meta.data.tmp <- gex@meta.data
+meta.data.tmp$cell <- row.names(meta.data.tmp)
+meta.data.tmp <- merge(meta.data.tmp, pheno, by = "orig.ident", all.x = TRUE)
+row.names(meta.data.tmp) <- meta.data.tmp$cell
+meta.data.tmp$cell <- NULL
+
+gex <- AddMetaData(gex, meta.data.tmp); head(gex@meta.data); table(gex@meta.data$orig.ident)
+
+Idents(object = gex) <- "orig.ident"
+
+print("GEX_RAW size:")
+print(object.size(gex), units = "GB")
+
+gex
+
+
+```
+
+
+## save rds GEX1
+
+```{r include = FALSE}
+
+saveRDS(gex, file = "../results/GEX_RAW.rds")
+
+#this is GEX1
+
+```
+
+
+## Print sessionInfo()
+
+```{r}
+
+sessionInfo()
+
+
+```
+
+
+
+
+
+You can label chapter and section titles using `{#label}` after them, e.g., we can reference Chapter \@ref(intro). If you do not manually label them, there will be automatic labels anyway, e.g., Chapter \@ref(methods).
+
+Figures and tables with captions will be placed in `figure` and `table` environments, respectively.
+
+```{r nice-fig, fig.cap='Here is a nice figure!', out.width='80%', fig.asp=.75, fig.align='center'}
+par(mar = c(4, 4, .1, .1))
+plot(pressure, type = 'b', pch = 19)
+```
+
+Reference a figure by its code chunk label with the `fig:` prefix, e.g., see Figure \@ref(fig:nice-fig). Similarly, you can reference tables generated from `knitr::kable()`, e.g., see Table \@ref(tab:nice-tab).
+
+```{r nice-tab, tidy=FALSE}
+knitr::kable(
+  head(iris, 20), caption = 'Here is a nice table!',
+  booktabs = TRUE
+)
+```
+
+You can write citations, too. For example, we are using the **bookdown** package [@R-bookdown] in this sample book, which was built on top of R Markdown and **knitr** [@xie2015].
