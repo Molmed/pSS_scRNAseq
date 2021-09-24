@@ -1,0 +1,403 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# VDJ Integration
+
+
+## Load packages
+
+```{r include = FALSE}
+
+#source("./00_dependencies.R")
+#devtools::install_github("ncborcherding/scRepertoire")
+#devtools::install_github("ncborcherding/scRepertoire@refine")
+devtools::install_github("ncborcherding/scRepertoire@dev")
+library(scRepertoire); packageVersion("scRepertoire") #local :[1] ‘1.3.4’; bianca:[1] ‘1.0.0’ 
+#package ‘scRepertoire’ was built under R version 4.0.4 
+#devtools::install_local()
+
+# library(niceRplots)
+
+```
+
+
+## Read seurat object
+
+```{r}
+
+
+gex <- readRDS("../results/GEX_DIMRED2.rds"); gex
+colnames(gex@meta.data)
+
+
+# sort(sapply(ls(), function(x){format(object.size(get(x)), units = "Gb")}))
+
+
+```
+
+## BCR
+### Read 10x BCR files
+
+```{r}
+
+# read 10x VDJ BCR files
+samples_B <- list.files("../data/clono_B_VDJ")
+
+clono_B <- lapply(samples_B, function(x) {
+  tmp <- read.csv(paste0("../data/clono_B_VDJ/", x, "/", x, "_B_filtered_contig_annotations.csv"), 
+                  stringsAsFactors = FALSE)
+  return(tmp)
+})
+
+names(clono_B) <- samples_B
+
+#add sample name as prefix to barcode and remove trailing -1
+# clono_B <- lapply(seq_along(clono_B), function(i) {
+#   clono_B[[i]]$barcode <-
+#     paste0(names(clono_B)[i], "_", gsub("-1", "", clono_B[[i]]$barcode))
+#   return(clono_B[[i]])
+# })
+
+#remove trailing -1
+clono_B <- lapply(seq_along(clono_B), function(i) {
+  clono_B[[i]]$barcode <- gsub("-1", "", clono_B[[i]]$barcode)
+  return(clono_B[[i]])
+})
+
+names(clono_B) <- samples_B
+
+clono_B <- clono_B[order(names(clono_B))]
+
+print(object.size(clono_B), units = "MB") #227.6 Mb
+saveRDS(clono_B, paste0("../results/clono_B_list_",format(Sys.time(), "%y%m%d"),".rds"))
+#clono_B <- readRDS("../results/clono_B_list_210915.rds")
+
+
+```
+
+
+### Using scRepertoire to generate a combined data frame for BCR sequences
+
+```{r}
+
+#split combineBCR and do it per sample to avoid memory issues
+#takes on average 20min/sample to run
+combined_B <- lapply(1:length(clono_B), function(x) {
+  
+  print(names(clono_B[x]))
+  print(nrow(clono_B[[x]]))
+  print(Sys.time())
+  
+  tmp <- combineBCR(clono_B[[x]],
+                    samples = names(clono_B[x]),
+                    ID = NULL,
+                    removeNA = TRUE,
+                    removeMulti = TRUE)
+
+  return(tmp)
+  
+})
+
+#reformat output to fecilitate downstream usage by scRepertoire and integration with Seurat object
+combined_B <- lapply(1:length(combined_B), function(x){
+  tmp <- combined_B[[x]][[1]]
+  return(tmp)
+})
+
+#---- handle samples where libraries were created and sequenced twice
+combined_B[["P007"]] <- rbind(combined_B[["P007a"]], combined_B[["P007b"]])
+combined_B[["P007a"]] <- NULL
+combined_B[["P007b"]] <- NULL
+
+combined_B[["P008"]] <- rbind(combined_B[["P008a"]], combined_B[["P008b"]])
+combined_B[["P008a"]] <- NULL
+combined_B[["P008b"]] <- NULL
+
+combined_B <- combined_B[order(names(combined_B))]
+
+names_tmp <- names(combined_B)
+combined_B <- lapply(seq_along(combined_B), function(i) {
+  combined_B[[i]]$sample <- gsub("a|b", "", combined_B[[i]]$sample)
+  return(combined_B[[i]])
+})
+
+names(combined_B) <- names_tmp
+#----
+
+print(object.size(combined_B), units = "MB") #181.3 Mb
+saveRDS(combined_B, paste0("../results/combined_BCR_scRepertoire.rds"))
+#combined_B <- readRDS("../results/combined_BCR_scRepertoire.rds")
+
+```
+
+
+### Add scRepertoir BCR data to Seurat object
+
+```{r}
+
+sce <- combineExpression(combined_B, gex)
+colnames(sce@meta.data)
+table(sce@meta.data$CTgene, useNA = "ifany")
+
+
+```
+
+
+### Visualize BCR data across samples and clusters
+
+```{r}
+
+quantContig(combined_B, 
+            cloneCall="gene+nt", 
+            scale = FALSE, 
+            exportTable = FALSE) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+abundanceContig(combined_B, cloneCall = "gene", scale = FALSE)
+
+clonalHomeostasis(combined_B, cloneCall = "gene") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+clonalProportion(combined_B, cloneCall = "gene")  + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+clonalOverlap(combined_B, 
+              cloneCall = "gene+nt", 
+              method = "morisita")+ 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+clonalOverlap(combined_B, 
+              cloneCall = "gene", 
+              method = "morisita")+ 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+clonalOverlap(combined_B, 
+              cloneCall="aa", 
+              method="overlap") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+clonalOverlap(combined_B, 
+              cloneCall="gene", 
+              method="jaccard") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+clonesizeDistribution(combined_B, 
+                      cloneCall = "gene+nt", 
+                      method="ward.D2")
+
+
+occupiedscRepertoire(sce, x.axis = "cluster")
+
+alluvialClonotypes(sce, 
+                   cloneCall = "gene", 
+                   y.axes = c("orig.ident", "seurat_clusters", "patient_group"), 
+                   color = "seurat_clusters")
+
+colnames(sce@meta.data)
+
+DimPlot(sce, reduction = "umap_2",group.by = "cloneType")
+head(strsplit(sce@meta.data$CTgene, "-", ))
+head(sce@meta.data$CTgene)
+head(sce@meta.data$CTstrict)
+head(sce@meta.data$Frequency)
+FeaturePlot(sce, reduction = "umap_2", features = "Frequency", split.by = "patient_group")
+
+
+combined_B2 <- expression2List(sce, group  = "seurat_clusters")
+clonalHomeostasis(combined_B2, cloneCall = "nt")
+
+
+```
+
+
+## TCR
+### Read 10x VDJ TCR files
+
+```{r}
+
+# read 10x VDJ TCR files
+samples_T <- list.files("../data/clono_T_VDJ")
+
+clono_T <- lapply(samples_T, function(x) {
+  return(read.csv(paste0("../data/clono_T_VDJ/", x, "/", x, "_T_filtered_contig_annotations.csv"), 
+                  stringsAsFactors = FALSE))
+})
+
+#remove trailing -1
+clono_T <- lapply(seq_along(clono_T), function(i) {
+  clono_T[[i]]$barcode <- gsub("-1", "", clono_T[[i]]$barcode)
+  return(clono_T[[i]])
+})
+
+names(clono_T) <- samples_T
+
+clono_T <- clono_T[order(names(clono_T))]
+
+print(object.size(clono_T), units = "MB") #4.2 Mb
+saveRDS(clono_T, paste0("../results/clono_T_list.rds"))
+#clono_T <- readRDS("../results/clono_T_list.rds")
+
+
+```
+
+
+### combine and append
+#### Using scRepertoire to generate a combined data frame for TCR sequences and append to Seurat object
+
+```{r}
+
+combined_T <- combineTCR(clono_T,
+                       samples = sub("_.*", "", names(clono_T)),
+                       ID=NULL,
+                       removeNA = TRUE,
+                       removeMulti = TRUE,
+                       cells = c("T-AB"))
+
+
+#---- handle samples where libraries were created and sequenced twice
+combined_T[["P007"]] <- rbind(combined_T[["P007a"]], combined_T[["P007b"]])
+combined_T[["P007a"]] <- NULL
+combined_T[["P007b"]] <- NULL
+
+combined_T[["P008"]] <- rbind(combined_T[["P008a"]], combined_T[["P008b"]])
+combined_T[["P008a"]] <- NULL
+combined_T[["P008b"]] <- NULL
+
+combined_T <- combined_T[order(names(combined_T))]
+
+names_tmp <- names(combined_T)
+combined_T <- lapply(seq_along(combined_T), function(i) {
+  combined_T[[i]]$sample <- gsub("a|b", "", combined_T[[i]]$sample)
+  return(combined_T[[i]])
+})
+names(combined_T) <- names_tmp
+#---- 
+
+summary(combined_T)
+head(combined_T[[1]])
+
+
+saveRDS(combined_T, paste0("../results/combined_TCR_scRepertoire.rds"))
+
+sce <- combineExpression(combined_T, gex)
+colnames(sce@meta.data)
+head(sce@meta.data[,c(43:49)])
+table(sce@meta.data$CTgene, useNA = "ifany")
+
+
+```
+
+
+## read TRUST4 files
+
+```{r}
+
+samples_TRUST4 <- sub("_barcode_report.tsv", "", list.files("../data/clono_TRUST4"))
+clono_TRUST4 <- lapply(samples_TRUST4, function(x){
+  tmp <- read.table(paste0("../data/clono_TRUST4/", x, "_barcode_report.tsv"), header = TRUE, comment.char = "")
+  colnames(tmp) <- sub("X." , "", colnames(tmp))
+  return(tmp)
+})
+
+names(clono_TRUST4) <- samples_TRUST4
+
+#remove trailing -1
+clono_TRUST4 <- lapply(seq_along(clono_TRUST4), function(i) {
+  clono_TRUST4[[i]][, 1] <- gsub("-1", "", clono_TRUST4[[i]][, 1])
+  print(names(clono_TRUST4[i]))
+  return(clono_TRUST4[[i]])
+})
+
+names(clono_TRUST4) <- samples_TRUST4
+
+saveRDS(clono_TRUST4, paste0("../results/clono_TRUST4_list_",format(Sys.time(), "%y%m%d"), ".rds"))
+
+
+```
+
+
+## combine TRUST4 data using scRepertoire
+
+```{r}
+
+combined_TRUST4_B <- lapply(1:length(clono_TRUST4), function(x) {
+  
+  print(names(clono_TRUST4[x]))
+  print(nrow(clono_TRUST4[[x]]))
+  print(Sys.time())
+  
+  tmp <- combineTRUST4(clono_TRUST4[[x]],
+                    samples = names(clono_TRUST4[x]),
+                    ID = NULL,
+                    cells = c("B"),
+                    removeNA = TRUE)
+
+  return(tmp)
+  
+})
+
+summary(combined_TRUST4_B)
+
+
+#---- handle samples where libraries were created and sequenced twice
+combined_TRUST4_B[["P007"]] <- rbind(combined_TRUST4_B[["P007a"]], combined_TRUST4_B[["P007b"]])
+combined_TRUST4_B[["P007a"]] <- NULL
+combined_TRUST4_B[["P007b"]] <- NULL
+
+combined_TRUST4_B[["P008"]] <- rbind(combined_TRUST4_B[["P008a"]], combined_TRUST4_B[["P008b"]])
+combined_TRUST4_B[["P008a"]] <- NULL
+combined_TRUST4_B[["P008b"]] <- NULL
+
+combined_TRUST4_B <- combined_TRUST4_B[order(names(combined_TRUST4_B))]
+
+names_tmp <- names(combined_TRUST4_B)
+combined_TRUST4_B <- lapply(seq_along(combined_TRUST4_B), function(i) {
+  combined_TRUST4_B[[i]]$sample <- gsub("a|b", "", combined_TRUST4_B[[i]]$sample)
+  return(combined_TRUST4_B[[i]])
+})
+
+names(combined_TRUST4_B) <- names_tmp
+#----
+
+saveRDS(combined_TRUST4_B, paste0("../results/combined_TRUST4_B_scRepertoire.rds"))
+
+
+```
+
+
+
+## Save rds 
+
+```{r}
+
+saveRDS(gex, file = "../results/xxx.rds")
+
+```
+
+
+## Print sessionInfo()
+
+```{r}
+
+sessionInfo()
+
+```
+
+
+
+
+# library(immunarch)
+# 
+# immdata_10x <- repLoad("../data/clono_VDJ")
+# immdata_trust4 <- repLoad("../data/clono_TRUST4")
+# str(immdata_10x)
+
+
+
+
+
+
+

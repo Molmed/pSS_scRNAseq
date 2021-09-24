@@ -10,4 +10,3 @@ knitr::purl("/Users/gusarv/Documents/projekt/SjS/data/pss_bcells_scRNAseq/code/0
 
 
 
-gex <- readRDS("../results/GEX1_210826.rds")

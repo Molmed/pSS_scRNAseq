@@ -364,3 +364,23 @@ ggsave2("../results/FeaturePlot_B-cells_myPars.png",
 ```
 
 
+## Save rds GEX_DIMRED2
+
+```{r}
+
+saveRDS(gex, file = "../results/GEX_DIMRED2.rds")
+
+#this is gex15
+
+```
+
+
+## Print sessionInfo()
+
+```{r}
+
+sessionInfo()
+
+
+```
+
