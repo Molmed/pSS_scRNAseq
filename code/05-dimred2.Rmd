@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 # Dimensionality reduction and clustering of B-cells {#Dimred2}
 
 ## Load packages
@@ -61,8 +66,8 @@ p2 <- LabelPoints(plot = VariableFeaturePlot(gex),
 
 
 ggsave2("../results/VariableFeatures_B-cells.png",
-        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
-        , width = 30, height = 15, unit = "cm")
+        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
+        width = 30, height = 15, unit = "cm")
 
 
 ```
@@ -324,7 +329,8 @@ my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "perc
 p.pbmc.markers <- FeaturePlot(gex, 
                                 features = pbmc.markers, 
                                 reduction = "umap_2", 
-                                raster = FALSE)
+                                raster = FALSE,
+                                order = TRUE)
 
 ggsave2("../results/FeaturePlot_B-cells_pbmcMarkers.png", 
         p.pbmc.markers, 
@@ -334,7 +340,8 @@ ggsave2("../results/FeaturePlot_B-cells_pbmcMarkers.png",
 p.b.markers <- FeaturePlot(gex, 
                              features = b.markers, 
                              reduction = "umap_2", 
-                             raster = FALSE)
+                             raster = FALSE,
+                             order = TRUE)
 
 ggsave2("../results/FeaturePlot_B-cells_BMarkers.png",
         p.b.markers, 
@@ -344,7 +351,8 @@ ggsave2("../results/FeaturePlot_B-cells_BMarkers.png",
 p.ig.markers <- FeaturePlot(gex, 
                               features = ig.features, 
                               reduction = "umap_2", 
-                              raster = FALSE)
+                              raster = FALSE,
+                              order = TRUE)
 
 ggsave2("../results/FeaturePlot_B-cells_IGMarkers.png",
         p.ig.markers, 
@@ -359,6 +367,71 @@ p.myPars <- FeaturePlot(gex,
 ggsave2("../results/FeaturePlot_B-cells_myPars.png", 
         p.myPars, 
         width = 25, height = 25, unit = "cm")
+
+
+```
+
+#  patient subtypes per cluster
+
+```{r}
+
+mypal <- RColorBrewer::brewer.pal(4,"Set3")
+
+res <- table(list(gex$seurat_clusters, gex$patient_group))
+res <- t(res)
+res <- res[,order(colSums(res),decreasing = T)]
+res2 <- t( t(res) / colSums(res) )
+res3 <- res / rowSums(res)
+res4 <- t( t(res3) / colSums(res3) )
+
+#plot proportion of cells per cluster
+png(file = paste0("../results/cluster_patient_abundance.png"),
+    width = 20, height = 8, units = "cm", res = 200)
+mypar(1,1,mar = c(2,4,2,5), xpd=TRUE, cex.axis = 0.7)
+barplot(res2*100, las = 1, col = mypal, ylab = "Proportion of cells\n")
+legend("topright", legend = rownames(res2), bty = "n",fill = mypal, inset=c(-0.15,0))
+dev.off()
+
+#plot proportion of cells per cluster
+png(file = paste0("../results/cluster_patient_cellcounts_abundance.png"),
+    width = 20, height = 8, units = "cm", res = 200)
+mypar(2,1,mar = c(2,4,2,5), xpd=TRUE, cex.axis = 0.7)
+barplot(res, las = 1, col = mypal, ylab = "Number of cells\n")
+barplot(res2*100, las = 1, col = mypal, ylab = "Proportion of cells\n")
+legend("topright", legend = rownames(res), bty = "n",fill = mypal, inset=c(-0.15,0))
+dev.off()
+
+
+### plots in one
+# pdf(file = paste0("../results/cluster_patient_abundance.pdf"),
+#     width = 8,height = 5, useDingbats = F)
+# 
+# mypar(4,1,mar=c(2,4,0,1))
+# 
+# barplot(res,las=1,ylim=c(0,max(colSums(res))*1.3),col = mypal,ylab = "total cell numbers\n",xaxs="i",yaxs="i",space = 0)
+# 
+# barplot(res3,las=1,ylim=c(0,max(colSums(res3))*1.3),col = mypal,ylab = "percentage\n",xaxs="i",yaxs="i",space = 0)
+# 
+# barplot(res2*100,las=1,col=mypal,ylab="percentage\n",xaxs="i",yaxs="i",space = 0)
+# 
+# barplot(res4*100,las=1,col=mypal,ylab="percentage\n",xaxs="i",yaxs="i",space = 0)
+# 
+# legend("topright",legend = rownames(res), bty = "n",fill = mypal)
+# 
+# dev.off()
+
+
+p1 <- DimPlot(gex, split.by = "patient_group", reduction = "umap_2", ncol = 2, raster = FALSE)
+ggsave2("../results/UMAP_B-cells_patientGroup.png", 
+        p1, 
+        width = 30, height = 20, unit = "cm")
+
+
+#Four non-overlapping groups
+#1. SSA+/SSB+
+#2. SSA+/SSB-
+#3. SSA-/SSB-
+#4. CTRL
 
 
 ```

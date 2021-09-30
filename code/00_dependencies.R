@@ -12,12 +12,15 @@ suppressMessages(library(rtracklayer))
 suppressMessages(library(dplyr))
 suppressMessages(library(tidyr))
 suppressMessages(library(future.apply))
+suppressMessages(library(glmGamPoi))
+suppressMessages(library(scales)) #scales for plotting
 
 ####----- plot
 suppressMessages(library(plotly))
 suppressMessages(library(ggplot2))
 suppressMessages(library(cowplot))
 suppressMessages(library(rafalib))
+suppressMessages(library(RColorBrewer))
 # remotes::install_github("czarnewski/niceRplots")
 library(niceRplots)
 #source("../../niceRplots/R/add_fig_label.R")
@@ -31,5 +34,14 @@ suppressMessages(library(scater))
 suppressMessages(library(scDblFinder))
 suppressMessages(library(harmony))
 suppressMessages(library(Nebulosa))
-suppressMessages(library(scRepertoire))
+#devtools::install_github("ncborcherding/scRepertoire@dev")
+suppressMessages(library(scRepertoire))#; packageVersion("scRepertoire") #local :[1] ‘1.3.4’; bianca:[1] ‘1.0.0’
+suppressMessages(library(alakazam))
+suppressMessages(library(shazam))
+suppressMessages(library(airr))
+
+
+
+
+
 

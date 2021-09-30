@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 # Subset B-cells {#Subset_B-cells}
 
 ## Load packages
@@ -17,6 +22,46 @@ source("./00_dependencies.R")
 gex <- readRDS("../results/GEX_DIMRED1.rds")
 
 gex
+
+
+```
+
+
+## Plot Celltypes per sample
+
+```{r}
+
+head(gex@meta.data)
+cells <- t(table(gex@meta.data$celltype, gex@meta.data$orig.ident))
+
+cells <- as_tibble(gex@meta.data) %>%
+  group_by(orig.ident) %>%
+  summarise(tot = length(orig.ident),
+            B_cell = sum(celltype == "B_cell"),
+            Monocyte = sum(celltype == "Mono"),
+            Plasma = sum(celltype == "Plasma"),
+            T_cell = sum(celltype == "T_cell")) 
+
+p1 <- cells %>% 
+ gather(celltype, cellcount, B_cell:T_cell) %>% 
+ ggplot(aes(x = orig.ident, 
+             y = cellcount, 
+             fill = celltype)) + 
+  theme_classic() + 
+  geom_bar(stat = "identity", 
+           color = "black", 
+           position = "stack") + 
+  theme(legend.title = element_blank(),
+        axis.text.x = element_text(face = "bold", angle = 90, vjust = 0.5, hjust = 1),
+        axis.text.y = element_text(face = "bold")) +
+  xlab("") +
+  ggtitle(paste0("Number of cells total/B-cells (", 
+                 sum(cells$tot), "/", 
+                 sum(cells$B_cell), ")"))
+
+ggsave2(paste0("../results/celltype_counts_allCells.png"), 
+          p1,
+          width = 25, height = 15, unit = "cm")
 
 
 ```

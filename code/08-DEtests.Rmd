@@ -1,0 +1,143 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# DE tests and Visualization {#DE-tests}
+
+## Load packages
+
+```{r}
+
+source("./00_dependencies.R")
+
+```
+
+
+## Load data
+
+```{r}
+
+gex <- readRDS("../results/GEX_BVDJ.rds")
+
+gex
+
+```
+
+
+## Add patient groups to Seurat object
+
+```{r}
+
+gex$patient_group <- paste0(ifelse(gex$SSA == "YES", "SSA", ""), 
+                            "_", 
+                            ifelse(gex$SSB == "YES", "SSB", ""))
+pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
+gex$patient_group <- names(pat_annot)[match(gex$patient_group, pat_annot)]
+gex$patient_group[grep("^C00", gex$orig.ident) ] <- "CTRL"
+
+#Four non-overlapping groups
+#1. SSAB - SSA+/SSB+
+#2. SSA  - SSA+/SSB-
+#3. DNEG - SSA-/SSB-
+#4. CTRL - CTRL
+
+
+```
+
+
+#DE tests
+## Per patient group per cluster
+
+```{r include=FALSE}
+
+# Genes_for_annotation_Paulo
+groups <- paste0(gex$seurat_clusters, '_', as.character(gex$patient_group) )
+gex$subgroups <- factor(groups)
+sample_size <- table(gex$subgroups)
+sample_size[ sample_size > 100 ] <- 100
+
+DGE_cells <- lapply(names(sample_size), function(x){ 
+  set.seed(1)
+  sample( colnames(gex) [ gex$subgroups == x ] , size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+DGE_DATA <- gex[, DGE_cells]
+# DGE_DATA <- SetIdent( DGE_DATA , value = "patient_group")
+
+
+detable_pat <- lapply(unique(DGE_DATA$seurat_clusters),DGE_DATA=DGE_DATA, function(x,DGE_DATA){ 
+  temp <- DGE_DATA[,DGE_DATA$seurat_clusters == x]
+  print(temp)
+  temp <- SetIdent( temp , value = "patient_group")
+  detable <- FindAllMarkers( temp, only.pos = T,max.cells.per.ident = 200,
+                          logfc.threshold = .1,assay = "RNA",
+                          min.pct = 0.05)
+  return( cbind(detable,cell_cluster= x) )
+})
+detable <- do.call(rbind,detable_pat)
+
+detable <- detable[ detable$p_val < 0.05,  ]
+detable$pct.diff <- detable$pct.1 - detable$pct.2
+detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
+write.csv2(detable,"../results/DGE_B-cells_perPatientperCluster.csv")
+
+
+
+```
+
+
+## glmGamPoi DE tests
+
+```{r }
+
+groups <- paste0(gex$seurat_clusters, '_', as.character(gex$patient_group))
+gex$subgroups <- factor(groups)
+sample_size <- table(gex$subgroups)
+sample_size[sample_size > 100] <- 100
+
+DGE_cells <- lapply(names(sample_size), function(x){ 
+  set.seed(1)
+  sample(colnames(gex)[gex$subgroups == x], size = sample_size[x])
+  })
+DGE_cells <- unlist(DGE_cells)
+
+DGE_DATA <- gex[, DGE_cells]
+
+# fit <- glmGamPoi::glm_gp(data = as.matrix(DGE_DATA@assays$RNA@counts),
+#                   design = ~patient_group*seurat_clusters,
+#                   col_data=DGE_DATA@meta.data)
+
+fit <- glmGamPoi::glm_gp(data = as.matrix(DGE_DATA@assays$RNA@data),
+                         design = ~patient_group*seurat_clusters,
+                         col_data = DGE_DATA@meta.data)
+
+saveRDS(fit, file = "../results/fit_tmp.rds")
+head(fit)
+str(fit)
+
+glmGamPoi::test_de()
+
+
+```
+
+## Save rds 
+
+```{r}
+
+saveRDS(gex, file = "../results/xxx.rds")
+
+```
+
+
+## Print sessionInfo()
+
+```{r}
+
+sessionInfo()
+
+```
+
+
+

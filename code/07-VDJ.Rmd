@@ -1,0 +1,654 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# VDJ analysis pt1 {#VDJ1}
+
+## Load packages
+
+```{r}
+
+source("./00_dependencies.R")
+
+```
+
+
+## Load Seurat object
+
+```{r}
+
+gex <- readRDS("../results/GEX_DIMRED2.rds"); gex
+
+```
+
+
+## Load pheno file
+
+```{r}
+
+pheno <- read.table("../suppl/pheno/pSS_pheno_210623.csv", sep = ";", header = TRUE)
+colnames(pheno)[c(1, 3)] <- c("Sample_id", "orig.ident")
+pheno$orig.ident <- gsub("P007[ab]", "P007", pheno$orig.ident)
+pheno$orig.ident <- gsub("P008[ab]", "P008", pheno$orig.ident)
+pheno <- unique(pheno[, c(1, 3, 5, 7:8, 11:12)])
+
+pheno$patient_group <- paste0(ifelse(pheno$SSA == "YES", "SSA", ""), 
+                            "_", 
+                            ifelse(pheno$SSB == "YES", "SSB", ""))
+pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
+pheno$patient_group <- names(pat_annot)[match(pheno$patient_group, pat_annot)]
+pheno$patient_group[grep("^C00", pheno$orig.ident) ] <- "CTRL"
+
+head(pheno); dim(pheno)
+
+#Four non-overlapping groups
+#1. SSAB - SSA+/SSB+
+#2. SSA  - SSA+/SSB-
+#3. DNEG - SSA-/SSB-
+#4. CTRL - CTRL
+
+```
+
+
+## Load output from Immcantation and perform mutation analysis
+
+```{r}
+
+files_B <- list.files("../data/clono_B_VDJ_tmp", pattern = "*germ-pass.tsv", recursive = TRUE, full.names = TRUE)
+outfile <- NULL
+
+for (i in files_B) {
+  
+  cat("reading: ", print(i))
+  
+  tmp <- read_rearrangement(i)
+  
+  #get sample name
+  j <- gsub("_heavy_germ-pass.tsv", "", gsub(".*out/", "", i))
+  cat("sample name: ", print(j))
+  
+  #Get number of VDJ mutations per cell
+  tmp <- observedMutations(tmp, 
+                           sequenceColumn="sequence_alignment", 
+                           germlineColumn="germline_alignment_d_mask",
+                           frequency=FALSE, 
+                           combine=TRUE)
+  
+  colnames(tmp)[colnames(tmp) == 'mu_count'] <- 'mu_count_total'
+  
+  #Get frequency of VDJ mutations per cell
+  tmp <- observedMutations(tmp, 
+                           sequenceColumn="sequence_alignment", 
+                           germlineColumn="germline_alignment_d_mask",
+                           frequency=TRUE, 
+                           combine=TRUE)
+  
+  colnames(tmp)[colnames(tmp) == 'mu_freq'] <- 'mu_freq_total'
+
+  tmp <- observedMutations(tmp, 
+                          sequenceColumn = "sequence_alignment", 
+                          germlineColumn = "germline_alignment_d_mask",
+                          frequency = TRUE, 
+                          regionDefinition = IMGT_V_BY_REGIONS, 
+                          combine = TRUE)
+  
+  tmp <- observedMutations(tmp, 
+                          sequenceColumn = "sequence_alignment", 
+                          germlineColumn = "germline_alignment_d_mask",
+                          frequency = TRUE, 
+                          regionDefinition = IMGT_VDJ, 
+                          combine = TRUE)
+  
+  #tmp$sample <- gsub("a|b", "", j)
+  
+  tmp$cell_id <- paste0(j, "_", gsub("-1", "", tmp$cell_id))
+  rownames(tmp) <- tmp$cell_id
+
+  
+  if (is.null(outfile)) {
+    outfile <- tmp
+  } else {
+    outfile <- rbind(outfile, tmp)
+  }
+  
+}
+
+
+```
+
+
+## save immcantation VDJ data
+
+```{r}
+
+write_rearrangement(outfile, "../results/VDJ_immcantation_out.tsv")
+#outfile <- read_rearrangement("../results/VDJ_immcantation_out.tsv")
+
+```
+
+
+## add pheno data to immcantation object
+
+```{r}
+
+outfile$orig.ident <- gsub("a|b", "", gsub("_.*", "", outfile$cell_id))
+outfile <- merge(outfile, pheno[, c(2,8)], by.x = "orig.ident", by.y = "orig.ident", all.x = TRUE); head(outfile)
+outfile <- outfile[, c(2:ncol(outfile), 1)]
+
+
+```
+
+
+## Gene usage analysis
+
+```{r}
+
+Vh_gene_group <- countGenes(outfile, gene="v_call", groups="patient_group", mode="gene")
+p1 <- ggplot(Vh_gene_group, aes(x = gene, y = seq_freq)) +
+      theme_bw() +
+      ggtitle("Vh Usage per group") +
+      theme(axis.text.x=element_text(angle = 45, hjust = 1, vjust = 1)) +
+      ylab("Percent of repertoire") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_point(aes(color=patient_group), size = 2, alpha = 0.8)
+
+
+ggsave2(paste0("../results/VDJ_Vh_geneUsage_byGroup.png"), 
+          p1,
+          width = 25, height = 15, unit = "cm")
+
+Vh_gene_sample <- countGenes(outfile, gene="v_call", groups="orig.ident", mode="gene")
+Vh_gene_sample <- merge(Vh_gene_sample, pheno[, c(2,8)], by.x = "orig.ident", by.y = "orig.ident", all.x = TRUE)
+
+p2 <- ggplot(Vh_gene_sample, aes(x = gene, y = seq_freq)) +
+      theme_bw() +
+      ggtitle("Vh Usage per sample") +
+      theme(axis.text.x=element_text(angle = 45, hjust = 1, vjust = 1)) +
+      ylab("Percent of repertoire") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_jitter(aes(color = patient_group), size = 2, alpha = 0.8)
+
+
+ggsave2(paste0("../results/VDJ_Vh_geneUsage_bySample.png"), 
+          p2,
+          width = 30, height = 15, unit = "cm")
+
+
+
+Vh_family_group <- countGenes(outfile, gene="v_call", groups="patient_group", mode="family")
+p3 <- ggplot(Vh_family_group, aes(x = gene, y = seq_freq)) +
+      theme_bw() +
+      ggtitle("Vh Family Usage per group") +
+      theme(axis.text.x=element_text(angle = 45, hjust = 1, vjust = 1)) +
+      ylab("Percent of repertoire") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_point(aes(color=patient_group), size = 2, alpha = 0.8)
+
+ggsave2(paste0("../results/VDJ_Vh_familyUsage_byGroup.png"), 
+          p3,
+          width = 30, height = 15, unit = "cm")
+
+Vh_family_sample <- countGenes(outfile, gene = "v_call", groups = "orig.ident", mode = "family")
+Vh_family_sample  <- merge(Vh_family_sample, pheno[, c(2, 8)], by.x = "orig.ident", by.y = "orig.ident", all.x = TRUE)
+
+p4 <- ggplot(Vh_family_sample, aes(x = gene, y = seq_freq)) +
+      theme_bw() +
+      ggtitle("Vh Family Usage per group") +
+      theme(axis.text.x=element_text(angle=45, hjust = 1, vjust = 1)) +
+      ylab("Percent of repertoire") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_point(aes(color = patient_group), size = 2, alpha = 0.8)
+
+ggsave2(paste0("../results/VDJ_Vh_familyUsage_bySample.png"), 
+          p4,
+          width = 30, height = 15, unit = "cm")
+
+
+```
+
+
+## clonotype analysis
+
+```{r}
+
+clones <- countClones(outfile, group = c("patient_group", "c_call"))
+
+
+
+#cu <- estimateAbundance(outfile, group="patient_group", ci=0.95, nboot=200, clone="clone_id")
+#Error: vector memory exhausted (limit reached?)
+#plot(cu, legend_title="patient_group")
+
+
+```
+
+
+## integrate immcantation VDJ data with seurat object
+
+```{r}
+
+#select immcantation columns
+#cols <- colnames(outfile)
+#cols <- cols[c(1, 4:7, 17, 49:56, 60:64)]
+
+cols <- c("sequence_id", "productive", "vj_in_frame", "stop_codon", "locus", 
+          "v_call", "d_call", "j_call", "c_call", 
+          "cell_id", "clone_id", "umi_count", 
+          "v_call_10x", "d_call_10x", "j_call_10x", 
+          "germline_v_call","germline_d_call", "germline_j_call", 
+          "mu_count_total", "mu_freq_total")
+outfile_add <- outfile[, cols]
+rownames(outfile_add) <- outfile_add$cell_id
+
+gex <- AddMetaData(gex, outfile_add)
+
+
+```
+
+
+## VDJ mutation
+
+```{r}
+
+# add categorical variable for mutation burden
+# unmutated
+# low < 1%
+# med < 2%
+# high > 2%
+
+gex$mu_load <- ifelse(gex$mu_freq_total == 0, "unmutated", 
+                 ifelse(gex$mu_freq_total > 0 & gex$mu_freq_total <= 0.01, "low",
+                        ifelse(gex$mu_freq_total > 0.01 & gex$mu_freq_total <= 0.02, "med",
+                               ifelse(gex$mu_freq_total > 0.02, "high", NA))))
+
+
+p5 <- ggplot(gex@meta.data, aes(x = seurat_clusters, y = mu_freq_total)) +
+      theme_classic() +
+      ggtitle("Vh mutations") +
+      theme(axis.text.x=element_text(angle = 45, hjust = 1, vjust = 1)) +
+      ylab("perc mutated") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_boxplot(aes(color = patient_group), size = 0.4, alpha = 0.8)
+
+ggsave2(paste0("../results/VDJ_Vh_mutationstatus_byCluster.png"), 
+          p5,
+          width = 30, height = 20, unit = "cm")
+
+p6 <- ggplot(gex@meta.data, aes(x = orig.ident, y = mu_freq_total)) +
+      theme_classic() +
+      ggtitle("Vh mutations") +
+      theme(axis.text.x=element_text(angle = 45, hjust = 1, vjust = 1)) +
+      ylab("perc mutated") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_boxplot(aes(color = patient_group), size = 0.4, alpha = 0.8)
+
+ggsave2(paste0("../results/VDJ_Vh_mutationstatus_bySample.png"), 
+          p6,
+          width = 30, height = 20, unit = "cm")
+
+cluster_mut <- as.data.frame.matrix(table(gex$seurat_clusters, gex$mu_load))
+cluster_mut$percmut <- 1-cluster_mut$unmutated/rowSums(cluster_mut)
+cluster_mut$orig.ident <- factor(rownames(cluster_mut), levels = rownames(cluster_mut))
+
+p7 <- ggplot(cluster_mut, aes(x = orig.ident, y = percmut)) +
+      theme_classic() +
+      ggtitle("perc cells with mutated Vh per cluster") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+      ylab("perc mutated") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_bar(stat='identity')
+
+ggsave2(paste0("../results/VDJ_Vh_percMutCells_byCluster.png"), 
+          p7,
+          width = 30, height = 20, unit = "cm")
+
+p8 <- DimPlot(gex, reduction = "umap_2", 
+                  pt.size = .01, 
+                  group.by = "mu_load", 
+                  raster=FALSE) + 
+          ggtitle("Mutation load") +
+          ylab("UMAP 2") +
+          xlab("UMAP 1")
+
+ggsave2(paste0("../results/VDJ_Vh_UMAP_mutLoad.png"), 
+          p8,
+          width = 25, height = 20, unit = "cm")
+
+head(gex@meta.data)
+
+```
+
+
+## scRepertiore BCR
+### Read 10x BCR files
+
+```{r}
+
+# read 10x VDJ BCR files
+samples_B <- list.files("../data/clono_B_VDJ")
+
+clono_B <- lapply(samples_B, function(x){
+  
+  tmp <- read.csv(paste0("../data/clono_B_VDJ/", x, "/", x, "_B_filtered_contig_annotations.csv"), 
+                  stringsAsFactors = FALSE)
+  return(tmp)
+  
+})
+
+names(clono_B) <- samples_B
+
+#remove trailing -1
+clono_B <- lapply(seq_along(clono_B), function(i){
+  clono_B[[i]]$barcode <- gsub("-1", "", clono_B[[i]]$barcode)
+  return(clono_B[[i]])
+})
+
+names(clono_B) <- samples_B
+
+clono_B <- clono_B[order(names(clono_B))]
+
+print(object.size(clono_B), units = "MB") #227.6 Mb
+saveRDS(clono_B, paste0("../results/clono_B_list.rds"))
+#clono_B <- readRDS("../results/clono_B_list.rds")
+str(clono_B)
+
+
+```
+
+### add 10x IgH call to Seurat object
+
+```{r}
+outfile <- NULL
+igh_10x <- lapply(1:length(clono_B), function(x) {
+  
+  tmp <- clono_B[[x]][clono_B[[x]]$chain == "IGH" & 
+                        clono_B[[x]]$productive == "true" & 
+                        !is.na(clono_B[[x]]$c_gene) & 
+                        clono_B[[x]]$c_gene != "" &
+                        clono_B[[x]]$c_gene != "IGLC1" &
+                        clono_B[[x]]$c_gene != "IGLC2" , c(1,10)]
+  tmp$barcode <- paste0(names(clono_B)[x], "_", tmp$barcode)
+  names(tmp)[2] <- "c_gene_10x"
+
+  tmp <- tmp[!duplicated(tmp$barcode),]
+  
+  rownames(tmp) <- tmp$barcode
+  tmp$barcode <- NULL
+  
+   # if (is.null(outfile)) {
+   #   outfile <- tmp
+   # } else {
+   #   outfile <- rbind(outfile, tmp)
+   # }
+  
+  return(tmp)
+}
+)
+
+igh_10x <- do.call(rbind.data.frame, igh_10x)
+table(igh_10x$c_gene_10x)
+gex <- AddMetaData(gex, igh_10x)
+
+
+```
+
+
+### generate a combined data frame for BCR sequences using scRepertoire to 
+
+```{r}
+
+#split combineBCR and do it per sample to avoid memory issues
+#takes on average 20min/sample to run
+combined_B <- lapply(1:length(clono_B), function(x) {
+  
+  print(names(clono_B[x]))
+  print(nrow(clono_B[[x]]))
+  print(Sys.time())
+  
+  tmp <- combineBCR(clono_B[[x]],
+                    samples = names(clono_B[x]),
+                    ID = NULL,
+                    removeNA = TRUE,
+                    removeMulti = TRUE)
+
+  return(tmp)
+  
+})
+
+#reformat output to fecilitate downstream usage by scRepertoire and integration with Seurat object
+combined_B <- lapply(1:length(combined_B), function(x){
+  tmp <- combined_B[[x]][[1]]
+  return(tmp)
+})
+
+#---- handle samples where libraries were created and sequenced twice
+combined_B[["P007"]] <- rbind(combined_B[["P007a"]], combined_B[["P007b"]])
+combined_B[["P007a"]] <- NULL
+combined_B[["P007b"]] <- NULL
+
+combined_B[["P008"]] <- rbind(combined_B[["P008a"]], combined_B[["P008b"]])
+combined_B[["P008a"]] <- NULL
+combined_B[["P008b"]] <- NULL
+
+combined_B <- combined_B[order(names(combined_B))]
+
+names_tmp <- names(combined_B)
+combined_B <- lapply(seq_along(combined_B), function(i) {
+  combined_B[[i]]$sample <- gsub("a|b", "", combined_B[[i]]$sample)
+  return(combined_B[[i]])
+})
+
+names(combined_B) <- names_tmp
+#----
+
+print(object.size(combined_B), units = "MB") #181.3 Mb
+saveRDS(combined_B, paste0("../results/combined_BCR_scRepertoire.rds"))
+#combined_B <- readRDS("../results/combined_BCR_scRepertoire.rds")
+
+
+```
+
+
+## Integrate scRepertoir out with seurat clusters
+
+```{r}
+
+gex <- combineExpression(combined_B, gex)
+colnames(gex@meta.data)
+table(gex@meta.data$CTgene, useNA = "ifany")
+gex@meta.data$cloneType
+
+```
+
+
+#  IgH class, mu_load and clonetype per cluster
+
+```{r}
+
+##---- IgH per cluster
+# res <- table(list(gex$seurat_clusters, gex$c_gene_10x))
+# res <- t(res)
+# res <- res[,order(colSums(res),decreasing = T)]
+# res2 <- t( t(res) / colSums(res))
+# res3 <- res / rowSums(res)
+# res4 <- t( t(res3) / colSums(res3) )
+# mypal <- RColorBrewer::brewer.pal(nrow(res2),"Set3")
+# 
+# #plot proportion of cells per cluster
+# png(file = paste0("../results/cluster_IgHclass_abundance.png"),
+#     width = 20, height = 8, units = "cm", res = 200)
+# mypar(1,1,mar = c(2,4,2,5), xpd=TRUE, cex.axis = 0.7)
+# barplot(res2*100, las = 1, col = mypal, main = "IgH class", ylab = "Proportion of cells\n")
+# legend("topright", legend = rownames(res2), bty = "n",fill = mypal, inset=c(-0.15,0))
+# dev.off()
+
+
+p1 <- DimPlot(gex, 
+              group.by = "c_gene_10x", 
+              split.by = "patient_group", 
+              reduction = "umap_2", pt.size = 0.01, ncol = 2, 
+              raster = TRUE, cols = c(brewer.pal(9, "Set3"), "grey")) + 
+              theme(legend.position = "none") 
+
+p2 <- ggplot(gex@meta.data, aes(x = seurat_clusters, fill = c_gene_10x)) +
+      theme_classic() +
+      geom_bar(position = "fill") + 
+      ylab("proportion of cells") + 
+      facet_grid(rows = vars(patient_group)) + 
+scale_fill_brewer(palette="Set3", na.value="grey")
+
+ggsave2("../results/cluster_c_gene_10x_abundance_2.png", 
+        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
+        width = 30, height = 15, unit = "cm")
+
+
+p1 <- DimPlot(gex, 
+              group.by = "c_gene_10x", 
+              split.by = "patient_group", 
+              reduction = "umap_2", ncol = 2, raster = FALSE)
+ggsave2("../results/UMAP_B-cells_IgHclass.png", 
+        p1, 
+        width = 30, height = 20, unit = "cm")
+
+
+##---- mutation load per cluster
+# res <- table(list(gex$seurat_clusters, gex$mu_load))
+# res <- t(res)
+# res <- res[,order(colSums(res),decreasing = T)]
+# res2 <- t(t(res)/colSums(res))
+# res3 <- res / rowSums(res)
+# res4 <- t( t(res3) / colSums(res3) )
+# mypal <- RColorBrewer::brewer.pal(nrow(res4),"Set3")
+# 
+# #plot proportion of cells per cluster
+# png(file = paste0("../results/cluster_muLoad_abundance.png"),
+#     width = 20, height = 8, units = "cm", res = 200)
+# mypar(1,1,mar = c(2,4,2,6), xpd=TRUE, cex.axis = 0.7)
+# barplot(res2*100, las = 1, col = mypal, main = "Mutation load", ylab = "Proportion of cells\n")
+# legend("topright", legend = rownames(res2), bty = "n",fill = mypal, inset=c(-0.18,0))
+# dev.off()
+
+p1 <- DimPlot(gex, 
+              group.by = "mu_load", 
+              split.by = "patient_group", 
+              reduction = "umap_2", pt.size = 0.01, ncol = 2, 
+              raster = TRUE, cols = c(brewer.pal(4, "Dark2"), "grey")) +
+theme(legend.position = "none") 
+
+p2 <- ggplot(gex@meta.data, aes(x = seurat_clusters, fill = mu_load)) +
+      theme_classic() +
+      geom_bar(position = "fill") + 
+      ylab("proportion of cells") + 
+      facet_grid(rows = vars(patient_group)) + 
+scale_fill_brewer(palette = "Dark2", na.value = "grey")
+
+ggsave2("../results/cluster_mu_load_abundance_2.png", 
+        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
+        width = 30, height = 15, unit = "cm")
+
+
+p1 <- DimPlot(gex, 
+              group.by = "mu_load", 
+              split.by = "patient_group", 
+              reduction = "umap_2", ncol = 2, raster = FALSE)  
+              
+ggsave2("../results/UMAP_B-cells_muLoad.png", 
+        p1, 
+        width = 30, height = 20, unit = "cm")
+
+
+
+##---- cloneType per cluster
+
+ggplot(gex@meta.data, aes(x = seurat_clusters, fill = c_call)) +
+      theme_classic() +
+      geom_bar(position = "fill") + 
+      ylab("proportion of cells") + 
+      facet_grid(rows = vars(patient_group))
+
+
+res <- table(gex$seurat_clusters, gex$cloneType, gex$patient_group)
+
+res <- t(res)
+res <- res[,order(colSums(res),decreasing = T)]
+res2 <- t(t(res)/colSums(res))
+res3 <- res / rowSums(res)
+res4 <- t( t(res3) / colSums(res3) )
+mypal <- RColorBrewer::brewer.pal(nrow(res4),"Set3")
+
+#plot proportion of cells per cluster
+png(file = paste0("../results/cluster_cloneType_abundance.png"),
+    width = 20, height = 8, units = "cm", res = 200)
+mypar(1,1,mar = c(2,4,2,12), xpd=TRUE, cex.axis = 0.5)
+barplot(res2*100, las = 1, col = mypal, main = "clonotype", ylab = "Proportion of cells\n")
+legend("topright", legend = rownames(res2), bty = "n",fill = mypal, inset=c(-0.5,0))
+dev.off()
+
+
+
+
+p1 <- DimPlot(gex, 
+              group.by = "cloneType", 
+              split.by = "patient_group", 
+              reduction = "umap_2", pt.size = 0.01, ncol = 2, 
+              raster = TRUE, cols = c(brewer.pal(4, "Dark2"), "grey")) +
+theme(legend.position = "none") 
+
+# ggsave2("../results/UMAP_B-cells_cloneType.png", 
+#         p1, 
+#         width = 30, height = 20, unit = "cm")
+
+p2 <- ggplot(gex@meta.data, aes(x = seurat_clusters, fill = cloneType)) +
+      theme_classic() +
+      geom_bar(position = "fill") + 
+      ylab("proportion of cells") + 
+      facet_grid(rows = vars(patient_group)) + 
+scale_fill_brewer(palette="Dark2", na.value="grey")
+
+
+ggsave2("../results/cluster_cloneType_abundance_2.png", 
+        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
+        width = 30, height = 15, unit = "cm")
+
+```
+
+## plot mutation analysis per cluster or patient group
+
+```{r}
+
+
+
+
+```
+
+
+
+## Save rds GEX_BCELLS
+
+```{r}
+
+saveRDS(gex, file = "../results/GEX_BVDJ.rds")
+
+
+```
+
+
+## Print sessionInfo()
+
+```{r}
+
+sessionInfo()
+
+
+```
+
+
+
