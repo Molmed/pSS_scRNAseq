@@ -60,13 +60,13 @@ outfile <- NULL
 
 for (i in files_B) {
   
-  cat("reading: ", print(i))
+  cat("reading: ", print(i), "\n")
   
   tmp <- read_rearrangement(i)
   
   #get sample name
   j <- gsub("_heavy_germ-pass.tsv", "", gsub(".*out/", "", i))
-  cat("sample name: ", print(j))
+  cat("sample name: ", print(j), "\n")
   
   #Get number of VDJ mutations per cell
   tmp <- observedMutations(tmp, 
@@ -90,15 +90,15 @@ for (i in files_B) {
                           sequenceColumn = "sequence_alignment", 
                           germlineColumn = "germline_alignment_d_mask",
                           frequency = TRUE, 
-                          regionDefinition = IMGT_V_BY_REGIONS, 
-                          combine = TRUE)
+                          regionDefinition = IMGT_VDJ_BY_REGIONS, 
+                          combine = FALSE)
   
   tmp <- observedMutations(tmp, 
                           sequenceColumn = "sequence_alignment", 
                           germlineColumn = "germline_alignment_d_mask",
                           frequency = TRUE, 
                           regionDefinition = IMGT_VDJ, 
-                          combine = TRUE)
+                          combine = FALSE)
   
   #tmp$sample <- gsub("a|b", "", j)
   
@@ -114,7 +114,7 @@ for (i in files_B) {
   
 }
 
-
+  
 ```
 
 
@@ -217,6 +217,14 @@ ggsave2(paste0("../results/VDJ_Vh_familyUsage_bySample.png"),
 ```{r}
 
 clones <- countClones(outfile, group = c("patient_group", "c_call"))
+ggplot(clones, aes(x = clone_id, y = seq_freq)) +
+      theme_bw() +
+      ggtitle("Vh Family Usage per group") +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+      ylab("Percent of repertoire") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_bar(aes(color = patient_group), size = 2, alpha = 0.8)
 
 
 
@@ -233,15 +241,14 @@ clones <- countClones(outfile, group = c("patient_group", "c_call"))
 ```{r}
 
 #select immcantation columns
-#cols <- colnames(outfile)
-#cols <- cols[c(1, 4:7, 17, 49:56, 60:64)]
-
+colnames(outfile)
 cols <- c("sequence_id", "productive", "vj_in_frame", "stop_codon", "locus", 
           "v_call", "d_call", "j_call", "c_call", 
           "cell_id", "clone_id", "umi_count", 
           "v_call_10x", "d_call_10x", "j_call_10x", 
           "germline_v_call","germline_d_call", "germline_j_call", 
-          "mu_count_total", "mu_freq_total")
+          "mu_count_total", "mu_freq_total", 
+          "mu_freq_cdr1_r", "mu_freq_cdr1_s", "mu_freq_cdr2_r", "mu_freq_cdr2_s", "mu_freq_cdr3_r", "mu_freq_cdr3_s",             "mu_freq_fwr1_r", "mu_freq_fwr1_s", "mu_freq_fwr2_r", "mu_freq_fwr2_s", "mu_freq_fwr3_r", "mu_freq_fwr3_s",             "mu_freq_fwr4_r", "mu_freq_fwr4_s", "mu_freq_cdr_r", "mu_freq_cdr_s", "mu_freq_fwr_r", "mu_freq_fwr_s")
 outfile_add <- outfile[, cols]
 rownames(outfile_add) <- outfile_add$cell_id
 
@@ -467,6 +474,91 @@ table(gex@meta.data$CTgene, useNA = "ifany")
 gex@meta.data$cloneType
 
 ```
+
+## read TRUST4 files
+
+```{r}
+
+samples_TRUST4 <- sub("_barcode_report.tsv", "", list.files("../data/clono_TRUST4"))
+clono_TRUST4 <- lapply(samples_TRUST4, function(x){
+  tmp <- read.table(paste0("../data/clono_TRUST4/", x, "_barcode_report.tsv"), header = TRUE, comment.char = "")
+  colnames(tmp) <- sub("X." , "", colnames(tmp))
+  return(tmp)
+})
+
+names(clono_TRUST4) <- samples_TRUST4
+
+#remove trailing -1
+clono_TRUST4 <- lapply(seq_along(clono_TRUST4), function(i) {
+  clono_TRUST4[[i]][, 1] <- gsub("-1", "", clono_TRUST4[[i]][, 1])
+  print(names(clono_TRUST4[i]))
+  return(clono_TRUST4[[i]])
+})
+
+names(clono_TRUST4) <- samples_TRUST4
+
+saveRDS(clono_TRUST4, paste0("../results/clono_TRUST4_list.rds"))
+#clono_TRUST4 <- readRDS("../results/clono_TRUST4_list.rds")
+
+
+```
+
+
+## combine TRUST4 data using scRepertoire
+
+```{r}
+
+combined_TRUST4_B <- lapply(1:(length(clono_TRUST4)-1), function(x) {
+  
+  print(names(clono_TRUST4[x]))
+  print(nrow(clono_TRUST4[[x]]))
+  print(Sys.time())
+  
+  tmp <- combineTRUST4(clono_TRUST4[[x]],
+                    samples = names(clono_TRUST4[x]),
+                    ID = NULL,
+                    cells = c("B"),
+                    removeNA = FALSE)
+
+  return(tmp)
+  
+})
+
+#reformat output to fecilitate downstream usage by scRepertoire and integration with Seurat object
+combined_TRUST4_B <- lapply(1:length(combined_TRUST4_B), function(x){
+  tmp <- combined_TRUST4_B[[x]][[1]]
+  return(tmp)
+})
+
+
+names(combined_TRUST4_B) <- names(clono_TRUST4)[1:(length(clono_TRUST4)-1)]
+
+#---- handle samples where libraries were created and sequenced twice
+combined_TRUST4_B[["P007"]] <- rbind(combined_TRUST4_B[["P007a"]], combined_TRUST4_B[["P007b"]])
+combined_TRUST4_B[["P007a"]] <- NULL
+combined_TRUST4_B[["P007b"]] <- NULL
+
+combined_TRUST4_B[["P008"]] <- rbind(combined_TRUST4_B[["P008a"]], combined_TRUST4_B[["P008b"]])
+combined_TRUST4_B[["P008a"]] <- NULL
+combined_TRUST4_B[["P008b"]] <- NULL
+
+combined_TRUST4_B <- combined_TRUST4_B[order(names(combined_TRUST4_B))]
+
+names_tmp <- names(combined_TRUST4_B)
+combined_TRUST4_B <- lapply(seq_along(combined_TRUST4_B), function(i) {
+  combined_TRUST4_B[[i]]$sample <- gsub("a|b", "", combined_TRUST4_B[[i]]$sample)
+  return(combined_TRUST4_B[[i]])
+})
+
+names(combined_TRUST4_B) <- names_tmp
+#----
+
+saveRDS(combined_TRUST4_B, paste0("../results/combined_TRUST4_B_scRepertoire.rds"))
+#combined_TRUST4_B <- readRDS("../results/combined_TRUST4_B_scRepertoire.rds")
+
+
+```
+
 
 
 #  IgH class, mu_load and clonetype per cluster

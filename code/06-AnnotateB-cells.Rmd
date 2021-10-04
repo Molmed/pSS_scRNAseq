@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 # DE tests and Visualization {#DE-tests}
 
 ## Load packages
@@ -5,7 +10,6 @@
 ```{r}
 
 source("./00_dependencies.R")
-
 
 ```
 
@@ -20,7 +24,7 @@ gex
 
 ```
 
-# get B-cell cluster marker genes
+## get B-cell cluster marker genes
 
 ```{r}
 
@@ -73,11 +77,49 @@ dev.off()
 
 ```
 
+## plot marker gene expression
+
+```{r}
+
+b_features <- c("IGHD", "AICDA", "BCL6", "MKI67", "CD83", "CD38", "CXCR4", "LY6D", "CD1D", "FOXO1", 
+                "CCR6", "IRF4", "SDC1", "PRDM1", "CD9", "CCR7", "EBF1", "CD74", "NR4A1" , "SLPI", "SDC1")
+
+b_features2 <- c("RB1", "NT5E", "CD27", "CD19", "ITGAX", "FAS")
+b_features3 <-  c("CD38", "PTPRC")
+
+ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
+
+
+
+p1 <- VlnPlot(gex, features = ig.features, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 3)
+ggsave2("../results/VlnPlot_markers_ig.features.png", 
+        p1, 
+        width = 30, height = 30, unit = "cm")
+
+p1 <- RidgePlot(gex, features = ig.features, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 3)
+ggsave2("../results/RidgePlot_markers_ig.features.png", 
+        p1, 
+        width = 30, height = 30, unit = "cm")
+
+p2 <- VlnPlot(gex, features = b_features3, group.by = "seurat_clusters", slot = "data", log = FALSE, ncol = 3)
+ggsave2("../results/VlnPlot_markers_b_features_3.png", 
+        p2, 
+        width = 20, height = 10, unit = "cm")
+
+p2 <- RidgePlot(gex, features = b_features, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 3)
+ggsave2("../results/RidgePlot_markers_b_features.png", 
+        p2, 
+        width = 20, height = 60, unit = "cm")
+
+
+plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
+```
+
 
 ## Annotating B-cell clusters 
 
 ```{r}
-
+#https://pubmed.ncbi.nlm.nih.gov/34161770/
 # C4 - MZ - CD1D (Cd1d1), CD9 (Cd9)
 # Naive - 
 # Naive/Activated - 
@@ -92,6 +134,26 @@ dev.off()
 # Bmem - 
 # PB - 
 
+# https://pubmed.ncbi.nlm.nih.gov/32668225/
+# Plasma
+# Transitional
+# Naive CD73-
+# Naive CD73+
+# Memory RB+ CD27-
+# Memory RB-
+# Memory RB+ CD27+ CD73+
+# Memory RB+ CD27+ CD73-
+# Memory CD19high CD11c+
+# Memory CD95+
+
+RB - RB1
+CD73 - NT5E
+CD27
+CD19
+CD11c - ITGAX
+CD95 - FAS
+
+
 
 #manual cluster annotation
 annotation <- c(
@@ -99,25 +161,25 @@ annotation <- c(
   x = 1,
   x = 2,
   x = 3,
-  MZ = 4,
+  x = 4,
   x = 5,
   x = 6,
   x = 7,
   x = 8,
-  x = 9,
-  x = 10,
+  `Memory CD95+` = 9,
+  `Naive CD73+` = 10,
   x = 11,
   x = 12,
-  x = 13,
-  x = 14,
-  x = 15,
+  `Memory CD95+` = 13,
+  `Memory` = 14,
+  `Memory CD19high CD11c+` = 15,
   x = 16,
-  x = 17,
+  `Memory RB+ CD27+ CD73+` = 17,
   x = 18,
   x = 19,
   x = 20,
   x = 21,
-  PB = 22
+  `Plasma cell` = 22
 )
 
 gex$Bcelltype <- names(annotation)[match(gex$seurat_clusters, annotation)] 
