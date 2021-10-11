@@ -1,11 +1,9 @@
 # Read data {#Read Data}
-
 ## Load packages
 
 ```{r}
 
 source("./00_dependencies.R")
-
 
 ```
 
@@ -81,13 +79,11 @@ gex
 ```
 
 
-## save rds GEX1
+## save rds GEX1_RAW.rds
 
 ```{r include = FALSE}
 
-saveRDS(gex, file = "../results/GEX_RAW.rds")
-
-#this is GEX1
+saveRDS(gex, file = "../results/GEX1_RAW.rds")
 
 ```
 

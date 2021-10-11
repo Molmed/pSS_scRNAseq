@@ -3,14 +3,14 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-# Subset B-cells {#Subset_B-cells}
 
+
+# Subset B-cells {#Subset_B-cells}
 ## Load packages
 
 ```{r}
 
 source("./00_dependencies.R")
-
 
 ```
 
@@ -19,10 +19,7 @@ source("./00_dependencies.R")
 
 ```{r}
 
-gex <- readRDS("../results/GEX_DIMRED1.rds")
-
-gex
-
+gex <- readRDS("../results/GEX3_DIMRED1.rds")
 
 ```
 
@@ -87,13 +84,11 @@ print(object.size(gex), units = "GB")
 ```
 
 
-## Save rds GEX_BCELLS
+## Save rds GEX4_BCELLS.rds
 
 ```{r}
 
-saveRDS(gex, file = "../results/GEX_BCELLS.rds")
-
-#this is gex10
+saveRDS(gex, file = "../results/GEX4_BCELLS.rds")
 
 ```
 
@@ -104,8 +99,4 @@ saveRDS(gex, file = "../results/GEX_BCELLS.rds")
 
 sessionInfo()
 
-
 ```
-
-
-

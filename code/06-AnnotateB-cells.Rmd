@@ -3,8 +3,9 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-# DE tests and Visualization {#DE-tests}
 
+
+# DE tests and Visualization {#DE-tests}
 ## Load packages
 
 ```{r}
@@ -18,11 +19,10 @@ source("./00_dependencies.R")
 
 ```{r}
 
-gex <- readRDS("../results/GEX_DIMRED2.rds")
-
-gex
+gex <- readRDS("../results/GEX5_DIMRED2.rds")
 
 ```
+
 
 ## get B-cell cluster marker genes
 
@@ -81,17 +81,21 @@ dev.off()
 
 ```{r}
 
+plotExpression()
+
 b_features <- c("IGHD", "AICDA", "BCL6", "MKI67", "CD83", "CD38", "CXCR4", "LY6D", "CD1D", "FOXO1", 
                 "CCR6", "IRF4", "SDC1", "PRDM1", "CD9", "CCR7", "EBF1", "CD74", "NR4A1" , "SLPI", "SDC1")
-
 b_features2 <- c("RB1", "NT5E", "CD27", "CD19", "ITGAX", "FAS")
 b_features3 <-  c("CD38", "PTPRC")
-
+b_trans <- c("CD24", "CD38", "MME", "IGHM")
 ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
 
+VlnPlot(gex, features = b_trans, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 4)
 
-
-p1 <- VlnPlot(gex, features = ig.features, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 3)
+p1 <- VlnPlot(gex, 
+              features = ig.features, 
+              group.by = "seurat_clusters", 
+              slot = "data", log = TRUE, ncol = 3)
 ggsave2("../results/VlnPlot_markers_ig.features.png", 
         p1, 
         width = 30, height = 30, unit = "cm")
@@ -119,6 +123,18 @@ plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
 ## Annotating B-cell clusters 
 
 ```{r}
+
+#general
+#Naive - 
+#Transitional - "CD24", "CD38", "CD10", "IGHM"  c("CD24", "CD38", "MME", "IGHM")
+#Transitional_T1 -  c("CD24", "CD38", "MME", "IGHM")
+#Transitional_T2 -  CD24", "CD38", "MME", "IGHM", "IGHD", "CD21", "CD23" 
+#c("CD24", "CD38", "MME", "IGHM", "IGHD", "CR2", "FCER2")
+#Memory - c("CD27)
+#Plasma cells - CD138 "SDC1"
+
+#Breg - "IL10"
+
 #https://pubmed.ncbi.nlm.nih.gov/34161770/
 # C4 - MZ - CD1D (Cd1d1), CD9 (Cd9)
 # Naive - 
@@ -134,6 +150,8 @@ plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
 # Bmem - 
 # PB - 
 
+
+ 
 # https://pubmed.ncbi.nlm.nih.gov/32668225/
 # Plasma
 # Transitional
@@ -146,53 +164,85 @@ plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
 # Memory CD19high CD11c+
 # Memory CD95+
 
-RB - RB1
-CD73 - NT5E
-CD27
-CD19
-CD11c - ITGAX
-CD95 - FAS
+# RB - RB1
+# CD73 - NT5E
+# CD27
+# CD19
+# CD11c - ITGAX
+# CD95 - FAS
 
 
 
 #manual cluster annotation
-annotation <- c(
-  x = 0,
-  x = 1,
-  x = 2,
-  x = 3,
-  x = 4,
-  x = 5,
-  x = 6,
-  x = 7,
-  x = 8,
-  `Memory CD95+` = 9,
-  `Naive CD73+` = 10,
-  x = 11,
-  x = 12,
-  `Memory CD95+` = 13,
-  `Memory` = 14,
-  `Memory CD19high CD11c+` = 15,
-  x = 16,
-  `Memory RB+ CD27+ CD73+` = 17,
-  x = 18,
-  x = 19,
-  x = 20,
-  x = 21,
-  `Plasma cell` = 22
+annotation_main <- c(
+  Naive = 0,
+  Naive = 1,
+  Naive = 2,
+  Memory = 3,
+  Naive = 4,
+  Memory = 5,
+  Naive = 6,
+  Memory = 7,
+  B_tissueMigration = 8,
+  Memory = 9,
+  Naive = 10,
+  Memory = 11,
+  Memory = 12,
+  Memory = 13,
+  Memory = 14,
+  Memory = 15,
+  Memory = 16,
+  Memory = 17,
+  B_tissueMigration = 18,
+  Unknown = 19,
+  Naive = 20,
+  B_stressed = 21,
+  Plasma_cell = 22
 )
 
-gex$Bcelltype <- names(annotation)[match(gex$seurat_clusters, annotation)] 
+# annotation <- c(
+#   x = 0,
+#   x = 1,
+#   x = 2,
+#   x = 3,
+#   x = 4,
+#   x = 5,
+#   x = 6,
+#   x = 7,
+#   x = 8,
+#   `Memory CD95+` = 9,
+#   `Naive CD73+` = 10,
+#   x = 11,
+#   x = 12,
+#   `Memory CD95+` = 13,
+#   `Memory` = 14,
+#   `Memory CD19high CD11c+` = 15,
+#   x = 16,
+#   `Memory RB+ CD27+ CD73+` = 17,
+#   x = 18,
+#   x = 19,
+#   x = 20,
+#   x = 21,
+#   `Plasma cell` = 22
+# )
+
+#gex$Bcelltype <- names(annotation)[match(gex$seurat_clusters, annotation)] 
+gex$BcelltypeMain <- names(annotation_main)[match(gex$seurat_clusters, annotation_main)] 
+table(gex$BcelltypeMain)
+DimPlot(gex, 
+              group.by = "BcelltypeMain", 
+              split.by = "patient_group", 
+              reduction = "umap_2", ncol = 2, raster = FALSE) 
 
 
 ```
 
 
-## Save rds 
+## Save rds GEX6_BANNOT.rds
 
 ```{r}
 
-saveRDS(gex, file = "../results/GEX_BANNOT.rds")
+saveRDS(gex, file = "../results/GEX6_BANNOT.rds")
 
 ```
 

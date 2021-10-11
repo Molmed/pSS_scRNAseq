@@ -39,9 +39,7 @@ suppressMessages(library(scRepertoire))#; packageVersion("scRepertoire") #local 
 suppressMessages(library(alakazam))
 suppressMessages(library(shazam))
 suppressMessages(library(airr))
-
-
-
-
-
+suppressMessages(library(scran))
+suppressMessages(library(tidyseurat))
+suppressMessages(library(edgeR))
 

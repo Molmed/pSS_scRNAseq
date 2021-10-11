@@ -1,11 +1,9 @@
 # QC and cell filtering {#QC}
-
 ## Load packages
 
 ```{r}
 
 source("./00_dependencies.R")
-
 
 ```
 
@@ -14,10 +12,7 @@ source("./00_dependencies.R")
 
 ```{r}
 
-gex <- readRDS("../results/GEX_RAW.rds")
-
-gex
-
+gex <- readRDS("../results/GEX1_RAW.rds")
 
 ```
 
@@ -267,14 +262,11 @@ print(object.size(gex), units = "GB")
 ```
 
 
-## Save rds GEX_FILTERED
+## Save rds GEX2_FILTERED
 
 ```{r}
 
-saveRDS(gex, file = "../results/GEX_FILTERED.rds")
-
-# this is GEX3
-
+saveRDS(gex, file = "../results/GEX2_FILTERED.rds")
 
 ```
 
@@ -284,7 +276,6 @@ saveRDS(gex, file = "../results/GEX_FILTERED.rds")
 ```{r}
 
 sessionInfo()
-
 
 ```
 

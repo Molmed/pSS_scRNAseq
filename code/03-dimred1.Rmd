@@ -6,7 +6,6 @@
 
 source("./00_dependencies.R")
 
-
 ```
 
 
@@ -14,11 +13,8 @@ source("./00_dependencies.R")
 
 ```{r}
 
-gex <- readRDS("../results/GEX_FILTERED.rds")
+gex <- readRDS("../results/GEX2_FILTERED.rds")
 annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
-
-gex
-
 
 ```
 
@@ -527,13 +523,11 @@ ggsave2("../results/UMAP_allCells_CellType_prediction.png",
 ```
 
 
-## Save rds GEX_DIMRED1
+## Save rds GEX3_DIMRED1.rds
 
 ```{r}
 
-saveRDS(gex, file = "../results/GEX_DIMRED1.rds")
-
-# this is gex9
+saveRDS(gex, file = "../results/GEX3_DIMRED1.rds")
 
 ```
 
@@ -543,6 +537,5 @@ saveRDS(gex, file = "../results/GEX_DIMRED1.rds")
 ```{r}
 
 sessionInfo()
-
 
 ```

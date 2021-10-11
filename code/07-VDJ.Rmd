@@ -3,8 +3,8 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-# VDJ analysis pt1 {#VDJ1}
 
+# VDJ analysis pt1 {#VDJ1}
 ## Load packages
 
 ```{r}
@@ -18,7 +18,7 @@ source("./00_dependencies.R")
 
 ```{r}
 
-gex <- readRDS("../results/GEX_DIMRED2.rds"); gex
+gex <- readRDS("../results/GEX6_BANNOT.rds"); gex
 
 ```
 
@@ -47,6 +47,7 @@ head(pheno); dim(pheno)
 #2. SSA  - SSA+/SSB-
 #3. DNEG - SSA-/SSB-
 #4. CTRL - CTRL
+
 
 ```
 
@@ -135,6 +136,7 @@ write_rearrangement(outfile, "../results/VDJ_immcantation_out.tsv")
 outfile$orig.ident <- gsub("a|b", "", gsub("_.*", "", outfile$cell_id))
 outfile <- merge(outfile, pheno[, c(2,8)], by.x = "orig.ident", by.y = "orig.ident", all.x = TRUE); head(outfile)
 outfile <- outfile[, c(2:ncol(outfile), 1)]
+head(outfile)
 
 
 ```
@@ -144,7 +146,7 @@ outfile <- outfile[, c(2:ncol(outfile), 1)]
 
 ```{r}
 
-Vh_gene_group <- countGenes(outfile, gene="v_call", groups="patient_group", mode="gene")
+Vh_gene_group <- countGenes(outfile, gene = "v_call", groups = "patient_group", mode = "gene")
 p1 <- ggplot(Vh_gene_group, aes(x = gene, y = seq_freq)) +
       theme_bw() +
       ggtitle("Vh Usage per group") +
@@ -216,17 +218,30 @@ ggsave2(paste0("../results/VDJ_Vh_familyUsage_bySample.png"),
 
 ```{r}
 
-clones <- countClones(outfile, group = c("patient_group", "c_call"))
+, "c_call"
+, size = 2, alpha = 0.8
+ group = c("patient_group")
+
+ 
+clones <- countClones(outfile )
+arrange(clones, patient_group, seq_freq) %>% 
+ggplot(aes(x = clone_id, y = seq_freq)) +
+      theme_bw() +
+      geom_bar(aes(color = patient_group))
+  
+summary(clones)
+head(sort(table(clones$clone_id), decreasing = TRUE))
+
 ggplot(clones, aes(x = clone_id, y = seq_freq)) +
       theme_bw() +
       ggtitle("Vh Family Usage per group") +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+      #theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
       ylab("Percent of repertoire") +
       xlab("") +
-      scale_y_continuous(labels = percent) +
+      #scale_y_continuous(labels = percent) +
       geom_bar(aes(color = patient_group), size = 2, alpha = 0.8)
 
-
+geom_line(aes(color = patient_group), size = 2, alpha = 0.8)
 
 #cu <- estimateAbundance(outfile, group="patient_group", ci=0.95, nboot=200, clone="clone_id")
 #Error: vector memory exhausted (limit reached?)
@@ -246,13 +261,16 @@ cols <- c("sequence_id", "productive", "vj_in_frame", "stop_codon", "locus",
           "v_call", "d_call", "j_call", "c_call", 
           "cell_id", "clone_id", "umi_count", 
           "v_call_10x", "d_call_10x", "j_call_10x", 
-          "germline_v_call","germline_d_call", "germline_j_call", 
+          "germline_v_call","germline_d_call", "germline_j_call",
+          "cdr3",
           "mu_count_total", "mu_freq_total", 
           "mu_freq_cdr1_r", "mu_freq_cdr1_s", "mu_freq_cdr2_r", "mu_freq_cdr2_s", "mu_freq_cdr3_r", "mu_freq_cdr3_s",             "mu_freq_fwr1_r", "mu_freq_fwr1_s", "mu_freq_fwr2_r", "mu_freq_fwr2_s", "mu_freq_fwr3_r", "mu_freq_fwr3_s",             "mu_freq_fwr4_r", "mu_freq_fwr4_s", "mu_freq_cdr_r", "mu_freq_cdr_s", "mu_freq_fwr_r", "mu_freq_fwr_s")
 outfile_add <- outfile[, cols]
 rownames(outfile_add) <- outfile_add$cell_id
 
 gex <- AddMetaData(gex, outfile_add)
+
+sort(table(gex@meta.data$cdr3),decreasing = T)[1:20]
 
 
 ```
@@ -401,7 +419,7 @@ igh_10x <- lapply(1:length(clono_B), function(x) {
 )
 
 igh_10x <- do.call(rbind.data.frame, igh_10x)
-table(igh_10x$c_gene_10x)
+table(igh_10x$c_gene_10x, useNA ="always")
 gex <- AddMetaData(gex, igh_10x)
 
 
@@ -459,12 +477,82 @@ names(combined_B) <- names_tmp
 print(object.size(combined_B), units = "MB") #181.3 Mb
 saveRDS(combined_B, paste0("../results/combined_BCR_scRepertoire.rds"))
 #combined_B <- readRDS("../results/combined_BCR_scRepertoire.rds")
+head(combined_B[[1]])
+
+```
+
+
+### 
+
+```{r}
+
+sort(table(gex$CTaa), decreasing = T)[1:5]
+gex$CARVAESRYYDFWHGFQSSYYFDYW_CNSYTSSRSWVF <- factor(gex$CTaa == "CARVAESRYYDFWHGFQSSYYFDYW_CNSYTSSRSWVF")
+
+for (i in 1:15){
+print(sort(table(gex$CTaa), decreasing = T)[i])
+print(table(factor(gex$CTaa == names(sort(table(gex$CTaa), decreasing = T)[i])), gex$orig.ident))
+}
+
+table(gex$CARVAESRYYDFWHGFQSSYYFDYW_CNSYTSSRSWVF, gex$orig.ident)
+
+p1 <- DimPlot(gex, reduction = "umap_2", 
+        group.by = "CARVAESRYYDFWHGFQSSYYFDYW_CNSYTSSRSWVF", 
+        cols = c("gray80", "firebrick", "gray80"), order=TRUE, pt.size = 0.5, split.by = "orig.ident", ncol = 2)
+
+ggsave2("../results/clono_test.png", p1, height = 30, width = 10, units = "cm")
+gex$seurat_clusters_patient_group <-paste0(gex$seurat_clusters, "_", gex$patient_group)
+
+tmp <- table(list(gex$v_call, gex$seurat_clusters_patient_group))
+head(tmp)
+cor_tmp <- cor(tmp, method = "spearman")
+head(cor_tmp)
+cor_tmp[is.na(cor_tmp)] <- 0
+aaa <- factor(sub("_.*","c",colnames(cor_tmp)))
+library(pheatmap)
+
+head(gex@meta.data)
+pheatmap::pheatmap(cor_tmp, annotation_col =  
+                     data.frame(cluster = factor(sub("_.*","",colnames(cor_tmp))),
+                                patient_group = factor(sub(".*_","",colnames(cor_tmp))),
+                                row.names = colnames(cor_tmp)),
+                   breaks = seq(-1,1,length.out = 100),
+                   filename = "../results/v_cll_cor_per_cluster_Patient_Group.pdf",
+                   color = colorRampPalette(c("navy", "gray95", "firebrick"))(99) )
+
+pheatmap::pheatmap(log2(tmp + 1), annotation_col =  
+                     data.frame(cluster = factor(sub("_.*","",colnames(cor_tmp))),
+                                patient_group = factor(sub(".*_","",colnames(cor_tmp))),
+                                row.names = colnames(cor_tmp)), 
+                   filename = "../results/v_call_per_cluster_Patient_Group.pdf",
+                   #breaks = seq(-1,1,length.out = 100),
+                   color = c( "gray95", colorRampPalette(c("gray80", "orange3", "firebrick"))(98)) )
+
+
+
 
 
 ```
 
 
-## Integrate scRepertoir out with seurat clusters
+## Quantify clonotypes scRepertoire
+
+```{r}
+
+quantContig(
+  combined_B,
+  cloneCall = "gene+nt",
+  chain = "both",
+  scale = TRUE,
+  group = NULL,
+  exportTable = FALSE
+)
+
+
+```
+
+
+## Integrate scRepertoir out with Seurat object
 
 ```{r}
 
@@ -472,8 +560,10 @@ gex <- combineExpression(combined_B, gex)
 colnames(gex@meta.data)
 table(gex@meta.data$CTgene, useNA = "ifany")
 gex@meta.data$cloneType
+head(gex@meta.data[,c(77:84)])
 
 ```
+
 
 ## read TRUST4 files
 
@@ -488,7 +578,8 @@ clono_TRUST4 <- lapply(samples_TRUST4, function(x){
 
 names(clono_TRUST4) <- samples_TRUST4
 
-#remove trailing -1
+# remove trailing -1
+# combineTRUST4 adds sample name to barcodes as prefix
 clono_TRUST4 <- lapply(seq_along(clono_TRUST4), function(i) {
   clono_TRUST4[[i]][, 1] <- gsub("-1", "", clono_TRUST4[[i]][, 1])
   print(names(clono_TRUST4[i]))
@@ -727,8 +818,7 @@ ggsave2("../results/cluster_cloneType_abundance_2.png",
 
 ```{r}
 
-saveRDS(gex, file = "../results/GEX_BVDJ.rds")
-
+saveRDS(gex, file = "../results/GEX7_BVDJ.rds")
 
 ```
 
@@ -738,7 +828,6 @@ saveRDS(gex, file = "../results/GEX_BVDJ.rds")
 ```{r}
 
 sessionInfo()
-
 
 ```
 

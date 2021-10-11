@@ -3,8 +3,9 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-# DE tests and Visualization {#DE-tests}
 
+
+# DE tests and Visualization {#DE-tests}
 ## Load packages
 
 ```{r}
@@ -18,9 +19,7 @@ source("./00_dependencies.R")
 
 ```{r}
 
-gex <- readRDS("../results/GEX_BVDJ.rds")
-
-gex
+gex <- readRDS("../results/GEX7_BVDJ.rds")
 
 ```
 
@@ -29,13 +28,14 @@ gex
 
 ```{r}
 
-gex$patient_group <- paste0(ifelse(gex$SSA == "YES", "SSA", ""), 
-                            "_", 
-                            ifelse(gex$SSB == "YES", "SSB", ""))
-pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
-gex$patient_group <- names(pat_annot)[match(gex$patient_group, pat_annot)]
-gex$patient_group[grep("^C00", gex$orig.ident) ] <- "CTRL"
+# gex$patient_group <- paste0(ifelse(gex$SSA == "YES", "SSA", ""), 
+#                             "_", 
+#                             ifelse(gex$SSB == "YES", "SSB", ""))
+# pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
+# gex$patient_group <- names(pat_annot)[match(gex$patient_group, pat_annot)]
+# gex$patient_group[grep("^C00", gex$orig.ident) ] <- "CTRL"
 
+table(gex$patient_group, useNA = "ifany")
 #Four non-overlapping groups
 #1. SSAB - SSA+/SSB+
 #2. SSA  - SSA+/SSB-
@@ -52,7 +52,8 @@ gex$patient_group[grep("^C00", gex$orig.ident) ] <- "CTRL"
 ```{r include=FALSE}
 
 # Genes_for_annotation_Paulo
-groups <- paste0(gex$seurat_clusters, '_', as.character(gex$patient_group) )
+#groups <- paste0(gex$seurat_clusters, '_', as.character(gex$patient_group) )
+groups <- paste0(gex$BcelltypeMain, '_', as.character(gex$patient_group))
 gex$subgroups <- factor(groups)
 sample_size <- table(gex$subgroups)
 sample_size[ sample_size > 100 ] <- 100
@@ -67,8 +68,8 @@ DGE_DATA <- gex[, DGE_cells]
 # DGE_DATA <- SetIdent( DGE_DATA , value = "patient_group")
 
 
-detable_pat <- lapply(unique(DGE_DATA$seurat_clusters),DGE_DATA=DGE_DATA, function(x,DGE_DATA){ 
-  temp <- DGE_DATA[,DGE_DATA$seurat_clusters == x]
+detable_pat <- lapply(unique(DGE_DATA$BcelltypeMain), DGE_DATA = DGE_DATA, function(x, DGE_DATA){ 
+  temp <- DGE_DATA[, DGE_DATA$BcelltypeMain == x]
   print(temp)
   temp <- SetIdent( temp , value = "patient_group")
   detable <- FindAllMarkers( temp, only.pos = T,max.cells.per.ident = 200,
@@ -76,13 +77,135 @@ detable_pat <- lapply(unique(DGE_DATA$seurat_clusters),DGE_DATA=DGE_DATA, functi
                           min.pct = 0.05)
   return( cbind(detable,cell_cluster= x) )
 })
-detable <- do.call(rbind,detable_pat)
+detable <- do.call(rbind, detable_pat)
 
 detable <- detable[ detable$p_val < 0.05,  ]
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
-write.csv2(detable,"../results/DGE_B-cells_perPatientperCluster.csv")
+write.csv2(detable,"../results/DGE_B-cells_perPatientperCelltypeMain.csv")
 
+
+```
+
+
+## pseudo bulk DE test
+
+
+```{r }
+#https://jef.works/blog/2020/04/06/quickly-creating-pseudobulks/
+
+#BcelltypeMain <- as.factor(gex@meta.data$BcelltypeMain)
+#patient_group <- as.factor(gex@meta.data$patient_group)
+
+gex <- readRDS("../results/GEX7_BVDJ.rds") %>% 
+  DietSeurat() %>%  
+  tidyseurat::filter(orig.ident != "P024", 
+                     BcelltypeMain != "Unknown", 
+                     BcelltypeMain != "B_stressed",
+                     BcelltypeMain != "Plasma_cell")
+
+mm <- model.matrix(~ 0 + orig.ident:BcelltypeMain, data = gex@meta.data); head(mm)
+
+#colnames(mm) <- gsub("patient_group", "", colnames(mm))
+colnames(mm) <- gsub("orig.ident", "", colnames(mm))
+colnames(mm) <- gsub("BcelltypeMain", "", colnames(mm))
+
+colnames(mm) <- gsub("_", "", colnames(mm))
+colnames(mm) <- gsub(":", "_", colnames(mm))
+
+gex.mm <- gex@assays$RNA@counts %*% mm; dim(gex.mm)
+gex.mm <- gex.mm[rowSums(gex.mm) != 0, ]; dim(gex.mm)
+
+cellcounts <- colSums(mm); length(cellcounts)
+
+
+
+y <- DGEList(gex.mm, 
+                 sample = gsub("_.*", "", colnames(gex.mm)), 
+                 group = gsub(".*_", "", colnames(gex.mm)),
+             remove.zeros = TRUE); y
+summary(y$samples$lib.size)
+
+
+y$samples$patient_group <- as.factor(unique(gex@meta.data[,c("orig.ident", "patient_group")])$patient_group[match(y$samples$samples, unique(gex@meta.data[,c("orig.ident", "patient_group")])$orig.ident)])
+
+y$samples$cell <- as.factor(y$samples$group)
+
+keep <- filterByExpr(y); table(keep)
+y <- y[keep, ]
+y <- calcNormFactors(y)
+
+cell <- y$samples$cell
+patient_group <- y$samples$patient_group 
+
+design <- model.matrix(~0 + patient_group*cell); colnames(design)
+colnames(design) <- gsub(":", "_", colnames(design))
+
+y_glm <- estimateDisp(y, design)
+fit <- glmQLFit(y_glm, design); colnames(fit$coefficients)
+
+qlm <- glmQLFTest(fit, contrast = makeContrasts(patient_groupCTRL - patient_groupDNEG, levels = design))
+de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
+nrow(de_g[de_g$FDR <= 0.05, ]) 
+nrow(de_g)
+  
+  
+  
+
+
+
+
+
+# rm(gex)
+# DefaultAssay(gex) <- "RNA" #important to use the RNA assay when converting
+# gex_tmp <- DietSeurat(gex)
+# Idents(object = gex_tmp) <- "orig.ident"
+# gex_tmp500 <-  subset(x = gex_tmp, downsample = 500)
+# gex_tmp500@meta.data <- gex_tmp500@meta.data[,c("orig.ident", "BcelltypeMain", "patient_group")]
+# head(gex_tmp500@meta.data)
+# gex_tmp500.sc <- as.SingleCellExperiment(gex_tmp500, "RNA")
+# 
+# se <- aggregateAcrossCells(gex_tmp500.sc, 
+#                            ids = colData(gex_tmp500.sc)[, c("orig.ident", "BcelltypeMain")], 
+#                            statistics="sum")
+# #counts(se) <- round(10*counts(se) / se$ncells, digits = 0)
+# 
+# summary(counts(se))
+# colData(se)
+# se$ncells
+# 
+# se <- se[, (se$BcelltypeMain == "B_tissueMigration" | 
+#               se$BcelltypeMain == "Memory" | 
+#               se$BcelltypeMain == "Naive")]
+# colnames(se) <- paste(se$orig.ident, se$BcelltypeMain, sep= "_")
+# 
+# group <- se$patient_group
+# cell <- se$BcelltypeMain
+
+y.all <- DGEList(counts(se), 
+                 sample = colData(se)$orig.ident, 
+                 group = colData(se)$patient_group); y.all
+
+norm.factors = colData(se)$ncells
+
+
+keep <- filterByExpr(y.all); table(keep)
+y.all <- y.all[keep, ]
+y.all <- calcNormFactors(y.all); head(y.all$counts); y.all$samples
+design <- model.matrix(~0 + patient_group*BcelltypeMain, data = colData(se)); design
+colnames(design) <- gsub(":", "_", colnames(design))
+nrow(design)
+
+ncol(y.all)
+
+y_glm <- estimateDisp(y.all, design); head(y.all$counts); ncol(y.all$counts)
+fit <- glmQLFit(y_glm, design); colnames(fit$coefficients)
+
+#colnames(fit$coefficients) <- gsub(":", "_", colnames(fit$coefficients))
+qlm <- glmQLFTest(fit, contrast = makeContrasts(groupDNEG_cellMemory - groupSSA_cellMemory, levels = design))
+de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
+nrow(de_g[de_g$FDR <= 0.05, ]) #[1] 132
+nrow(de_g)
 
 
 ```
@@ -92,7 +215,8 @@ write.csv2(detable,"../results/DGE_B-cells_perPatientperCluster.csv")
 
 ```{r }
 
-groups <- paste0(gex$seurat_clusters, '_', as.character(gex$patient_group))
+#groups <- paste0(gex$seurat_clusters, '_', as.character(gex$patient_group))
+groups <- paste0(gex$BcelltypeMain, '_', as.character(gex$patient_group))
 gex$subgroups <- factor(groups)
 sample_size <- table(gex$subgroups)
 sample_size[sample_size > 100] <- 100
@@ -105,15 +229,31 @@ DGE_cells <- unlist(DGE_cells)
 
 DGE_DATA <- gex[, DGE_cells]
 
-# fit <- glmGamPoi::glm_gp(data = as.matrix(DGE_DATA@assays$RNA@counts),
-#                   design = ~patient_group*seurat_clusters,
-#                   col_data=DGE_DATA@meta.data)
-
-fit <- glmGamPoi::glm_gp(data = as.matrix(DGE_DATA@assays$RNA@data),
+fit <- glmGamPoi::glm_gp(data = as.matrix(DGE_DATA@assays$RNA@counts),
                          design = ~patient_group*seurat_clusters,
                          col_data = DGE_DATA@meta.data)
 
-saveRDS(fit, file = "../results/fit_tmp.rds")
+fit <- glmGamPoi::glm_gp(data = as.matrix(DGE_DATA@assays$RNA@counts),
+                         design = ~patient_group*BcelltypeMain,
+                         col_data = DGE_DATA@meta.data)
+
+# fit <- glmGamPoi::glm_gp(data = as.matrix(DGE_DATA@assays$RNA@data),
+#                          design = ~patient_group*seurat_clusters,
+#                          col_data = DGE_DATA@meta.data)
+
+
+dim(fit$Beta)
+colnames(fit$Beta)
+res <- glmGamPoi::test_de(fit,contrast = 5:26)
+res <- glmGamPoi::test_de(fit,contrast = 27:92)
+
+totest <- colnames(fit$Beta)
+res <- glmGamPoi::test_de(fit, contrast = totest[c(27)])
+
+
+
+saveRDS(fit, file = "../results/glmGamPoi_fit.rds")
+#fit <- readRDS("../results/fit_tmp.rds")
 head(fit)
 str(fit)
 
@@ -121,6 +261,7 @@ glmGamPoi::test_de()
 
 
 ```
+
 
 ## Save rds 
 

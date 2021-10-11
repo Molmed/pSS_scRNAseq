@@ -3,8 +3,9 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-# Dimensionality reduction and clustering of B-cells {#Dimred2}
 
+
+# Dimensionality reduction and clustering of B-cells {#Dimred2}
 ## Load packages
 
 ```{r}
@@ -18,10 +19,8 @@ source("./00_dependencies.R")
 
 ```{r}
 
-gex <- readRDS("../results/GEX_BCELLS.rds")
+gex <- readRDS("../results/GEX4_BCELLS.rds")
 annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
-
-gex
 
 ```
 
@@ -437,13 +436,11 @@ ggsave2("../results/UMAP_B-cells_patientGroup.png",
 ```
 
 
-## Save rds GEX_DIMRED2
+## Save rds GEX5_DIMRED2.rds
 
 ```{r}
 
-saveRDS(gex, file = "../results/GEX_DIMRED2.rds")
-
-#this is gex15
+saveRDS(gex, file = "../results/GEX5_DIMRED2.rds")
 
 ```
 
@@ -453,7 +450,6 @@ saveRDS(gex, file = "../results/GEX_DIMRED2.rds")
 ```{r}
 
 sessionInfo()
-
 
 ```
 
