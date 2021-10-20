@@ -48,6 +48,7 @@ detable <- FindAllMarkers( DGE_temp,
 detable$pct.diff <- detable$pct.1 - detable$pct.2
 write.csv(detable, 
           paste0("../results/DGE_B-cells_seurat_clusters.csv"))
+detable <- read.csv("../results/DGE_B-cells_seurat_clusters.csv", stringsAsFactors = FALSE, sep = ";")
 
 detable <- detable[detable$p_val < 0.05,  ]
 detable$log.pct.diff <- log2(detable$pct.1 / (detable$pct.2 + 0.01) )
@@ -73,6 +74,147 @@ dev.off()
 # detable[detable$gene=="FCER1G",]
 # rafalib::mypar(2, 1, mar=c(1,1,2,4))
 # plot_feat(gex,red="umap_2",feat="FCER1G",cex=.8)
+
+
+```
+
+## test overlaps between clusters and known B-cell subsets
+
+```{r}
+
+king <- read.table("/Users/gusarv/Documents/GA/papers/king2021/abe6291_table_s9.txt", 
+                   sep ="\t", 
+                   header =TRUE, 
+                   stringsAsFactors = FALSE)
+king$cluster <- gsub(" ", "_", king$cluster)
+
+fdrcutoff <- 0.2
+
+#intersecting genes
+overlap <- data.frame()
+for (i in 1:length((unique(detable$cluster)))){
+  for (j in 1:length((unique(king$cluster)))){
+    
+        overlap[i, j]  <- length(intersect(detable$gene[detable$p_val_adj <= fdrcutoff  & detable$cluster == i],
+                                 king$gene[king$p_val_adj <= fdrcutoff  & 
+                                             king$cluster == unique(king$cluster)[j]]))
+    colnames(overlap)[j] <- unique(king$cluster)[j]
+  }
+  
+  rownames(overlap)[i] <- unique(detable$cluster)[i]
+  
+}
+
+
+
+## fisher exact test
+overlap.p <- data.frame()
+for (i in 1:length((unique(detable$cluster)))){
+  for (j in 1:length((unique(king$cluster)))){
+    
+        ###fisher exact test
+        A <- length(intersect(detable$gene[detable$p_val_adj <= fdrcutoff & 
+                                             detable$cluster == unique(detable$cluster)[i]],
+                                         king$gene[king$p_val_adj <= fdrcutoff & 
+                                                     king$cluster == unique(king$cluster)[j]]))
+        B <- length(detable$gene[detable$p_val_adj <= fdrcutoff & 
+                                   detable$cluster == unique(detable$cluster)[i]])-A
+        C <- length(king$gene[king$p_val_adj <= fdrcutoff & 
+                                king$cluster == unique(king$cluster)[j]])-A
+        D <- length(intersect(unique(king$gene), unique(detable$gene)))-A-B-C #all common genes
+        
+        cat(unique(detable$cluster)[i], "\n")
+        cat(unique(king$cluster)[j], "\n")
+        
+        overlap.table <- matrix(c(A, B,
+                                  C, D), nrow = 2, byrow = T)
+        
+        cat(overlap.table, "\n")
+        
+        fisher.test.result <- fisher.test(overlap.table, alternative = "greater")
+
+        overlap.p[i, j]  <- fisher.test.result$p.value
+        
+        cat(fisher.test.result$p.value, "\n","\n")
+        
+    colnames(overlap.p)[j] <- unique(king$cluster)[j]
+    
+  }
+  
+  rownames(overlap.p)[i] <- unique(detable$cluster)[i]
+  
+}
+
+## prop
+overlap.prop <- data.frame()
+
+for (i in 1:length((unique(detable$cluster)))){
+  for (j in 1:length((unique(king$cluster)))){
+    
+        ###fisher exact test
+        A <- length(intersect(detable$gene[detable$p_val_adj < fdrcutoff & 
+                                             detable$cluster == unique(detable$cluster)[i]],
+                                         king$gene[king$p_val_adj < fdrcutoff & 
+                                                     king$cluster == unique(king$cluster)[j]]))
+        B <- min(length(detable$gene[detable$p_val_adj < fdrcutoff & 
+                                   detable$cluster == unique(detable$cluster)[i]]),length(king$gene[king$p_val_adj < fdrcutoff & 
+                                king$cluster == unique(king$cluster)[j]]))
+       
+        
+        cat(unique(detable$cluster)[i], "\n")
+        cat(unique(king$cluster)[j], "\n")
+        
+        cat(round(A / B * 100, digits = 2), "\n")
+
+        overlap.prop[i, j]  <- round(A / B * 100, digits = 1)
+        
+    colnames(overlap.prop)[j] <- unique(king$cluster)[j]
+    
+  }
+  
+  rownames(overlap.prop)[i] <- unique(detable$cluster)[i]
+  
+}
+
+
+annot_row <- data.frame(unique(gex@meta.data[, c("seurat_clusters", "BcelltypeMain")])[match(rownames(overlap), unique(gex@meta.data[, c("seurat_clusters", "BcelltypeMain")])$seurat_clusters),])
+rownames(annot_row) <- 0:22
+colnames(annot_row) <- c("cluster", "cell")
+annot_row$cluster <- NULL
+
+pheatmap::pheatmap(overlap.p, 
+                   breaks = seq(0, 1, length.out = 100),
+                   color = colorRampPalette(c("lightblue","firebrick"))(99),
+                   display_numbers = overlap,
+                   #display_numbers = round(overlap.p, digits = 2),
+                   cluster_rows = FALSE,
+                   cluster_cols = FALSE,
+                   filename = "../results/cluster_intersect_king_et_al2021_memory_count.pdf",
+                   annotation_row =  annot_row)
+
+pheatmap::pheatmap(overlap, 
+                   breaks = seq(0, 100, length.out = 100),
+                   color = colorRampPalette(c("lightblue","firebrick"))(99),
+                   #display_numbers = overlap,
+                   display_numbers = round(overlap.p, digits = 2),
+                   cluster_rows = FALSE,
+                   cluster_cols = FALSE,
+                   filename = "../results/cluster_intersect_king_et_al2021_memory_p.pdf",
+                   annotation_row =  annot_row)
+
+pheatmap::pheatmap(overlap.p, 
+                   breaks = seq(0, 1, length.out = 100),
+                   color = colorRampPalette(c("lightblue","firebrick"))(99),
+                   #display_numbers = overlap,
+                   display_numbers = round(overlap.prop, digits = 2),
+                   cluster_rows = FALSE,
+                   cluster_cols = FALSE,
+                   filename = "../results/cluster_intersect_king_et_al2021_memory_prop.pdf",
+                   annotation_row =  annot_row,
+                   main = "Numbers are proportion of intersect in smallest class
+                   and colors indicate fisher exact test p-value")
+
+
 
 
 ```

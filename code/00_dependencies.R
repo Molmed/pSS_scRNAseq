@@ -27,6 +27,7 @@ library(niceRplots)
 #source("../../niceRplots/R/helper_functions.R")
 #source("../../niceRplots/R/plotting_functions.R")
 #source("../../niceRplots/R/trajectory_plots.R")
+suppressMessages(library(pheatmap))
 
 ####----- scRNAseq
 suppressMessages(library(Seurat)) #read and process scRNAseq data
