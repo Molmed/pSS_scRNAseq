@@ -62,7 +62,7 @@ files_B <- list.files("../data/clono_B_VDJ_tmp",
                       recursive = TRUE, 
                       full.names = TRUE)
 
-outfile <- NULL
+imm <- NULL
 
 for (i in files_B) {
   
@@ -74,7 +74,7 @@ for (i in files_B) {
   j <- gsub("_heavy_germ-pass.tsv", "", gsub(".*out/", "", i))
   cat("sample name: ", print(j), "\n")
   
-  #Get number of VDJ mutations per cell
+  #Get number of mutations per cell for full VDJ up untill base 312
   tmp <- observedMutations(tmp, 
                            sequenceColumn = "sequence_alignment", 
                            germlineColumn = "germline_alignment_d_mask",
@@ -85,7 +85,7 @@ for (i in files_B) {
   
   colnames(tmp)[colnames(tmp) == 'mu_count'] <- 'mu_count_total'
   
-  #Get frequency of VDJ mutations per cell
+  #Get frequency of mutations per cell for full VDJ up untill base 312
   tmp <- observedMutations(tmp, 
                            sequenceColumn = "sequence_alignment", 
                            germlineColumn = "germline_alignment_d_mask",
@@ -96,6 +96,8 @@ for (i in files_B) {
   
   colnames(tmp)[colnames(tmp) == 'mu_freq'] <- 'mu_freq_total'
 
+  #Get mutations counts per cell for full VDJ up untill base 312 
+  #split between replacement and silent
   tmp <- observedMutations(tmp, 
                           sequenceColumn = "sequence_alignment", 
                           germlineColumn = "germline_alignment_d_mask",
@@ -108,6 +110,8 @@ for (i in files_B) {
   colnames(tmp)[colnames(tmp) == 'mu_count_v_r'] <- 'mu_count_v_r_total'
   colnames(tmp)[colnames(tmp) == 'mu_count_v_s'] <- 'mu_count_v_s_total'
   
+  #Get frequency of mutations per cell for full VDJ up untill base 312 
+  #per segment per replacement/silent
   tmp <- observedMutations(tmp, 
                           sequenceColumn = "sequence_alignment", 
                           germlineColumn = "germline_alignment_d_mask",
@@ -120,6 +124,8 @@ for (i in files_B) {
   colnames(tmp)[colnames(tmp) == 'mu_freq_v_r'] <- 'mu_freq_v_r_total'
   colnames(tmp)[colnames(tmp) == 'mu_freq_v_s'] <- 'mu_freq_v_s_total'
   
+  #Get frequency of mutations per cell for full VDJ up untill base 312 
+  #per region (CDR1, CDR2 ... FWR1, FWR2 ...) per replacement/silent
   tmp <- observedMutations(tmp, 
                           sequenceColumn = "sequence_alignment", 
                           germlineColumn = "germline_alignment_d_mask",
@@ -129,6 +135,8 @@ for (i in files_B) {
                           nproc = 4,
                           cloneColumn = "clone_id")
   
+  #Get frequency of mutations per cell for full VDJ up untill base 312 
+  #per CDR/FWR per replacement/silent
   tmp <- observedMutations(tmp, 
                           sequenceColumn = "sequence_alignment", 
                           germlineColumn = "germline_alignment_d_mask",
@@ -148,15 +156,15 @@ for (i in files_B) {
   rownames(tmp) <- tmp$cell_id
 
   
-  if (is.null(outfile)) {
-    outfile <- tmp
+  if (is.null(imm)) {
+    imm <- tmp
   } else {
-    outfile <- rbind(outfile, tmp)
+    imm <- rbind(imm, tmp)
   }
   
 }
 
-head(outfile)
+head(imm)
 
   
 ```
@@ -166,8 +174,8 @@ head(outfile)
 
 ```{r}
 
-write_rearrangement(outfile, "../results/VDJ_immcantation_out.tsv")
-#outfile <- read_rearrangement("../results/VDJ_immcantation_out.tsv")
+write_rearrangement(imm, "../results/VDJ_immcantation_out.tsv")
+#imm <- read_rearrangement("../results/VDJ_immcantation_out.tsv")
 
 ```
 
@@ -176,14 +184,14 @@ write_rearrangement(outfile, "../results/VDJ_immcantation_out.tsv")
 
 ```{r}
 
-outfile$orig.ident <- gsub("a|b", "", gsub("_.*", "", outfile$cell_id))
-outfile <- merge(outfile, 
+imm$orig.ident <- gsub("a|b", "", gsub("_.*", "", imm$cell_id))
+imm <- merge(imm, 
                  pheno[, c(2,8)], 
                  by.x = "orig.ident", 
                  by.y = "orig.ident", 
-                 all.x = TRUE); head(outfile)
-outfile <- outfile[, c(2:ncol(outfile), 1)]
-head(outfile)
+                 all.x = TRUE); head(imm)
+imm <- outfile[, c(2:ncol(imm), 1)]
+head(imm)
 
 
 ```
@@ -194,21 +202,23 @@ head(outfile)
 ```{r}
 
 #select immcantation columns
-colnames(outfile)
+colnames(imm)
 cols <- c("sequence_id", "productive", "vj_in_frame", "stop_codon", "locus", 
           "v_call", "d_call", "j_call", "c_call", 
           "cell_id", "clone_id", "umi_count", 
           "v_call_10x", "d_call_10x", "j_call_10x", 
           "germline_v_call","germline_d_call", "germline_j_call",
-          "cdr3",
+          "cdr3", "consensus_count",
           "mu_count_total", "mu_freq_total", 
           "mu_count_v_r_total", "mu_count_v_s_total", "mu_freq_v_r_total", "mu_freq_v_s_total",
           "mu_freq_cdr1_r", "mu_freq_cdr1_s", "mu_freq_cdr2_r", "mu_freq_cdr2_s", "mu_freq_cdr3_r", "mu_freq_cdr3_s", "mu_freq_fwr1_r", "mu_freq_fwr1_s", "mu_freq_fwr2_r", "mu_freq_fwr2_s", "mu_freq_fwr3_r", "mu_freq_fwr3_s", "mu_freq_fwr4_r", "mu_freq_fwr4_s", "mu_freq_cdr_r", "mu_freq_cdr_s", "mu_freq_fwr_r", "mu_freq_fwr_s", "mu_freq_cdr_r", "mu_freq_cdr_s", "mu_freq_fwr_r", "mu_freq_fwr_s", "cdr3_aa_length", "cdr3_aa_gravy", "cdr3_aa_bulk", "cdr3_aa_aliphatic", "cdr3_aa_polarity", "cdr3_aa_charge", "cdr3_aa_basic", "cdr3_aa_acidic", "cdr3_aa_aromatic")
-outfile_add <- outfile[, cols]
-rownames(outfile_add) <- outfile_add$cell_id
 
-gex <- AddMetaData(gex, outfile_add)
-
+#setdiff(colnames(imm), cols)
+imm_add <- imm[, cols]
+rownames(imm_add) <- imm_add$cell_id
+head(imm_add)
+gex <- AddMetaData(gex, imm_add)
+head(gex@meta.data)
 sort(table(gex@meta.data$cdr3),decreasing = T)[1:20]
 
 
@@ -301,6 +311,7 @@ gex <- AddMetaData(gex, igh_10x)
 
 
 ```
+
 
 ### generate a combined data frame for BCR sequences using scRepertoire
 
@@ -752,6 +763,7 @@ cu <- estimateAbundance(outfile, group = "patient_group",
                         ci = 0.95, nboot = 100, clone = "clone_id")
 #Error: vector memory exhausted (limit reached?)
 #nboot = 100 works locally, nboot = 200 does not
+
 plot(cu, legend_title = "patient_group")
 
 png("../results/VDJ_clonalAbundances_perPatientGroup.png", 
@@ -812,50 +824,114 @@ dev.off()
 
 ```{r}
 
-p5 <- ggplot(gex@meta.data, aes(x = seurat_clusters, y = mu_freq_total)) +
+# Mutations for VDJ bp sequence up until bp 312 per cluster
+p <- ggplot(gex@meta.data, 
+             aes(x = seurat_clusters, 
+                 y = mu_freq_total, 
+                 color = patient_group)) +
       theme_classic() +
-      ggtitle("Vh mutations") +
-      theme(axis.text.x=element_text(angle = 45, hjust = 1, vjust = 1)) +
-      ylab("perc mutated bp VH") +
+      ggtitle("VDJ mutations, full length") +
+      theme(axis.text.x = element_text(angle = 45, 
+                                       hjust = 1, vjust = 1)) +
+      ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_boxplot(aes(color = patient_group), size = 0.4, alpha = 0.8)
+      geom_boxplot(size = 0.4, alpha = 0.8)
 
-ggsave2(paste0("../results/VDJ_Vh_mutationstatus_byCluster.png"), 
-          p5,
+ggsave2(paste0("../results/VDJ_muFull_byCluster.png"), 
+          p,
           width = 30, height = 20, unit = "cm")
 
-p6 <- ggplot(gex@meta.data, aes(x = orig.ident, y = mu_freq_total)) +
+
+# Mutations for VDJ bp sequence up until bp 312 per cluster, 
+# split by replacement/silent
+p1 <- ggplot(gex@meta.data, 
+             aes(x = seurat_clusters, 
+                 y = mu_freq_v_r_total, 
+                 color = patient_group)) +
       theme_classic() +
-      ggtitle("Vh mutations") +
-      theme(axis.text.x=element_text(angle = 45, hjust = 1, vjust = 1)) +
-      ylab("perc mutated bp VH") +
+      ggtitle("VDJ mutations, full length - replacement") +
+      theme(axis.text.x = element_text(angle = 45, 
+                                       hjust = 1, vjust = 1)) +
+      ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_boxplot(aes(color = patient_group), size = 0.4, alpha = 0.8)
+      geom_boxplot(size = 0.4, alpha = 0.8)
 
-ggsave2(paste0("../results/VDJ_Vh_mutationstatus_bySample.png"), 
-          p6,
-          width = 30, height = 20, unit = "cm")
+p2 <- ggplot(gex@meta.data, 
+             aes(x = seurat_clusters, 
+                 y = mu_freq_v_s_total, 
+                 color = patient_group)) +
+      theme_classic() +
+      ggtitle("VDJ mutations, full length - silent") +
+      theme(axis.text.x = element_text(angle = 45, 
+                                       hjust = 1, vjust = 1)) +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_boxplot(size = 0.4, alpha = 0.8)
 
-cluster_mut <- as.data.frame.matrix(table(gex$seurat_clusters, gex$mu_load))
+ggsave2(paste0("../results/VDJ_muFull_byCluster_rs.png"), 
+          plot_grid(p1, p2, nrow = 2, labels = "AUTO", align = "h"),
+          width = 30, height = 40, unit = "cm")
+
+
+# Mutations for CDR3 bp sequence per cluster, 
+# split by replacement/silent
+p1 <- ggplot(gex@meta.data, 
+             aes(x = seurat_clusters, 
+                 y = mu_freq_cdr3_r, 
+                 color = patient_group)) +
+      theme_classic() +
+      ggtitle("VDJ mutations, CDR3 - replacement") +
+      theme(axis.text.x = element_text(angle = 45, 
+                                       hjust = 1, vjust = 1)) +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_boxplot(size = 0.4, alpha = 0.8)
+
+p2 <- ggplot(gex@meta.data, 
+             aes(x = seurat_clusters, 
+                 y = mu_freq_cdr3_s, 
+                 color = patient_group)) +
+      theme_classic() +
+      ggtitle("VDJ mutations, CDR3 - silent") +
+      theme(axis.text.x = element_text(angle = 45, 
+                                       hjust = 1, vjust = 1)) +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = percent) +
+      geom_boxplot(size = 0.4, alpha = 0.8)
+
+ggsave2(paste0("../results/VDJ_muCDR3_byCluster_rs.png"), 
+          plot_grid(p1, p2, nrow = 2, labels = "AUTO", align = "h"),
+          width = 30, height = 40, unit = "cm")
+
+
+# percent mutated cells per seurat cluster
+cluster_mut <- as.data.frame.matrix(table(gex$seurat_clusters,
+                                          gex$mu_load))
 cluster_mut$percmut <- 1-cluster_mut$unmutated/rowSums(cluster_mut)
-cluster_mut$orig.ident <- factor(rownames(cluster_mut), levels = rownames(cluster_mut))
+cluster_mut$orig.ident <- factor(rownames(cluster_mut), 
+                                 levels = rownames(cluster_mut))
 
-p7 <- ggplot(cluster_mut, aes(x = orig.ident, y = percmut)) +
+p <- ggplot(cluster_mut, aes(x = orig.ident, y = percmut)) +
       theme_classic() +
       ggtitle("perc cells with mutated VH per cluster") +
-      theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1)) +
+      theme(axis.text.x = element_text(angle = 45, 
+                                       hjust = 1, vjust = 1)) +
       ylab("perc mutated cells") +
       xlab("") +
       scale_y_continuous(labels = percent) +
       geom_bar(stat='identity')
 
-ggsave2(paste0("../results/VDJ_Vh_percMutCells_byCluster.png"), 
-          p7,
+ggsave2(paste0("../results/VDJ_percMutCells_byCluster.png"), 
+          p,
           width = 30, height = 20, unit = "cm")
 
-p8 <- DimPlot(gex, reduction = "umap_2", 
+#UMAP colored by categorical muLoad
+p <- DimPlot(gex, reduction = "umap_2", 
                   pt.size = .01, 
                   group.by = "mu_load", 
                   raster=FALSE) + 
@@ -863,60 +939,506 @@ p8 <- DimPlot(gex, reduction = "umap_2",
           ylab("UMAP 2") +
           xlab("UMAP 1")
 
-ggsave2(paste0("../results/VDJ_Vh_UMAP_mutLoad.png"), 
-          p8,
+ggsave2(paste0("../results/UMAP_B-cells_muLoad_1.png"), 
+          p,
           width = 25, height = 20, unit = "cm")
 
-head(gex@meta.data)
 
-
-p9 <- ggplot(gex@meta.data, aes(x = BcelltypeMain, y = mu_freq_total)) +
+#VDJ mutations per cell type
+#total VDJ mutation frequency per patient group
+p <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+            aes(x = BcelltypeMain, 
+                y = mu_freq_total, 
+                color = patient_group)) +
       theme_classic() +
-      ggtitle("Vh mutations") +
-      theme(axis.text.x=element_text(angle = 45, hjust = 1, vjust = 1)) +
-      ylab("perc mutated bp VH") +
+      ggtitle("VDJ mutations, full length") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1)) +
+      ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      #geom_jitter(size = 0.2, alpha = 0.3) +
-      geom_boxplot(aes(color = patient_group), size = 0.3, alpha = 0.8)
+      geom_boxplot(aes(), size = 0.3, alpha = 0.8)
 
-ggsave2(paste0("../results/VDJ_Vh_mutationstatus_byCelltypePerPatGroup.png"), 
-          p9,
+ggsave2(paste0("../results/VDJ_muFull_byCelltype_perPatientGroup.png"), 
+          p,
+          width = 22, height = 20, unit = "cm")
+
+#total VDJ mutation frequency per orig.ident
+p <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = mu_freq_total,
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("VDJ mutations, full length") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), legend.position = "none") +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+ggsave2(paste0("../results/VDJ_muFull_byCelltype_perSample.png"), 
+          p,
+          width = 25, height = 20, unit = "cm")
+
+#total VDJ mutation frequency per patient group replacement/silent
+p1 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+            aes(x = BcelltypeMain, 
+                y = mu_freq_v_r_total, 
+                color = patient_group)) +
+      theme_classic() +
+      ggtitle("VDJ mutations, full length - replacement") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1)) +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      geom_boxplot(aes(), size = 0.3, alpha = 0.8)
+
+p2 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+            aes(x = BcelltypeMain, 
+                y = mu_freq_v_s_total, 
+                color = patient_group)) +
+      theme_classic() +
+      ggtitle("VDJ mutations, full length - silent") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1)) +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      geom_boxplot(aes(), size = 0.3, alpha = 0.8)
+
+ggsave2(paste0("../results/VDJ_muFull_byCelltype_rs_perPatientGroup.png"), 
+          plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"),
           width = 30, height = 20, unit = "cm")
 
-#
-p10 <- ggplot(gex@meta.data, aes(x = patient_group, y = mu_freq_total)) +
+#total VDJ mutation frequency per orig.ident replacement/silent
+p1 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = mu_freq_v_r_total,
+                  color = orig.ident)) +
       theme_classic() +
-      ggtitle("Vh mutations") +
-      theme(axis.text.x=element_text(angle = 45, hjust = 1, vjust = 1)) +
-      ylab("perc mutated bp VH") +
+      ggtitle("VDJ mutations, full length - replacement") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      #geom_jitter(size = 0.2, alpha = 0.3) +
       facet_grid(cols = vars(BcelltypeMain)) +
-      geom_boxplot(aes(color = orig.ident), size = 0.3, alpha = 0.8)
+      geom_boxplot(size = 0.3, alpha = 0.8)
 
-ggsave2(paste0("../results/VDJ_Vh_mutationstatus_byCelltypePerSample.png"), 
-          p10,
-          width = 40, height = 20, unit = "cm")
-
-p11 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ], aes(x = patient_group, y = mu_freq_total)) +
+p2 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = mu_freq_v_s_total,
+                  color = orig.ident)) +
       theme_classic() +
-      ggtitle("Vh mutations") +
-      theme(axis.text.x=element_text(angle = 45, hjust = 1, vjust = 1)) +
-      ylab("perc mutated bp VH") +
+      ggtitle("VDJ mutations, full length - silent") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      #geom_jitter(size = 0.2, alpha = 0.3) +
       facet_grid(cols = vars(BcelltypeMain)) +
-      geom_boxplot(aes(color = orig.ident), size = 0.3, alpha = 0.8)
+      geom_boxplot(size = 0.3, alpha = 0.8)
 
-ggsave2(paste0("../results/VDJ_Vh_mutationstatus_byCelltypePerSample_MemNaive.png"), 
-          p11,
+ggsave2(paste0("../results/VDJ_muFull_byCelltype_rs_perSample.png"), 
+          plot_grid(p1, p2, nrow = 2, labels = "AUTO", align = "h"),
+          width = 20, height = 30, unit = "cm")
+
+#CDR3 mutation frequency per patient group replacement/silent
+p1 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+            aes(x = BcelltypeMain, 
+                y = mu_freq_cdr3_r, 
+                color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 mutations - replacement") +
+      theme(axis.text.x = element_text(angle = 45, 
+                                     hjust = 1, vjust = 1)) +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      geom_boxplot(aes(), size = 0.3, alpha = 0.8)
+
+p2 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+            aes(x = BcelltypeMain, 
+                y = mu_freq_cdr3_s, 
+                color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 mutations - silent") +
+      theme(axis.text.x = element_text(angle = 45, 
+                                     hjust = 1, vjust = 1)) +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      geom_boxplot(aes(), size = 0.3, alpha = 0.8)
+
+ggsave2(paste0("../results/VDJ_muCDR3_byCelltype_rs_perPatientGroup.png"), 
+          plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"),
           width = 30, height = 20, unit = "cm")
+
+
+#CDR3 mutation frequency per orig.ident replacement/silent
+p1 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = mu_freq_cdr3_r,
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 mutations - replacement") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+p2 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = mu_freq_cdr3_s,
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 mutations - silent") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+ggsave2(paste0("../results/VDJ_muCDR3_byCelltype_rs_perSample.png"), 
+          plot_grid(p1, p2, nrow = 2, labels = "AUTO", align = "h"),
+          width = 20, height = 30, unit = "cm")
 
 
 ```
+
+
+###  plot CDR3 aa attributes
+
+```{r}
+"cdr3_aa_length"               
+"cdr3_aa_gravy"               
+"cdr3_aa_bulk"                 
+"cdr3_aa_aliphatic"
+"cdr3_aa_polarity"             
+"cdr3_aa_charge"              
+"cdr3_aa_basic"               
+"cdr3_aa_acidic"
+"cdr3_aa_aromatic"
+
+
+#per cell type
+#CDR3 aa length
+p1 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = cdr3_aa_length,
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 aa length") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("length (bp)") +
+      xlab("") +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#grand average of hydrophobicity
+p2 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = cdr3_aa_gravy, #grand average of hydrophobicity
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 aa grand average of hydrophobicity") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("hydrophobicity score") +
+      xlab("") +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#average bulkiness of amino acids
+p3 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = cdr3_aa_bulk, #average bulkiness of amino acids
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 aa bulkiness") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("average bulkiness of amino acids") +
+      xlab("") +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_aliphatic
+p4 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = cdr3_aa_aliphatic, #aliphatic index
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 aa aliphatic") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("aliphatic index") +
+      xlab("") +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_polarity
+p5 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = cdr3_aa_polarity, #average polarity of amino acids
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 aa polarity") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("average polarity") +
+      xlab("") +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_charge
+p6 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = cdr3_aa_charge, #net charge
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 charge") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("net charge") +
+      xlab("") +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_basic
+p7 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = cdr3_aa_basic, #fract. of informative positions that are Arg, His or Lys
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 aa basic") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("% of pos that are Arg, His or Lys") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_acidic
+p8 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = cdr3_aa_acidic, #fraction of informative positions that are Asp or Glu
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 aa acidic") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("% of pos. that are Asp or Glu") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_aromatic
+p9 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
+              aes(x = patient_group, 
+                  y = cdr3_aa_aromatic, #fract. of informative pos. that are His, Phe, Trp or Tyr
+                  color = orig.ident)) +
+      theme_classic() +
+      ggtitle("CDR3 aa aromatic") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("% of pos. that are His, Phe, Trp or Tyr") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      facet_grid(cols = vars(BcelltypeMain)) +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+ggsave2(paste0("../results/VDJ_attrCDR3_byCelltype_perSample.png"), 
+          plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, p9, 
+                    nrow = 3, ncol = 3, labels = "AUTO", align = "h"),
+          width = 40, height = 30, unit = "cm")
+
+#per cluster
+#CDR3 aa length
+p1 <- ggplot(gex@meta.data,
+              aes(x = seurat_clusters, 
+                  y = cdr3_aa_length,
+                  color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 aa length") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("length (bp)") +
+      xlab("") +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#grand average of hydrophobicity
+p2 <- ggplot(gex@meta.data,
+              aes(x = seurat_clusters, 
+                  y = cdr3_aa_gravy,
+                  color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 aa grand average of hydrophobicity") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("hydrophobicity score") +
+      xlab("") +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#average bulkiness of amino acids
+p3 <- ggplot(gex@meta.data,
+              aes(x = seurat_clusters, 
+                  y = cdr3_aa_bulk, #average bulkiness of amino acids
+                  color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 aa bulkiness") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("average bulkiness of amino acids") +
+      xlab("") +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_aliphatic
+p4 <- ggplot(gex@meta.data,
+              aes(x = seurat_clusters, 
+                  y = cdr3_aa_aliphatic, #aliphatic index
+                  color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 aa aliphatic") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("aliphatic index") +
+      xlab("") +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_polarity
+p5 <- ggplot(gex@meta.data,
+              aes(x = seurat_clusters, 
+                  y = cdr3_aa_polarity, #average polarity of amino acids
+                  color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 aa polarity") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("average polarity") +
+      xlab("") +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_charge
+p6 <- ggplot(gex@meta.data,
+              aes(x = seurat_clusters, 
+                  y = cdr3_aa_charge, #net charge
+                  color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 aa charge") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("net charge") +
+      xlab("") +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+#cdr3_aa_basic
+p7 <- ggplot(gex@meta.data,
+              aes(x = seurat_clusters, 
+                  y = cdr3_aa_basic, #fract. of informative positions that are Arg, His or Lys
+                  color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 aa basic") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("% of pos that are Arg, His or Lys") +
+      xlab("") +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_acidic
+p8 <- ggplot(gex@meta.data,
+              aes(x = seurat_clusters, 
+                  y = cdr3_aa_acidic, #fraction of informative positions that are Asp or Glu
+                  color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 aa acidic") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("% of pos. that are Asp or Glu") +
+      xlab("") +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+
+#cdr3_aa_aromatic
+p9 <- ggplot(gex@meta.data,
+              aes(x = seurat_clusters, 
+                  y = cdr3_aa_aromatic, #fract. of informative pos. that are His, Phe, Trp or Tyr
+                  color = patient_group)) +
+      theme_classic() +
+      ggtitle("CDR3 aa aromatic") +
+      theme(axis.text.x=element_text(angle = 45, 
+                                     hjust = 1, vjust = 1), 
+            legend.position = "none") +
+      ylab("% of pos. that are His, Phe, Trp or Tyr") +
+      xlab("") +
+      geom_boxplot(size = 0.3, alpha = 0.8)
+
+#get legend
+p_legend <- ggplot(gex@meta.data,
+              aes(x = seurat_clusters, 
+                  y = cdr3_aa_aromatic,
+                  color = patient_group)) +
+      theme_classic() +
+      geom_boxplot() 
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+
+
+p_grid <- plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, p9, 
+                    nrow = 3, ncol = 3, labels = "AUTO", align = "h")
+
+ggsave2(paste0("../results/VDJ_attrCDR3_byCluster_perSample.png"), 
+          plot_grid(p_grid, p_legend, ncol = 2, align = "none", rel_widths = c(12, 1)),
+          width = 45, height = 30, unit = "cm")
+
+
+```
+
 
 ###  plot IgH class, mu_load and clonetype per cluster
 
@@ -938,7 +1460,7 @@ ggsave2(paste0("../results/VDJ_Vh_mutationstatus_byCelltypePerSample_MemNaive.pn
 # barplot(res2*100, las = 1, col = mypal, main = "IgH class", ylab = "Proportion of cells\n")
 # legend("topright", legend = rownames(res2), bty = "n",fill = mypal, inset=c(-0.15,0))
 # dev.off()
-
+table(gex$c_call, useNA = "ifany")
 
 p1 <- DimPlot(gex, 
               group.by = "c_gene_10x", 
@@ -990,19 +1512,18 @@ p1 <- DimPlot(gex,
               split.by = "patient_group", 
               reduction = "umap_2", pt.size = 0.01, ncol = 2, 
               raster = TRUE, cols = c(brewer.pal(4, "Dark2"), "grey")) +
-theme(legend.position = "none") 
+      theme(legend.position = "none") 
 
 p2 <- ggplot(gex@meta.data, aes(x = seurat_clusters, fill = mu_load)) +
-      theme_classic() +
-      geom_bar(position = "fill") + 
-      ylab("proportion of cells") + 
-      facet_grid(rows = vars(patient_group)) + 
-scale_fill_brewer(palette = "Dark2", na.value = "grey")
+          theme_classic() +
+          geom_bar(position = "fill") + 
+          ylab("proportion of cells") + 
+          facet_grid(rows = vars(patient_group)) + 
+          scale_fill_brewer(palette = "Dark2", na.value = "grey")
 
 ggsave2("../results/cluster_mu_load_abundance_2.png", 
         plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
         width = 30, height = 15, unit = "cm")
-
 
 p1 <- DimPlot(gex, 
               group.by = "mu_load", 
@@ -1016,7 +1537,6 @@ ggsave2("../results/UMAP_B-cells_muLoad.png",
 
 
 ##---- cloneType per cluster
-
 ggplot(gex@meta.data, aes(x = seurat_clusters, fill = c_call)) +
       theme_classic() +
       geom_bar(position = "fill") + 

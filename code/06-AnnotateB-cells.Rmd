@@ -78,7 +78,8 @@ dev.off()
 
 ```
 
-## test overlaps between clusters and known B-cell subsets
+
+## test overlaps between clusters and known memort B-cell subsets from King et al. 2021
 
 ```{r}
 
@@ -95,7 +96,8 @@ overlap <- data.frame()
 for (i in 1:length((unique(detable$cluster)))){
   for (j in 1:length((unique(king$cluster)))){
     
-        overlap[i, j]  <- length(intersect(detable$gene[detable$p_val_adj <= fdrcutoff  & detable$cluster == i],
+        overlap[i, j]  <- length(intersect(detable$gene[detable$p_val_adj <= fdrcutoff  & 
+                                                          detable$cluster == i],
                                  king$gene[king$p_val_adj <= fdrcutoff  & 
                                              king$cluster == unique(king$cluster)[j]]))
     colnames(overlap)[j] <- unique(king$cluster)[j]
@@ -117,11 +119,13 @@ for (i in 1:length((unique(detable$cluster)))){
                                              detable$cluster == unique(detable$cluster)[i]],
                                          king$gene[king$p_val_adj <= fdrcutoff & 
                                                      king$cluster == unique(king$cluster)[j]]))
+        
         B <- length(detable$gene[detable$p_val_adj <= fdrcutoff & 
-                                   detable$cluster == unique(detable$cluster)[i]])-A
+                                   detable$cluster == unique(detable$cluster)[i]]) - A
+        
         C <- length(king$gene[king$p_val_adj <= fdrcutoff & 
-                                king$cluster == unique(king$cluster)[j]])-A
-        D <- length(intersect(unique(king$gene), unique(detable$gene)))-A-B-C #all common genes
+                                king$cluster == unique(king$cluster)[j]]) - A
+        D <- length(intersect(unique(king$gene), unique(detable$gene))) - A - B - C #all common genes
         
         cat(unique(detable$cluster)[i], "\n")
         cat(unique(king$cluster)[j], "\n")
@@ -156,8 +160,10 @@ for (i in 1:length((unique(detable$cluster)))){
                                              detable$cluster == unique(detable$cluster)[i]],
                                          king$gene[king$p_val_adj < fdrcutoff & 
                                                      king$cluster == unique(king$cluster)[j]]))
+        
         B <- min(length(detable$gene[detable$p_val_adj < fdrcutoff & 
-                                   detable$cluster == unique(detable$cluster)[i]]),length(king$gene[king$p_val_adj < fdrcutoff & 
+                                   detable$cluster == unique(detable$cluster)[i]]),
+                 length(king$gene[king$p_val_adj < fdrcutoff & 
                                 king$cluster == unique(king$cluster)[j]]))
        
         
@@ -177,7 +183,7 @@ for (i in 1:length((unique(detable$cluster)))){
 }
 
 
-annot_row <- data.frame(unique(gex@meta.data[, c("seurat_clusters", "BcelltypeMain")])[match(rownames(overlap), unique(gex@meta.data[, c("seurat_clusters", "BcelltypeMain")])$seurat_clusters),])
+annot_row <- data.frame(unique(gex@meta.data[, c("seurat_clusters", "BcelltypeMain")])[match(rownames(overlap), unique(gex@meta.data[, c("seurat_clusters", "BcelltypeMain")])$seurat_clusters), ])
 rownames(annot_row) <- 0:22
 colnames(annot_row) <- c("cluster", "cell")
 annot_row$cluster <- NULL
@@ -215,9 +221,8 @@ pheatmap::pheatmap(overlap.p,
                    and colors indicate fisher exact test p-value")
 
 
-
-
 ```
+
 
 ## plot marker gene expression
 
@@ -231,6 +236,7 @@ b_features2 <- c("RB1", "NT5E", "CD27", "CD19", "ITGAX", "FAS")
 b_features3 <-  c("CD38", "PTPRC")
 b_trans <- c("CD24", "CD38", "MME", "IGHM")
 ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
+
 
 VlnPlot(gex, features = b_trans, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 4)
 
@@ -266,6 +272,7 @@ plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
 
 ```{r}
 
+####-----------------------
 #general
 #Naive - 
 #Transitional - "CD24", "CD38", "CD10", "IGHM"  c("CD24", "CD38", "MME", "IGHM")
@@ -277,6 +284,23 @@ plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
 
 #Breg - "IL10"
 
+
+WhichCells(object = gex, expression = CD24 > 1 & CD38 > 1 & MME > 1 & IGHM > 1)
+DimPlot()
+
+#look for transitional cluster
+table(gex$seurat_clusters[match(
+  WhichCells(object = gex, 
+             expression = CD24 > 1 & 
+               CD38 > 1 & 
+               MME > 1 & 
+               IGHM > 1
+             ),
+  rownames(gex@meta.data)
+) ])/table(gex$seurat_clusters) *100
+####-----------------------
+
+####-----------------------
 #https://pubmed.ncbi.nlm.nih.gov/34161770/
 # C4 - MZ - CD1D (Cd1d1), CD9 (Cd9)
 # Naive - 
@@ -291,20 +315,109 @@ plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
 # PreMem - 
 # Bmem - 
 # PB - 
+####-----------------------
 
 
- 
+####-----------------------
+#https://pubmed.ncbi.nlm.nih.gov/31681331/
+#review with surface marker sets
+#Transitional, T1/T2, IgD+ CD27– CD38++ CD24++, CD10++/+ IgM++ MTG+, 
+#Transitional, T2-MZP, IgD+ CD27– CD38++ CD24++ CD21++, CD10+ IgM++
+#Transitional, T3, IgD+ CD27– CD38+ CD24+ CD21+, CD10+/– IgM+ MTG+
+#Naïve, Resting, IgD+ CD27– CD38+ CD24+ CD21+, IgM+ MTG–
+#Naïve, Activated, IgD+ CD27– CD38– CD24– CD21–, IgM+ MTG+ CD95+ CD23– CD11c+ T-bet+ FcRL5+ SLAMF7+ CXCR5–
+#Naïve, Anergic, IgD+ CD27– CD38+/lo CD24+ CD21–
+#Memory, Unswitched, IgDlo CD27+ CD38+/lo CD24+ CD21+, CD1c+ IgM++
+#Memory, Pre-switched, IgD– CD27+ CD38+/lo CD24+ CD21+, IgM+
+#Memory, Switched resting, IgD– CD27+ CD38+/lo CD24+ CD21+, IgG/IgA+ CD95–
+#Memory, Switched activated, IgD– CD27+ CD38– CD24– CD21–, IgG/IgA+ CD95+ CD86+
+#Memory, Atypical tissue-based, IgD– CD27– CD38lo CD24lo CD21–, FcRL4+ IgM/IgG/IgA+ FcRL5+
+#Double negative (DN), DN1, IgD– CD27– CD38+ CD24+ CD21+, FcRL4– IgM/IgG/IgA+ FcRL5– CXCR5+
+#Double negative (DN), DN2, IgD– CD27– CD38– CD24– CD21–, IgM/IgG/IgA+ T-bet+ CD11c+ FcRL5+ CXCR5– SLAMF7+
+
+#Transitional, T1/T2, #expression = IGHD > 1 & CD27 == 0 & CD38 > 1 & CD24 > 1 #maybe c4, c10, c6
+#Transitional, T2-MZP, #expression = IGHD > 1 & CD27 == 0 & CD38 > 1 & CD24 > 1 & CR2 > 1 #no hit
+
+#Naïve, Resting, #expression = IGHD > 1 & CD27 == 0 & CD38 > 1 & CD24 > 1 & CR2 > 1 #no hit
+#Naïve, Activated, #expression = IGHD > 1 & CD27 == 0 & CD38 == 0 & CD24 == 0 & CR2 == 0 & IGHM > 1 & MTG1 > 1 # c10, c0, c6, c2, c20, c1, c4..
+
+
+#Memory, Unswitched, #expression = CD27 > 1 & CD38 > 1  & CD24 > 1 & CR2 > 1  & CD1C > 1 & IGHM > 1 
+#maybe c17, c3
+
+#Memory, Pre-switched, #expression = IGHD == 0 & CD27 > 1 & CD38 > 1 & CD24 > 1 & CR2 > 1 & IGHM > 1 
+#no hit
+
+#Memory, Switched resting, #expression = IGHD == 0 & CD27 > 1 & CD38 > 1 & CD24 > 1 & CR2 > 1 & FAS == 0 
+#no hit
+
+#Memory, Switched activated, #expression = IGHD == 0 & CD27 > 1 & CD38 == 0 & CD24 == 0 & CR2 == 0 & FAS > 1 & CD86 > 1 & FCER2 > 1 
+#maybe c9, c5, c18
+
+#Memory, Atypical tissue-based #expression = IGHD == 0 & CD27 == 0 & CR2 == 0 & FCRL4 > 1 & FCRL5 > 1 
+# maybe c15, c13
+
+#Double negative (DN), DN1 #expression = IGHD == 0 & CD27 == 0 & CD38 > 1 & CD24 > 1 & CR2 > 1 & FCRL4 == 0 & FCRL5 == 0 & CXCR5 > 1 
+#no hit
+
+#Double negative (DN), DN2, #expression = IGHD == 0 & CD27 == 0 & CD38 == 0 & CD24 == 0 & CR2 == 0 & TBX21 > 1 & ITGAX > 1 & FCRL5 > 1 & CXCR5 == 0 & SLAMF7 > 1 
+#no hit
+
+sort(table(gex$seurat_clusters[match(
+  WhichCells(object = gex, expression = IGHD == 0 & CD27 == 0 & CD38 == 0 & CD24 == 0 & CR2 == 0 & TBX21 > 1 & ITGAX > 1 & FCRL5 > 1 & CXCR5 == 0 & SLAMF7 > 1),
+  rownames(gex@meta.data)
+) ])/ table(gex$seurat_clusters) *100, decreasing = TRUE) 
+
+length(WhichCells(object = gex, expression = IGHD > 1 ))
+length(WhichCells(object = gex, expression = CD27 == 0 ))
+length(WhichCells(object = gex, expression = CD38 == 0 ))
+length(WhichCells(object = gex, expression = CD24 == 0 ))
+length(WhichCells(object = gex, expression = CR2 == 0))
+length(WhichCells(object = gex, expression = IGHM > 1))
+length(WhichCells(object = gex, expression = MTG1 > 1))
+length(WhichCells(object = gex, expression = FAS > 1))
+length(WhichCells(object = gex, expression = ITGAX > 1))
+length(WhichCells(object = gex, expression = TBX21 > 1))
+length(WhichCells(object = gex, expression = FCRL5 > 1))
+length(WhichCells(object = gex, expression = SLAMF7 > 1))
+
+
+
+#IgD IGHD
+#CD27
+#CD38
+#CD24
+#CD10 MME 
+#IgM IGHM
+#MTG MTG1
+#CD21 CR2
+#CD1c CD1C
+#CD95 FAS
+#CD86
+#FcRL4 FCRL4
+#FcRL5 FCRL5
+#CXCR5 
+#T-bet TBX21
+#CD11c ITGAX
+#SLAMF7
+#CD23 FCER2
+####-----------------------
+
+
+
+####-----------------------
 # https://pubmed.ncbi.nlm.nih.gov/32668225/
+# paper using flow cytometry and surface markers
 # Plasma
 # Transitional
 # Naive CD73-
-# Naive CD73+
-# Memory RB+ CD27-
-# Memory RB-
-# Memory RB+ CD27+ CD73+
-# Memory RB+ CD27+ CD73-
-# Memory CD19high CD11c+
-# Memory CD95+
+# Naive CD73+ 
+# Memory RB+ CD27- #expression = RB1 > 1 & CD27 == 0
+# Memory RB- #expression = RB1 == 0
+# Memory RB+ CD27+ CD73+ #expression = RB1 > 1 & CD27 > 1 & NT5E > 1 #maybe c9
+# Memory RB+ CD27+ CD73- #expression = RB1 > 1 & CD27 > 1 & NT5E == 0 #maybe c13, c14, c3
+# Memory CD19high CD11c+ #expression = CD19 > 1 & ITGAX > 1 #c15 and maybe c13
+# Memory CD95+ #expression = FAS > 1 #c9, c13, c15
 
 # RB - RB1
 # CD73 - NT5E
@@ -313,6 +426,12 @@ plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
 # CD11c - ITGAX
 # CD95 - FAS
 
+#look for memory subclusters
+table(gex$seurat_clusters[match(
+  WhichCells(object = gex, expression = RB1 > 1 & CD27 == 0),
+  rownames(gex@meta.data)
+) ])/ table(gex$seurat_clusters) *100 
+####-----------------------
 
 
 #manual cluster annotation
@@ -371,10 +490,15 @@ annotation_main <- c(
 #gex$Bcelltype <- names(annotation)[match(gex$seurat_clusters, annotation)] 
 gex$BcelltypeMain <- names(annotation_main)[match(gex$seurat_clusters, annotation_main)] 
 table(gex$BcelltypeMain)
-DimPlot(gex, 
+
+p <- DimPlot(gex, 
               group.by = "BcelltypeMain", 
               split.by = "patient_group", 
-              reduction = "umap_2", ncol = 2, raster = FALSE) 
+              reduction = "umap_2", ncol = 2, raster = FALSE)
+
+ggsave2(paste0("../results/UMAP_cellTypes_byPatientGroup.png"), 
+          p,
+          width = 30, height = 20, unit = "cm")
 
 
 ```
