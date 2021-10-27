@@ -493,7 +493,9 @@ VDJ_cor <- function(i, #seurat object containing meta data for VDJ gene usage
   tmp <- table(list(i@meta.data[, VDJgene], i$seurat_clusters_patient_group))
   
   cor_tmp <- cor(tmp, method = correl)
+  print(cor_tmp)
   cor_tmp[is.na(cor_tmp)] <- 0
+  print(cor_tmp)
   
   pheatmap::pheatmap( cor_tmp, 
                       annotation_col = data.frame(cell_type = i$BcelltypeMain[match(sub("_.*", "", colnames(cor_tmp)), i$seurat_clusters)],
@@ -506,7 +508,7 @@ VDJ_cor <- function(i, #seurat object containing meta data for VDJ gene usage
                       fontsize_row = 5, 
                       fontsize_col = 5,
                       main = paste(VDJgene, correl, "correlation"),
-                      color = colorRampPalette(c("lightblue", "firebrick"))(99))
+                      color = colorRampPalette(c("lightblue", "gray70", "firebrick3"))(99))
   
 }
 
@@ -812,14 +814,6 @@ dev.off()
 ```
 
 
-### plot CDR3 properties
-
-```{r}
-
-
-```
-
-
 ### plot mutation status
 
 ```{r}
@@ -841,7 +835,6 @@ p <- ggplot(gex@meta.data,
 ggsave2(paste0("../results/VDJ_muFull_byCluster.png"), 
           p,
           width = 30, height = 20, unit = "cm")
-
 
 # Mutations for VDJ bp sequence up until bp 312 per cluster, 
 # split by replacement/silent

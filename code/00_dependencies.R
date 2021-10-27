@@ -28,6 +28,8 @@ library(niceRplots)
 #source("../../niceRplots/R/plotting_functions.R")
 #source("../../niceRplots/R/trajectory_plots.R")
 suppressMessages(library(pheatmap))
+suppressMessages(library(ggpubr))
+suppressMessages(library(gridExtra))
 
 ####----- scRNAseq
 suppressMessages(library(Seurat)) #read and process scRNAseq data
@@ -43,4 +45,6 @@ suppressMessages(library(airr))
 suppressMessages(library(scran))
 suppressMessages(library(tidyseurat))
 suppressMessages(library(edgeR))
+suppressMessages(library(scPred))
+
 

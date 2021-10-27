@@ -227,7 +227,7 @@ cluster_means <-
   })
 
 adj <- (1 - cor(cluster_means)) / 2
-h <- hclust(as.dist(adj), method = "ward.D2")
+h <- hclust(as.dist(adj), method = "complete")
 
 png("../results/hclust_clusters_B-cells_clustRes.png", 
     width = 1000, 
