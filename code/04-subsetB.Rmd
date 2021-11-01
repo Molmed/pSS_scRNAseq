@@ -77,7 +77,7 @@ Idents(object = gex) <- "orig.ident"
 
 gex
 
-print("GEX_BCELLS size:")
+cat("GEX_BCELLS size: \n")
 print(object.size(gex), units = "GB")
 
 

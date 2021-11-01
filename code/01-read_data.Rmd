@@ -16,7 +16,7 @@ source("./00_dependencies.R")
 samples <- str_replace(str_sort(list.files("../data/counts_mx"), numeric = TRUE),
                        "_filtered_feature_bc_matrix",
                        "")
-print("Samples: ")
+cat("Samples: \n")
 samples
 
 ####----- Create a named vector with paths to samples
@@ -25,7 +25,8 @@ samples.dirs <- sapply(samples, function(i) {
                     paste0(i, '_filtered_feature_bc_matrix'))
   d10x
 })
-print("Sample directories:")
+
+cat("Sample directories: \n")
 samples.dirs
 
 ####----- Read count matrices
@@ -40,6 +41,7 @@ gex <- CreateSeuratObject(gex_data,
                           min.cells = 0,
                           min.features = 0,
                           names.field = 1)
+
 table(gex@meta.data$orig.ident)
 nrow(gex@meta.data)
 
@@ -70,7 +72,7 @@ gex <- AddMetaData(gex, meta.data.tmp); head(gex@meta.data); table(gex@meta.data
 
 Idents(object = gex) <- "orig.ident"
 
-print("GEX_RAW size:")
+cat("GEX_RAW size: \n")
 print(object.size(gex), units = "GB")
 
 gex

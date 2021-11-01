@@ -4,7 +4,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-# VDJ analysis pt1 {#VDJ1}
+# VDJ analysis {#VDJ}
 ## Load packages
 
 ```{r}
@@ -213,14 +213,11 @@ cols <- c("sequence_id", "productive", "vj_in_frame", "stop_codon", "locus",
           "mu_count_v_r_total", "mu_count_v_s_total", "mu_freq_v_r_total", "mu_freq_v_s_total",
           "mu_freq_cdr1_r", "mu_freq_cdr1_s", "mu_freq_cdr2_r", "mu_freq_cdr2_s", "mu_freq_cdr3_r", "mu_freq_cdr3_s", "mu_freq_fwr1_r", "mu_freq_fwr1_s", "mu_freq_fwr2_r", "mu_freq_fwr2_s", "mu_freq_fwr3_r", "mu_freq_fwr3_s", "mu_freq_fwr4_r", "mu_freq_fwr4_s", "mu_freq_cdr_r", "mu_freq_cdr_s", "mu_freq_fwr_r", "mu_freq_fwr_s", "mu_freq_cdr_r", "mu_freq_cdr_s", "mu_freq_fwr_r", "mu_freq_fwr_s", "cdr3_aa_length", "cdr3_aa_gravy", "cdr3_aa_bulk", "cdr3_aa_aliphatic", "cdr3_aa_polarity", "cdr3_aa_charge", "cdr3_aa_basic", "cdr3_aa_acidic", "cdr3_aa_aromatic")
 
-#setdiff(colnames(imm), cols)
 imm_add <- imm[, cols]
 rownames(imm_add) <- imm_add$cell_id
-head(imm_add)
-gex <- AddMetaData(gex, imm_add)
-head(gex@meta.data)
-sort(table(gex@meta.data$cdr3),decreasing = T)[1:20]
 
+gex <- AddMetaData(gex, imm_add)
+colnames(gex@meta.data)
 
 ```
 
@@ -275,39 +272,6 @@ clono_B <- clono_B[order(names(clono_B))]
 print(object.size(clono_B), units = "MB") #227.6 Mb
 saveRDS(clono_B, paste0("../results/clono_B_list.rds"))
 #clono_B <- readRDS("../results/clono_B_list.rds")
-str(clono_B)
-
-
-```
-
-
-### add 10x IgH call to Seurat object
-
-```{r}
-
-igh_10x <- lapply(1:length(clono_B), function(x) {
-  
-  tmp <- clono_B[[x]][clono_B[[x]]$chain == "IGH" & 
-                        clono_B[[x]]$productive == "true" & 
-                        !is.na(clono_B[[x]]$c_gene) & 
-                        clono_B[[x]]$c_gene != "" &
-                        clono_B[[x]]$c_gene != "IGLC1" &
-                        clono_B[[x]]$c_gene != "IGLC2" , c(1, 10)]
-  tmp$barcode <- paste0(names(clono_B)[x], "_", tmp$barcode)
-  names(tmp)[2] <- "c_gene_10x"
-
-  tmp <- tmp[!duplicated(tmp$barcode), ]
-  
-  rownames(tmp) <- tmp$barcode
-  tmp$barcode <- NULL
-  
-  return(tmp)
-  }
-)
-
-igh_10x <- do.call(rbind.data.frame, igh_10x)
-table(igh_10x$c_gene_10x, useNA = "always")
-gex <- AddMetaData(gex, igh_10x)
 
 
 ```
@@ -364,7 +328,6 @@ names(combined_B) <- names_tmp
 print(object.size(combined_B), units = "MB") #181.3 Mb
 saveRDS(combined_B, paste0("../results/combined_BCR_scRepertoire.rds"))
 #combined_B <- readRDS("../results/combined_BCR_scRepertoire.rds")
-head(combined_B[[1]])
 
 
 ```
@@ -376,11 +339,42 @@ head(combined_B[[1]])
 
 gex <- combineExpression(combined_B, gex)
 colnames(gex@meta.data)
-table(gex@meta.data$CTgene, useNA = "ifany")
-gex@meta.data$cloneType
-head(gex@meta.data[, c(77:84)])
+
 
 ```
+
+
+### add 10x IgH call to Seurat object
+
+```{r}
+
+igh_10x <- lapply(1:length(clono_B), function(x) {
+  
+  tmp <- clono_B[[x]][clono_B[[x]]$chain == "IGH" & 
+                        clono_B[[x]]$productive == "true" & 
+                        !is.na(clono_B[[x]]$c_gene) & 
+                        clono_B[[x]]$c_gene != "" &
+                        clono_B[[x]]$c_gene != "IGLC1" &
+                        clono_B[[x]]$c_gene != "IGLC2" , c(1, 10)]
+  tmp$barcode <- paste0(names(clono_B)[x], "_", tmp$barcode)
+  names(tmp)[2] <- "c_gene_10x"
+
+  tmp <- tmp[!duplicated(tmp$barcode), ]
+  
+  rownames(tmp) <- tmp$barcode
+  tmp$barcode <- NULL
+  
+  return(tmp)
+  }
+)
+
+igh_10x <- do.call(rbind.data.frame, igh_10x)
+table(igh_10x$c_gene_10x, useNA = "always")
+gex <- AddMetaData(gex, igh_10x)
+
+
+```
+
 
 
 ## TRUST4
@@ -466,6 +460,16 @@ head(gex@meta.data[, c(77:84)])
 # saveRDS(combined_TRUST4_B, paste0("../results/combined_TRUST4_B_scRepertoire.rds"))
 # #combined_TRUST4_B <- readRDS("../results/combined_TRUST4_B_scRepertoire.rds")
 
+
+```
+
+
+## Integrate TRUST4 out with Seurat object
+
+```{r}
+
+# gex <- combineExpression(combined_TRUST4_B, gex)
+# colnames(gex@meta.data)
 
 ```
 
@@ -728,6 +732,49 @@ quantContig(
   group = NULL,
   exportTable = FALSE
 )
+
+quantContig(combined_B, cloneCall="gene+nt", scale = T)
+
+abundanceContig(combined_B, cloneCall = "gene", scale = F)
+lengthContig(combined_B, cloneCall="aa", chain = "IGL") 
+
+clonalProportion(combined_B, cloneCall = "gene") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+occupiedscRepertoire(gex, x.axis = "seurat_clusters")
+
+clonalOverlap(combined_B, cloneCall = "gene+nt", 
+              method = "morisita")
+
+head(combined_B)
+colnames(gex@meta.data)
+
+alluvialClonotypes(gex, cloneCall = "gene", 
+                   y.axes = c("orig.ident", "seurat_clusters"), 
+                   color = "seurat_clusters")
+
+p1 <- alluvialClonotypes(gex, cloneCall = "gene", 
+                   y.axes = c("orig.ident", "cluster_cellType_manual_main"), 
+                   color = "cluster_cellType_manual_main")
+
+
+combined2 <- expression2List(gex, split.by = "cluster_cellType_manual_fine")
+combined2 <- expression2List(gex, split.by = "cluster_cellType_manual_main")
+str(combined2)
+
+clonalHomeostasis(combined2, cloneCall = "nt") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+clonalProportion(combined2, cloneCall = "nt") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+clonalOverlap(combined2, cloneCall="aa", method="overlap") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+table(gex$orig.ident[gex$seurat_clusters == 22])
+table(gex$mu_load[gex$seurat_clusters == 22])
+
+clonalDiversity(gex, cloneCall = "nt",group.by = "cluster_cellType_manual_fine")
+
+#results <- hierarchicalClones(imm, threshold=0.1)
+
+
 
 
 ```
@@ -1115,18 +1162,18 @@ ggsave2(paste0("../results/VDJ_muCDR3_byCelltype_rs_perSample.png"),
 ###  plot CDR3 aa attributes
 
 ```{r}
-"cdr3_aa_length"               
-"cdr3_aa_gravy"               
-"cdr3_aa_bulk"                 
-"cdr3_aa_aliphatic"
-"cdr3_aa_polarity"             
-"cdr3_aa_charge"              
-"cdr3_aa_basic"               
-"cdr3_aa_acidic"
-"cdr3_aa_aromatic"
+# "cdr3_aa_length"               
+# "cdr3_aa_gravy"               
+# "cdr3_aa_bulk"                 
+# "cdr3_aa_aliphatic"
+# "cdr3_aa_polarity"             
+# "cdr3_aa_charge"              
+# "cdr3_aa_basic"               
+# "cdr3_aa_acidic"
+# "cdr3_aa_aromatic"
 
 
-#per cell type
+#### ----- per cell type
 #CDR3 aa length
 p1 <- ggplot(gex@meta.data[gex$BcelltypeMain == "Memory" | gex$BcelltypeMain == "Naive", ],
               aes(x = patient_group, 
@@ -1278,7 +1325,7 @@ ggsave2(paste0("../results/VDJ_attrCDR3_byCelltype_perSample.png"),
                     nrow = 3, ncol = 3, labels = "AUTO", align = "h"),
           width = 40, height = 30, unit = "cm")
 
-#per cluster
+#### ----- per cluster
 #CDR3 aa length
 p1 <- ggplot(gex@meta.data,
               aes(x = seurat_clusters, 
@@ -1591,7 +1638,13 @@ ggsave2("../results/cluster_cloneType_abundance_2.png",
 saveRDS(gex, file = "../results/GEX7_BVDJ.rds")
 #gex <- readRDS("../results/GEX7_BVDJ.rds")
 
+colnames(gex@meta.data)
+table(gex$c_call)
+table(gex$c_gene_10x)
+
 ```
+
+
 
 
 ## Print sessionInfo()

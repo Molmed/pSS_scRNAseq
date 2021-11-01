@@ -5,7 +5,7 @@ editor_options:
 ---
 
 
-# DE tests and Visualization {#DE-tests}
+# annotation of B-cell clusters {#B-cell_annotation}
 ## Load packages
 
 ```{r}
@@ -24,6 +24,29 @@ gex <- readRDS("../results/GEX5_DIMRED2.rds")
 ```
 
 
+## get cell cycle score
+
+```{r}
+
+# gex <- CellCycleScoring(gex, 
+#                         s.features = cc.genes$s.genes, 
+#                         g2m.features = cc.genes$g2m.genes, 
+#                         set.ident = FALSE)
+# 
+# DimPlot(gex, reduction = "umap_2", group.by = "Phase", split.by = "cluster_cellType_manual_main")
+# 
+# table(gex$Phase, gex$orig.ident)
+# 
+# colnames(gex@meta.data)
+# 
+# res <- table(gex$Phase, gex$orig.ident)
+# res <- table(gex$Phase, gex$cluster_cellType_manual_fine)
+# res2 <- t( t(res) / colSums(res))
+
+
+
+```
+
 ## get B-cell cluster marker genes
 
 ```{r}
@@ -40,8 +63,8 @@ DGE_temp <- SetIdent(DGE_temp, value = "seurat_clusters")
 detable <- FindAllMarkers( DGE_temp, 
                            min.pct = 0.1, 
                            min.cells.feature = 0.1, 
-                           max.cells.per.ident = 200 , 
-                           only.pos = T , 
+                           max.cells.per.ident = 200, 
+                           only.pos = TRUE, 
                            logfc.threshold = 0.1, 
                            assay = "RNA" )
 
@@ -61,246 +84,56 @@ ord <- factor(sapply(unique(as.character(top5$gene)),
 genes_to_plot <- unique(as.character(top5$gene))[order(as.numeric( as.character(ord) ))]
 
 pdf(paste0("../results/DGE_B-cells_seurat_clusters_dotplot.pdf"), 
-    width = 10, height = length(genes_to_plot)/4+3 )
+    width = 10, height = length(genes_to_plot) / 4 + 3 )
 rafalib::mypar(1, 1, mar = c(6, 6, 1, 5))
 plot_dots(DGE_temp, 
           genes_to_plot, 
           clustering = "seurat_clusters", 
-          show_grid = T, 
+          show_grid = TRUE, 
           main = "top cluster markers", 
           cex.main = 1, font.main = 1, cex.col = 1.3, srt = 0, cex.row = 1.3)
 dev.off()
 
-# detable[detable$gene=="FCER1G",]
-# rafalib::mypar(2, 1, mar=c(1,1,2,4))
-# plot_feat(gex,red="umap_2",feat="FCER1G",cex=.8)
-
 
 ```
 
 
-## test overlaps between clusters and known memort B-cell subsets from King et al. 2021
+## integrate with stewart et al. 2021 per cell using scPred()
 
 ```{r}
-
-king <- read.table("/Users/gusarv/Documents/GA/papers/king2021/abe6291_table_s9.txt", 
-                   sep ="\t", 
-                   header =TRUE, 
-                   stringsAsFactors = FALSE)
-king$cluster <- gsub(" ", "_", king$cluster)
-
-fdrcutoff <- 0.2
-
-#intersecting genes
-overlap <- data.frame()
-for (i in 1:length((unique(detable$cluster)))){
-  for (j in 1:length((unique(king$cluster)))){
-    
-        overlap[i, j]  <- length(intersect(detable$gene[detable$p_val_adj <= fdrcutoff  & 
-                                                          detable$cluster == i],
-                                 king$gene[king$p_val_adj <= fdrcutoff  & 
-                                             king$cluster == unique(king$cluster)[j]]))
-    colnames(overlap)[j] <- unique(king$cluster)[j]
-  }
-  
-  rownames(overlap)[i] <- unique(detable$cluster)[i]
-  
-}
-
-
-
-## fisher exact test
-overlap.p <- data.frame()
-for (i in 1:length((unique(detable$cluster)))){
-  for (j in 1:length((unique(king$cluster)))){
-    
-        ###fisher exact test
-        A <- length(intersect(detable$gene[detable$p_val_adj <= fdrcutoff & 
-                                             detable$cluster == unique(detable$cluster)[i]],
-                                         king$gene[king$p_val_adj <= fdrcutoff & 
-                                                     king$cluster == unique(king$cluster)[j]]))
-        
-        B <- length(detable$gene[detable$p_val_adj <= fdrcutoff & 
-                                   detable$cluster == unique(detable$cluster)[i]]) - A
-        
-        C <- length(king$gene[king$p_val_adj <= fdrcutoff & 
-                                king$cluster == unique(king$cluster)[j]]) - A
-        D <- length(intersect(unique(king$gene), unique(detable$gene))) - A - B - C #all common genes
-        
-        cat(unique(detable$cluster)[i], "\n")
-        cat(unique(king$cluster)[j], "\n")
-        
-        overlap.table <- matrix(c(A, B,
-                                  C, D), nrow = 2, byrow = T)
-        
-        cat(overlap.table, "\n")
-        
-        fisher.test.result <- fisher.test(overlap.table, alternative = "greater")
-
-        overlap.p[i, j]  <- fisher.test.result$p.value
-        
-        cat(fisher.test.result$p.value, "\n","\n")
-        
-    colnames(overlap.p)[j] <- unique(king$cluster)[j]
-    
-  }
-  
-  rownames(overlap.p)[i] <- unique(detable$cluster)[i]
-  
-}
-
-## prop
-overlap.prop <- data.frame()
-
-for (i in 1:length((unique(detable$cluster)))){
-  for (j in 1:length((unique(king$cluster)))){
-    
-        ###fisher exact test
-        A <- length(intersect(detable$gene[detable$p_val_adj < fdrcutoff & 
-                                             detable$cluster == unique(detable$cluster)[i]],
-                                         king$gene[king$p_val_adj < fdrcutoff & 
-                                                     king$cluster == unique(king$cluster)[j]]))
-        
-        B <- min(length(detable$gene[detable$p_val_adj < fdrcutoff & 
-                                   detable$cluster == unique(detable$cluster)[i]]),
-                 length(king$gene[king$p_val_adj < fdrcutoff & 
-                                king$cluster == unique(king$cluster)[j]]))
-       
-        
-        cat(unique(detable$cluster)[i], "\n")
-        cat(unique(king$cluster)[j], "\n")
-        
-        cat(round(A / B * 100, digits = 2), "\n")
-
-        overlap.prop[i, j]  <- round(A / B * 100, digits = 1)
-        
-    colnames(overlap.prop)[j] <- unique(king$cluster)[j]
-    
-  }
-  
-  rownames(overlap.prop)[i] <- unique(detable$cluster)[i]
-  
-}
-
-
-annot_row <- data.frame(unique(gex@meta.data[, c("seurat_clusters", "BcelltypeMain")])[match(rownames(overlap), unique(gex@meta.data[, c("seurat_clusters", "BcelltypeMain")])$seurat_clusters), ])
-rownames(annot_row) <- 0:22
-colnames(annot_row) <- c("cluster", "cell")
-annot_row$cluster <- NULL
-
-pheatmap::pheatmap(overlap.p, 
-                   breaks = seq(0, 1, length.out = 100),
-                   color = colorRampPalette(c("lightblue","firebrick"))(99),
-                   display_numbers = overlap,
-                   #display_numbers = round(overlap.p, digits = 2),
-                   cluster_rows = FALSE,
-                   cluster_cols = FALSE,
-                   filename = "../results/cluster_intersect_king_et_al2021_memory_count.pdf",
-                   annotation_row =  annot_row)
-
-pheatmap::pheatmap(overlap, 
-                   breaks = seq(0, 100, length.out = 100),
-                   color = colorRampPalette(c("lightblue","firebrick"))(99),
-                   #display_numbers = overlap,
-                   display_numbers = round(overlap.p, digits = 2),
-                   cluster_rows = FALSE,
-                   cluster_cols = FALSE,
-                   filename = "../results/cluster_intersect_king_et_al2021_memory_p.pdf",
-                   annotation_row =  annot_row)
-
-pheatmap::pheatmap(overlap.p, 
-                   breaks = seq(0, 1, length.out = 100),
-                   color = colorRampPalette(c("lightblue","firebrick"))(99),
-                   #display_numbers = overlap,
-                   display_numbers = round(overlap.prop, digits = 2),
-                   cluster_rows = FALSE,
-                   cluster_cols = FALSE,
-                   filename = "../results/cluster_intersect_king_et_al2021_memory_prop.pdf",
-                   annotation_row =  annot_row,
-                   main = "Numbers are proportion of intersect in smallest class
-                   and colors indicate fisher exact test p-value")
-
-
-```
-
-
-## plot marker gene expression
-
-```{r}
-
-plotExpression()
-
-b_features <- c("IGHD", "AICDA", "BCL6", "MKI67", "CD83", "CD38", "CXCR4", "LY6D", "CD1D", "FOXO1", 
-                "CCR6", "IRF4", "SDC1", "PRDM1", "CD9", "CCR7", "EBF1", "CD74", "NR4A1" , "SLPI", "SDC1")
-b_features2 <- c("RB1", "NT5E", "CD27", "CD19", "ITGAX", "FAS")
-b_features3 <-  c("CD38", "PTPRC")
-b_trans <- c("CD24", "CD38", "MME", "IGHM")
-ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
-
-
-VlnPlot(gex, features = b_trans, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 4)
-
-p1 <- VlnPlot(gex, 
-              features = ig.features, 
-              group.by = "seurat_clusters", 
-              slot = "data", log = TRUE, ncol = 3)
-ggsave2("../results/VlnPlot_markers_ig.features.png", 
-        p1, 
-        width = 30, height = 30, unit = "cm")
-
-p1 <- RidgePlot(gex, features = ig.features, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 3)
-ggsave2("../results/RidgePlot_markers_ig.features.png", 
-        p1, 
-        width = 30, height = 30, unit = "cm")
-
-p2 <- VlnPlot(gex, features = b_features3, group.by = "seurat_clusters", slot = "data", log = FALSE, ncol = 3)
-ggsave2("../results/VlnPlot_markers_b_features_3.png", 
-        p2, 
-        width = 20, height = 10, unit = "cm")
-
-p2 <- RidgePlot(gex, features = b_features, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 3)
-ggsave2("../results/RidgePlot_markers_b_features.png", 
-        p2, 
-        width = 20, height = 60, unit = "cm")
-
-
-plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
-
-
-```
-
-
-## integrate with stewart et al. 2021 per cell using scpred
-
-```{r}
+#https://pubmed.ncbi.nlm.nih.gov/33815362/
 
 stewart <- readRDS("../suppl/Stewart_et_al_2021/E-MTAB-9544_rds/scPure2_HB6_UMAP3D.rds")
 
+VlnPlot(stewart, c("nCount_RNA","nFeature_RNA", "percent.mt"), group.by = "library_id")
+
 #filter and process
-stewart <- subset(stewart, subset = nFeature_RNA > 200 & nFeature_RNA < 4000 & percent.mt < 10)
-stewart <- stewart[rowSums(stewart@assays$RNA@counts) != 0, ]
+stewart <- subset(stewart, subset = nFeature_RNA > 200 & nFeature_RNA < 3000 & percent.mt < 10)
+#stewart <- stewart[rowSums(stewart@assays$RNA@counts) != 0, ]
 
-stewart <- stewart %>% 
-  NormalizeData() %>% 
-  FindVariableFeatures() %>% 
-  ScaleData() %>% 
-  RunPCA() %>% 
-  RunUMAP(dims = 1:50)
+# stewart <- stewart %>%
+#   NormalizeData() %>% 
+#   FindVariableFeatures() %>% 
+#   ScaleData() %>% 
+#   RunPCA() %>% 
+#   RunUMAP(dims = 1:50)
 
-#subset seurat object
-Idents(object = stewart) <- "library_id"
-stewart.500 <- subset(stewart, downsample = 500)
 
 ####------------- per sorted cell type
-#train model
-reference1 <- getFeatureSpace(stewart.500, "library_id")
-reference1 <- trainModel(reference1)
-get_scpred(reference1)
 
-saveRDS(reference1, "../results/stewart_ref1_library_id.rds")
+#subset Stewart seurat object
+Idents(object = stewart) <- "library_id"
+stewart.lid.300 <- subset(stewart, downsample = 300)
+
+#train model
+ref1 <- getFeatureSpace(stewart.lid.300, "library_id")
+ref1 <- trainModel(ref1)
+get_scpred(ref1)
+
+saveRDS(ref1, "../results/stewart_ref1_library_id.rds")
 
 #predict cell types
-gex <- scPredict(gex, reference1)
+gex <- scPredict(gex, ref1)
 
 #rename columns in seurat meta.data 
 scPredcols <- c("scpred_max", "scpred_prediction", "scpred_no_rejection")
@@ -312,24 +145,41 @@ names(gex@meta.data)[names(gex@meta.data) == "scpred_Naive"] <- "scpred_Naive_"
 #plot
 p1 <- DimPlot(gex, 
               group.by = "scpred_prediction_ref1", 
-              reduction = "umap_2")
-
+              reduction = "umap_2") + 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") +
+  ggtitle("predicted cell type, Stewart et al. 2021", subtitle = "by sorted cell type")
 
 
 ####------------- per stewart cluster
 #subset seurat object
 Idents(object = stewart) <- "cluster"
-stewart.500 <- subset(stewart, downsample = 500)
-head(stewart.500@meta.data)
-table(stewart.500$cluster)
+stewart.cl.300 <- subset(stewart, downsample = 300)
+head(stewart.cl.300@meta.data)
+table(stewart.cl.300$cluster)
 
 #train model
-reference2 <- getFeatureSpace(stewart.500, "cluster")
-reference2 <- trainModel(reference2)
-get_scpred(reference2)
+ref2 <- getFeatureSpace(stewart.cl.300, "cluster")
+ref2 <- trainModel(ref2)
+get_scpred(ref2)
+
+# |Cell type |   n| Features|Method    |   ROC|  Sens|  Spec|
+# |:---------|---:|--------:|:---------|-----:|-----:|-----:|
+# |Trans     | 300|       50|svmRadial | 0.999| 0.950| 0.993|
+# |Naive     | 300|       50|svmRadial | 0.984| 0.817| 0.986|
+# |M-mem1    | 300|       50|svmRadial | 0.978| 0.780| 0.978|
+# |M-mem2    | 300|       50|svmRadial | 0.944| 0.527| 0.970|
+# |C-mem1    | 300|       50|svmRadial | 0.959| 0.617| 0.977|
+# |C-mem2    | 300|       50|svmRadial | 0.985| 0.763| 0.982|
+# |DN1       | 300|       50|svmRadial | 0.972| 0.733| 0.987|
+# |DN2       | 300|       50|svmRadial | 0.998| 0.930| 0.993|
+# |DN3       | 300|       50|svmRadial | 0.914| 0.437| 0.974|
+# |DN4       | 300|       50|svmRadial | 0.969| 0.690| 0.984|
+
+saveRDS(ref2, "../results/stewart_ref2_cluster.rds")
 
 #predict cell types
-gex <- scPredict(gex, reference2)
+gex <- scPredict(gex, ref2)
 
 #rename columns in seurat meta.data 
 names(gex@meta.data)[names(gex@meta.data) == scPredcols[1]] <- paste0(scPredcols[1], "_ref2")
@@ -337,13 +187,20 @@ names(gex@meta.data)[names(gex@meta.data) == scPredcols[2]] <- paste0(scPredcols
 names(gex@meta.data)[names(gex@meta.data) == scPredcols[3]] <- paste0(scPredcols[3], "_ref2")
 
 #plot
-p2 <- DimPlot(gex, group.by = "scpred_prediction_ref2", reduction = "umap_2")
+p2 <- DimPlot(gex, 
+              group.by = "scpred_prediction_ref2", 
+              reduction = "umap_2") + 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") +
+  ggtitle("predicted cell type, Stewart et al. 2021", 
+          subtitle = "by clustered sorted celltype")
 
 
-
-
+dev.off()
 #check cluster overlap with cell types
-hm1 <- round(sweep(as.data.frame.matrix(table(gex$seurat_clusters, gex$scpred_prediction_ref1)), 
+#per sorted cell type
+hm1 <- round(sweep(as.data.frame.matrix(table(gex$seurat_clusters, 
+                                              gex$scpred_prediction_ref1)), 
                    1, table(gex$seurat_clusters), `/`) * 100, 
              digits = 1)
 
@@ -355,7 +212,9 @@ phm1 <- pheatmap(hm1,
          filename = "../results/cellType_B-cells_Stewart_et_al_1.png", 
          number_format = "%.1f")
 
-hm2 <- round(sweep(as.data.frame.matrix(table(gex$seurat_clusters, gex$scpred_prediction_ref2)), 
+#per sorted cell type cluster
+hm2 <- round(sweep(as.data.frame.matrix(table(gex$seurat_clusters, 
+                                              gex$scpred_prediction_ref2)), 
                    1, table(gex$seurat_clusters), `/`) * 100, 
              digits = 1)
 
@@ -382,49 +241,32 @@ annot.df <- data.frame(cluster = rownames(hm1),
                        annot_sort = colnames(hm1)[apply(hm1, 1, which.max)], 
                        annot_clust = colnames(hm2)[apply(hm2, 1, which.max)])
   
-gex@meta.data["cluster_type_sorted"] <- annot.df$annot_sort[match(gex$seurat_clusters,
-                                                           annot.df$cluster)]
-gex@meta.data["cluster_type_clust"] <- annot.df$annot_clust[match(gex$seurat_clusters,
+gex@meta.data["cluster_stewart_sort"] <- annot.df$annot_sort[match(gex$seurat_clusters,
                                                            annot.df$cluster)]
 
-table(gex@meta.data$cluster_type_sorted, gex@meta.data$cluster_type_clust)
+gex@meta.data["cluster_stewart_cl"] <- annot.df$annot_clust[match(gex$seurat_clusters,
+                                                           annot.df$cluster)]
 
-#check cluster overlap with cell types
-hm1 <- round(sweep(as.data.frame.matrix(table(gex$seurat_clusters, gex@meta.data$cluster_type_sorted)),
-                   1, table(gex$seurat_clusters), `/`) * 100, 
-             digits = 1)
-
-phm1 <- pheatmap(hm1, 
-         cluster_rows = FALSE,
-         cluster_cols = FALSE,
-         main = "Sorted Cell Type, % of seurat cluster", 
-         display_numbers = TRUE,
-         filename = "../results/cellType_B-cells_Stewart_et_al_1perCluster.png", 
-         number_format = "%.1f")
-
-hm2 <- round(sweep(as.data.frame.matrix(table(gex$seurat_clusters, gex@meta.data$cluster_type_clust)), 
-                   1, table(gex$seurat_clusters), `/`)*100, 
-             digits = 1)
-
-phm2 <- pheatmap(hm2, 
-         cluster_rows = FALSE, 
-         cluster_cols = FALSE,
-         main = "Clustered Sorted Cell Type, % of seurat cluster", 
-         display_numbers = TRUE,
-         filename = "../results/cellType_B-cells_Stewart_et_al_2perCluster.png",
-         number_format = "%.1f")
+table(gex@meta.data$cluster_stewart_sort, gex@meta.data$cluster_stewart_cl)
 
 
-annotation_main <- c(
+```
+
+
+## manual annotation using output from scPred and cluster marker genes
+
+```{r}
+
+annotation_fine <- c(
   Naive = 0,#CCR7, BACH2, SELL, IL4R
   Naive = 1,#IGHD,FCER2
   Naive = 2,#IGHD,FCER2
   IgM_Memory = 3,
   Transitional = 4,# CD9, IGHD,FCER2
   Classical_Memory = 5,
-  Naive_IFN = 6,#CCR7, BACH2, SELL, IL4R, IGHD,FCER2, + IFN regulated genes
+  Naive_IFN = 6,#CCR7, BACH2, SELL, IL4R, IGHD, FCER2, + IFN regulated genes
   DN2 = 7, #IGHA1
-  Classical_Memory = 8,
+  Classical_Memory_stressed = 8,
   DN_ID3 = 9, #ID3, LGALS3, ITGB1, IGHA1
   Naive = 10,#COL19A1, CCR7, BACH2, SELL, IL4R, IGHD,FCER2
   DN_IGHE = 11, #IGHE, IL13RA (allergy)
@@ -434,275 +276,113 @@ annotation_main <- c(
   DN2_ITGAX = 15, #FCRL3, MPP6, ARL4D, ZEB2, ITGAX, ITGB7, IGHA1
   Classical_Memory = 16, #IGHA
   IgM_Memory_ALOX5 = 17, #?? ALOX5, ACADM, GID8, CMSS1
-  Classical_Memory_CD69 = 18, #FOS, CD69, EGR1, DUSP1
-  Unknown = 19, #CCL5, F13A1, PPBP, NRGN, CLU
+  Classical_Memory_CD69_stressed = 18, #FOS, CD69, EGR1, DUSP1
+  Memory_Platlet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
   Naive = 20,#
-  B_stressed = 21,#dead/dying cells
+  Classical_Memory_stressed = 21,#dead/dying cells
   Plasma_cell = 22
 )
 
-FeaturePlot(gex, c("CD3G","CST3") , reduction = "umap_2")
-FeaturePlot(gex, c("CD3G","CST3") , reduction = "umap_1")
-FeaturePlot(gex, "CST3", reduction = "umap_2")
+gex@meta.data["cluster_cellType_manual_fine"] <- names(annotation_fine)[match(gex$seurat_clusters,
+                                                                     annotation_fine)] 
 
-VlnPlot(gex, c("nCount_RNA","CST3"), group.by = "seurat_clusters")
+annotation_main <- c(
+  Naive = 0,#CCR7, BACH2, SELL, IL4R
+  Naive = 1,#IGHD,FCER2
+  Naive = 2,#IGHD,FCER2
+  Memory = 3,
+  Transitional = 4,# CD9, IGHD,FCER2
+  Memory = 5,
+  Naive = 6,#CCR7, BACH2, SELL, IL4R, IGHD,FCER2, + IFN regulated genes
+  DN = 7, #IGHA1
+  Memory_stressed = 8,
+  DN = 9, #ID3, LGALS3, ITGB1, IGHA1
+  Naive = 10,#COL19A1, CCR7, BACH2, SELL, IL4R, IGHD,FCER2
+  DN = 11, #IGHE, IL13RA1 (allergy)
+  Memory = 12, #?? early memory?, no concrete marker, down regulates "naive genes"
+  DN = 13, #ITGB7, IGHG1, IGHG2, IGHG3, CXCR3, IGHA1
+  Memory = 14,#CD1C
+  DN = 15, #FCRL3, MPP6, ARL4D, ZEB2, ITGAX, ITGB7, IGHA1
+  Memory = 16, #IGHA1
+  Memory = 17, #?? ALOX5, ACADM, GID8, CMSS1
+  Memory_stressed = 18, #FOS, CD69, EGR1, DUSP1
+  Memory_Platlet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
+  Naive = 20,#
+  Memory_stressed = 21,#dead/dying cells
+  Plasma_cell = 22
+)
 
-
-FeaturePlot(gex, c("nCount_RNA","CST3") , reduction = "umap_2")
-
-colnames(gex@meta.data)
-
-table(gex@meta.data$celltype)
-
-gex@meta.data["cluster_type_manual"] <- names(annotation_main)[match(gex$seurat_clusters,
+gex@meta.data["cluster_cellType_manual_main"] <- names(annotation_main)[match(gex$seurat_clusters,
                                                                      annotation_main)] 
 
-p1 <- DimPlot(gex, group.by = "cluster_type_sorted", reduction = "umap_2")
-p2 <- DimPlot(gex, group.by = "cluster_type_clust", reduction = "umap_2")
-p3 <- DimPlot(gex, group.by = "cluster_type_manual", reduction = "umap_2")
-p4 <- plot_grid(p1, p2, p3, ncol = 3) +  bgcolor("white")
-p5 <- plot_grid(phm1[[4]], phm2[[4]], ncol = 2) + bgcolor("white")
-p6 <- tableGrob(table(gex@meta.data$cluster_type_sorted, gex@meta.data$cluster_type_clust))
+
+table(gex@meta.data$cluster_cellType_manual_fine, gex@meta.data$cluster_cellType_manual_main)
+
+p1 <- DimPlot(gex, group.by = "cluster_stewart_sort", reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2")+ 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") +
+  ggtitle("Stewart et al. 2021 celltypes", 
+          subtitle = "by clustered sorted celltype")
+p2 <- DimPlot(gex, group.by = "cluster_stewart_cl", reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2")
+p3 <- DimPlot(gex, group.by = "cluster_cellType_manual_fine", reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2")
+p4 <- DimPlot(gex, group.by = "cluster_cellType_manual_main", reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2")
+p5 <- plot_grid(p1, p2, p3, p4, ncol = 2) +  bgcolor("white")
+#p6 <- plot_grid(phm1[[4]], phm2[[4]], ncol = 2) + bgcolor("white")
+p7 <- tableGrob(table(gex@meta.data$cluster_stewart_sort, gex@meta.data$cluster_stewart_cl))
 
 ggsave2(paste0("../results/cellType_Stewart_perCluster.png"), 
-        plot_grid(p4, p5, p6, ncol = 1, rel_heights = c(2, 2, 1)) + bgcolor("white"), 
+        plot_grid(p5, p7, ncol = 1, rel_heights = c(4, 1)) + bgcolor("white"), 
         width = 40, height = 30, unit = "cm")
 
 
 ```
 
 
-## Annotating B-cell clusters 
+## plot marker gene expression
 
 ```{r}
 
-####-----------------------
-#general
-#Naive - 
-#Transitional - "CD24", "CD38", "CD10", "IGHM"  c("CD24", "CD38", "MME", "IGHM")
-#Transitional_T1 -  c("CD24", "CD38", "MME", "IGHM")
-#Transitional_T2 -  CD24", "CD38", "MME", "IGHM", "IGHD", "CD21", "CD23" 
-#c("CD24", "CD38", "MME", "IGHM", "IGHD", "CR2", "FCER2")
-#Memory - c("CD27)
-#Plasma cells - CD138 "SDC1"
+plotExpression()
 
-#Breg - "IL10"
+b_features <- c("IGHD", "AICDA", "BCL6", "MKI67", "CD83", "CD38", "CXCR4", "LY6D", "CD1D", "FOXO1", 
+                "CCR6", "IRF4", "SDC1", "PRDM1", "CD9", "CCR7", "EBF1", "CD74", "NR4A1" , "SLPI", "SDC1")
+b_features2 <- c("RB1", "NT5E", "CD27", "CD19", "ITGAX", "FAS")
+b_features3 <-  c("CD38", "PTPRC")
+b_trans <- c("CD24", "CD38", "MME", "IGHM")
+ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
 
+c_features <- c("CCR7", "BACH2", "SELL", "IL4R", "IGHD", "FCER2", "IGHA1", "ID3", "LGALS3", "ITGB1", "COL19A1", "IGHE", "IL13RA1", "ITGB7", "IGHG1", "IGHG2", "IGHG3", "CXCR3", "IGHA1", "ALOX5", "ACADM", "GID8", "CMSS1", "FOS", "CD69", "EGR1", "DUSP1", "CCL5", "F13A1", "PPBP", "NRGN", "CLU")
+c_features <- c_features[order(c_features)]
 
-WhichCells(object = gex, expression = CD24 > 1 & CD38 > 1 & MME > 1 & IGHM > 1)
-DimPlot()
+p1 <- VlnPlot(gex, 
+              features = c_features, 
+              group.by = "seurat_clusters", 
+              slot = "data", 
+              log = TRUE, 
+              ncol = 2)
 
-#look for transitional cluster
-table(gex$seurat_clusters[match(
-  WhichCells(object = gex, 
-             expression = CD24 > 1 & 
-               CD38 > 1 & 
-               MME > 1 & 
-               IGHM > 1
-             ),
-  rownames(gex@meta.data)
-) ])/table(gex$seurat_clusters) *100
-####-----------------------
-
-####-----------------------
-#https://pubmed.ncbi.nlm.nih.gov/34161770/
-# C4 - MZ - CD1D (Cd1d1), CD9 (Cd9)
-# Naive - 
-# Naive/Activated - 
-# PreGC - 
-# EarlyGZ - 
-# GC-DZ/G2M - 
-# GC-DZ/S - 
-# GC-LZ - 
-# GC-LZ/S - 
-# GC-LZ/G2M - 
-# PreMem - 
-# Bmem - 
-# PB - 
-####-----------------------
+ggsave2("../results/VlnPlot_clusterMarkers.png", 
+        p1, 
+        width = 20, height = 80, unit = "cm")
 
 
-####-----------------------
-#https://pubmed.ncbi.nlm.nih.gov/31681331/
-#review with surface marker sets
-#Transitional, T1/T2, IgD+ CD27– CD38++ CD24++, CD10++/+ IgM++ MTG+, 
-#Transitional, T2-MZP, IgD+ CD27– CD38++ CD24++ CD21++, CD10+ IgM++
-#Transitional, T3, IgD+ CD27– CD38+ CD24+ CD21+, CD10+/– IgM+ MTG+
-#Naïve, Resting, IgD+ CD27– CD38+ CD24+ CD21+, IgM+ MTG–
-#Naïve, Activated, IgD+ CD27– CD38– CD24– CD21–, IgM+ MTG+ CD95+ CD23– CD11c+ T-bet+ FcRL5+ SLAMF7+ CXCR5–
-#Naïve, Anergic, IgD+ CD27– CD38+/lo CD24+ CD21–
-#Memory, Unswitched, IgDlo CD27+ CD38+/lo CD24+ CD21+, CD1c+ IgM++
-#Memory, Pre-switched, IgD– CD27+ CD38+/lo CD24+ CD21+, IgM+
-#Memory, Switched resting, IgD– CD27+ CD38+/lo CD24+ CD21+, IgG/IgA+ CD95–
-#Memory, Switched activated, IgD– CD27+ CD38– CD24– CD21–, IgG/IgA+ CD95+ CD86+
-#Memory, Atypical tissue-based, IgD– CD27– CD38lo CD24lo CD21–, FcRL4+ IgM/IgG/IgA+ FcRL5+
-#Double negative (DN), DN1, IgD– CD27– CD38+ CD24+ CD21+, FcRL4– IgM/IgG/IgA+ FcRL5– CXCR5+
-#Double negative (DN), DN2, IgD– CD27– CD38– CD24– CD21–, IgM/IgG/IgA+ T-bet+ CD11c+ FcRL5+ CXCR5– SLAMF7+
+p1 <- RidgePlot(gex, features = ig.features, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 3)
+ggsave2("../results/RidgePlot_markers_ig.features.png", 
+        p1, 
+        width = 30, height = 30, unit = "cm")
 
-#Transitional, T1/T2, #expression = IGHD > 1 & CD27 == 0 & CD38 > 1 & CD24 > 1 #maybe c4, c10, c6
-#Transitional, T2-MZP, #expression = IGHD > 1 & CD27 == 0 & CD38 > 1 & CD24 > 1 & CR2 > 1 #no hit
+p2 <- VlnPlot(gex, features = b_features3, group.by = "seurat_clusters", slot = "data", log = FALSE, ncol = 3)
+ggsave2("../results/VlnPlot_markers_b_features_3.png", 
+        p2, 
+        width = 20, height = 10, unit = "cm")
 
-#Naïve, Resting, #expression = IGHD > 1 & CD27 == 0 & CD38 > 1 & CD24 > 1 & CR2 > 1 #no hit
-#Naïve, Activated, #expression = IGHD > 1 & CD27 == 0 & CD38 == 0 & CD24 == 0 & CR2 == 0 & IGHM > 1 & MTG1 > 1 # c10, c0, c6, c2, c20, c1, c4..
+p2 <- RidgePlot(gex, features = b_features, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 3)
+ggsave2("../results/RidgePlot_markers_b_features.png", 
+        p2, 
+        width = 20, height = 60, unit = "cm")
 
 
-#Memory, Unswitched, #expression = CD27 > 1 & CD38 > 1  & CD24 > 1 & CR2 > 1  & CD1C > 1 & IGHM > 1 
-#maybe c17, c3
-
-#Memory, Pre-switched, #expression = IGHD == 0 & CD27 > 1 & CD38 > 1 & CD24 > 1 & CR2 > 1 & IGHM > 1 
-#no hit
-
-#Memory, Switched resting, #expression = IGHD == 0 & CD27 > 1 & CD38 > 1 & CD24 > 1 & CR2 > 1 & FAS == 0 
-#no hit
-
-#Memory, Switched activated, #expression = IGHD == 0 & CD27 > 1 & CD38 == 0 & CD24 == 0 & CR2 == 0 & FAS > 1 & CD86 > 1 & FCER2 > 1 
-#maybe c9, c5, c18
-
-#Memory, Atypical tissue-based #expression = IGHD == 0 & CD27 == 0 & CR2 == 0 & FCRL4 > 1 & FCRL5 > 1 
-# maybe c15, c13
-
-#Double negative (DN), DN1 #expression = IGHD == 0 & CD27 == 0 & CD38 > 1 & CD24 > 1 & CR2 > 1 & FCRL4 == 0 & FCRL5 == 0 & CXCR5 > 1 
-#no hit
-
-#Double negative (DN), DN2, #expression = IGHD == 0 & CD27 == 0 & CD38 == 0 & CD24 == 0 & CR2 == 0 & TBX21 > 1 & ITGAX > 1 & FCRL5 > 1 & CXCR5 == 0 & SLAMF7 > 1 
-#no hit
-
-sort(table(gex$seurat_clusters[match(
-  WhichCells(object = gex, expression = IGHD == 0 & CD27 == 0 & CD38 == 0 & CD24 == 0 & CR2 == 0 & TBX21 > 1 & ITGAX > 1 & FCRL5 > 1 & CXCR5 == 0 & SLAMF7 > 1),
-  rownames(gex@meta.data)
-) ])/ table(gex$seurat_clusters) *100, decreasing = TRUE) 
-
-length(WhichCells(object = gex, expression = IGHD > 1 ))
-length(WhichCells(object = gex, expression = CD27 == 0 ))
-length(WhichCells(object = gex, expression = CD38 == 0 ))
-length(WhichCells(object = gex, expression = CD24 == 0 ))
-length(WhichCells(object = gex, expression = CR2 == 0))
-length(WhichCells(object = gex, expression = IGHM > 1))
-length(WhichCells(object = gex, expression = MTG1 > 1))
-length(WhichCells(object = gex, expression = FAS > 1))
-length(WhichCells(object = gex, expression = ITGAX > 1))
-length(WhichCells(object = gex, expression = TBX21 > 1))
-length(WhichCells(object = gex, expression = FCRL5 > 1))
-length(WhichCells(object = gex, expression = SLAMF7 > 1))
-
-
-
-#IgD IGHD
-#CD27
-#CD38
-#CD24
-#CD10 MME 
-#IgM IGHM
-#MTG MTG1
-#CD21 CR2
-#CD1c CD1C
-#CD95 FAS
-#CD86
-#FcRL4 FCRL4
-#FcRL5 FCRL5
-#CXCR5 
-#T-bet TBX21
-#CD11c ITGAX
-#SLAMF7
-#CD23 FCER2
-####-----------------------
-
-
-
-####-----------------------
-# https://pubmed.ncbi.nlm.nih.gov/32668225/
-# paper using flow cytometry and surface markers
-# Plasma
-# Transitional
-# Naive CD73-
-# Naive CD73+ 
-# Memory RB+ CD27- #expression = RB1 > 1 & CD27 == 0
-# Memory RB- #expression = RB1 == 0
-# Memory RB+ CD27+ CD73+ #expression = RB1 > 1 & CD27 > 1 & NT5E > 1 #maybe c9
-# Memory RB+ CD27+ CD73- #expression = RB1 > 1 & CD27 > 1 & NT5E == 0 #maybe c13, c14, c3
-# Memory CD19high CD11c+ #expression = CD19 > 1 & ITGAX > 1 #c15 and maybe c13
-# Memory CD95+ #expression = FAS > 1 #c9, c13, c15
-
-# RB - RB1
-# CD73 - NT5E
-# CD27
-# CD19
-# CD11c - ITGAX
-# CD95 - FAS
-
-#look for memory subclusters
-table(gex$seurat_clusters[match(
-  WhichCells(object = gex, expression = RB1 > 1 & CD27 == 0),
-  rownames(gex@meta.data)
-) ])/ table(gex$seurat_clusters) *100 
-####-----------------------
-
-
-#manual cluster annotation
-annotation_main <- c(
-  Naive = 0,
-  Naive = 1,
-  Naive = 2,
-  Memory = 3,
-  Naive = 4,
-  Memory = 5,
-  Naive = 6,
-  Memory = 7,
-  B_tissueMigration = 8,
-  Memory = 9,
-  Naive = 10,
-  Memory = 11,
-  Memory = 12,
-  Memory = 13,
-  Memory = 14,
-  Memory = 15,
-  Memory = 16,
-  Memory = 17,
-  B_tissueMigration = 18,
-  Unknown = 19,
-  Naive = 20,
-  B_stressed = 21,
-  Plasma_cell = 22
-)
-
-# annotation <- c(
-#   x = 0,
-#   x = 1,
-#   x = 2,
-#   x = 3,
-#   x = 4,
-#   x = 5,
-#   x = 6,
-#   x = 7,
-#   x = 8,
-#   `Memory CD95+` = 9,
-#   `Naive CD73+` = 10,
-#   x = 11,
-#   x = 12,
-#   `Memory CD95+` = 13,
-#   `Memory` = 14,
-#   `Memory CD19high CD11c+` = 15,
-#   x = 16,
-#   `Memory RB+ CD27+ CD73+` = 17,
-#   x = 18,
-#   x = 19,
-#   x = 20,
-#   x = 21,
-#   `Plasma cell` = 22
-# )
-
-#gex$Bcelltype <- names(annotation)[match(gex$seurat_clusters, annotation)] 
-gex$BcelltypeMain <- names(annotation_main)[match(gex$seurat_clusters, annotation_main)] 
-table(gex$BcelltypeMain)
-
-p <- DimPlot(gex, 
-              group.by = "BcelltypeMain", 
-              split.by = "patient_group", 
-              reduction = "umap_2", ncol = 2, raster = FALSE)
-
-ggsave2(paste0("../results/UMAP_cellTypes_byPatientGroup.png"), 
-          p,
-          width = 30, height = 20, unit = "cm")
+plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
 
 
 ```

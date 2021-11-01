@@ -28,7 +28,8 @@ annot <- unique(gtf.GRCh38.98[gtf.GRCh38.98$type == "gene", c(1, 9, 11, 12)])
 colnames(annot) <- c("chromosome_name", "gene_id", "gene_biotype", "external_gene_name")
 annot$chromosome_name <- as.character(annot$chromosome_name)
 annot[!grepl("^chr[123456789XYMT]", annot[, "chromosome_name"]), "chromosome_name"] <- "other"
-print("head(annot):")
+
+cat("head(annot): \n")
 head(annot)
 
 saveRDS(annot, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
@@ -74,7 +75,7 @@ gex <- lapply(gex, annot = annot, function(x, annot) {
   
   x$percent_mito <- colSums(x[grepl("^MT-", rownames(x)), ]) / total * 100
   x$percent_ribo <- colSums(x[grepl("^RP[LS]", rownames(x)), ]) / total * 100
-  x$percent_hb <- colSums(x[grepl("^HB[AB]", rownames(x)), ]) / total * 100
+  x$percent_hb <-   colSums(x[grepl("^HB[AB]", rownames(x)), ]) / total * 100
   
   gene_biotype <- annot[match(rownames(x), annot$external_gene_name), "gene_biotype"]
   x$percent_protein_coding <- colSums(x[(gene_biotype == "protein_coding") &
@@ -94,8 +95,7 @@ gex <- lapply(gex, annot = annot, function(x, annot) {
 
 gex <- merge(gex[[1]] , gex[-1])
 
-gex$cells_discard <-
-  rowSums(gex@meta.data[, grepl("_th", colnames(gex@meta.data))]) > 0
+gex$cells_discard <- rowSums(gex@meta.data[, grepl("_th", colnames(gex@meta.data))]) > 0
 
 
 ```
@@ -105,24 +105,21 @@ gex$cells_discard <-
 
 ```{r}
 
-png(paste0("../results/QC_nCount_",format(Sys.time(), "%y%m%d"),".png"), 
-    w = 20, h = 20, units = "cm", res = 200)
+png(paste0("../results/QC_nCount.png"), w = 20, h = 20, units = "cm", res = 200)
 plot(sort(gex@meta.data$nCount_RNA),
      xlab = "cell",
      ylab ="nCount",
      main = "nCount")
 dev.off()
 
-png(paste0("../results/QC_nFeature_",format(Sys.time(), "%y%m%d"),".png"), 
-    w = 20, h = 20, units = "cm", res = 200)
+png(paste0("../results/QC_nFeature.png"), w = 20, h = 20, units = "cm", res = 200)
 plot(sort(gex@meta.data$nFeature_RNA),
      xlab = "cell",
      ylab ="nFeature",
      main = "nFeature")
 dev.off()
 
-png(paste0("../results/QC_perc.mito_",format(Sys.time(), "%y%m%d"),".png"), 
-    w = 20, h = 20, units = "cm", res = 200)
+png(paste0("../results/QC_perc.mito.png"), w = 20, h = 20, units = "cm", res = 200)
 plot(sort(gex@meta.data$percent_mito),
      xlab = "cell",
      ylab = "percent mito",
@@ -130,8 +127,7 @@ plot(sort(gex@meta.data$percent_mito),
 abline(h = mito_cutoff, col = "red")
 dev.off()
 
-png(paste0("../results/QC_perc.ribo_",format(Sys.time(), "%y%m%d"),".png"), 
-    w = 20, h = 20, units = "cm", res = 200)
+png(paste0("../results/QC_perc.ribo.png"), w = 20, h = 20, units = "cm", res = 200)
 plot(sort(gex@meta.data$percent_ribo),
      xlab = "cell",
      ylab = "percent ribo",
@@ -139,8 +135,7 @@ plot(sort(gex@meta.data$percent_ribo),
 abline(h = ribo_cutoff, col = "red")
 dev.off()
 
-png(paste0("../results/QC_perc.hb_",format(Sys.time(), "%y%m%d"),".png"), 
-    w = 20, h = 20, units = "cm", res = 200)
+png(paste0("../results/QC_perc.hb.png"), w = 20, h = 20, units = "cm", res = 200)
 plot(sort(gex@meta.data$percent_hb),
      xlab = "cell",
      ylab = "percent hb",
@@ -170,7 +165,7 @@ discarded_stats <- as_tibble(gex@meta.data) %>%
   )
 
 write.csv(discarded_stats, 
-          paste0("../results/stats_discarded_",format(Sys.time(), "%y%m%d"),".csv"), 
+          paste0("../results/stats_discarded.csv"), 
           row.names = FALSE, 
           quote = FALSE)
 
@@ -179,17 +174,17 @@ p_discarded_stats <- discarded_stats %>%
   ggplot(aes(x = orig.ident, 
              y = cellcount, 
              fill = discarded)) + 
-  geom_bar(stat = "identity", 
-           color = "black", 
-           position = position_dodge()) + 
-  theme(legend.title = element_blank(),
-        axis.text.x = element_text(face = "bold", angle = 90, vjust = 0.5, hjust = 1),
-        axis.text.y = element_text(face = "bold")) +
-  ggtitle(paste0("Number of cells total/number of discarded cells (", 
-                 sum(discarded_stats$cells), "/", 
-                 sum(discarded_stats$total_discarded), ")"))
+      geom_bar(stat = "identity", 
+               color = "black", 
+               position = position_dodge()) + 
+      theme(legend.title = element_blank(),
+            axis.text.x = element_text(face = "bold", angle = 90, vjust = 0.5, hjust = 1),
+            axis.text.y = element_text(face = "bold")) +
+      ggtitle(paste0("Number of cells total/number of discarded cells (", 
+                     sum(discarded_stats$cells), "/", 
+                     sum(discarded_stats$total_discarded), ")"))
 
-ggsave2(paste0("../results/Discarded_cellcounts_", format(Sys.time(), "%y%m%d"), ".png"), 
+ggsave2(paste0("../results/Discarded_cellcounts.png"), 
           p_discarded_stats,
           width = 25, height = 20, unit = "cm")
 
@@ -226,7 +221,7 @@ for (i in my_pars){
   #   ggtitle(paste0(i, " per sample, filtered"))
   
   
-  ggsave2(paste0("../results/QCplot_perSample", "_", i, format(Sys.time(), "%y%m%d"), ".png"), 
+  ggsave2(paste0("../results/QCplot_perSample", "_", i, ".png"), 
           plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"),
           width = 28, height = 12, unit = "cm")
   
@@ -240,13 +235,14 @@ for (i in my_pars){
 
 ```{r}
 
-#filter annotation file, keeping proteing coding plus VDJ genes
+#filter annotation file, keeping proteing coding and VDJ genes
 annot_coding <- unique(annot[!(annot$chromosome_name %in% c("chrY", "other", "chrM")) & 
                        (annot$gene_biotype %in% c("protein_coding", 
                                     "IG_V_gene", "IG_D_gene", "IG_J_gene", "IG_C_gene",
-                                    "TR_V_gene", "TR_D_gene", "TR_J_gene", "TR_C_gene")), c("external_gene_name", "gene_biotype", "chromosome_name")])
-genes_keep <- rownames(gex) %in% annot_coding$external_gene_name
+                                    "TR_V_gene", "TR_D_gene", "TR_J_gene", "TR_C_gene")), 
+                       c("external_gene_name", "gene_biotype", "chromosome_name")])
 
+genes_keep <- rownames(gex) %in% annot_coding$external_gene_name
 table(genes_keep)
 
 gex <- gex[genes_keep, !gex$cells_discard] 
@@ -255,7 +251,7 @@ Idents(object = gex) <- "orig.ident"
 
 gex
 
-print("GEX_FILTERED size:")
+cat("GEX_FILTERED size: \n")
 print(object.size(gex), units = "GB")
 
 

@@ -36,8 +36,7 @@ p1 <- LabelPoints(plot = VariableFeaturePlot(gex),
         ggtitle(paste0(length(VariableFeatures(gex)), " Variable features - allCells (all features"))
 
 
-# Subset VariableFeatures(gex) to only include biotype == "protein_coding"
-
+#### ------ Subset VariableFeatures(gex) to only include biotype == "protein_coding"
 VariableFeatures(gex) <-
   VariableFeatures(gex)[VariableFeatures(gex) %in%
                           annot$external_gene_name[annot$gene_biotype == "protein_coding"]]
@@ -60,10 +59,10 @@ ggsave2("../results/VariableFeatures_allCells.png",
 
 
 ## Scale data
-### Regressing out nFeature_RNA
 
 ```{r}
 
+#### ----- Regressing out nFeature_RNA
 gex <- ScaleData(gex, 
                  features = VariableFeatures(gex),
                  vars.to.regress = c("nFeature_RNA")
@@ -123,25 +122,21 @@ gex
 
 ```{r}
 
-p1 <-
-  DimPlot(
-    object = gex,
-    reduction = "pca_1",
-    pt.size = .1,
-    group.by = "orig.ident",
-    raster = FALSE) +
-  NoLegend() +
-  ggtitle("PCA_1, by Sample")
+p1 <-DimPlot(object = gex,
+              reduction = "pca_1",
+              pt.size = .1,
+              group.by = "orig.ident",
+              raster = FALSE) +
+                  NoLegend() +
+                  ggtitle("PCA_1, by Sample")
 
-p2 <-
-  DimPlot(
-    object = gex,
-    reduction = "harmony_1",
-    pt.size = .1,
-    group.by = "orig.ident",
-    raster = FALSE) +
-  NoLegend() +
-  ggtitle("Harmony_1, by Sample")
+p2 <- DimPlot(object = gex,
+              reduction = "harmony_1",
+              pt.size = .1,
+              group.by = "orig.ident",
+              raster = FALSE) +
+                  NoLegend() +
+                  ggtitle("Harmony_1, by Sample")
 
 ggsave2("../results/PCA_harmony_allCells_.png", 
         plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
@@ -155,20 +150,19 @@ ggsave2("../results/PCA_harmony_allCells_.png",
 
 ```{r}
 
-gex <- RunUMAP(
-  gex,
-  dims = 1:50, #or 100?
-  reduction = "harmony_1",
-  metric = "correlation",
-  reduction.name = "umap_1",
-  min.dist = 0.4, #local cell separation
-  spread = .5, #global cell separation
-  n.neighbors = 30, #30 on bianca!
-  repulsion.strength = 0.4, #~2x min.dist, repulsion to cells fr annat cluster, global separation
-  negative.sample.rate = 50, #ant ggr n.neighbors celler, global distance
-  n.epochs = 100,
-  n.components = 2
-)
+gex <- RunUMAP(gex,
+                dims = 1:50,
+                reduction = "harmony_1",
+                metric = "correlation",
+                reduction.name = "umap_1",
+                min.dist = 0.4, #local cell separation
+                spread = .5, #global cell separation
+                n.neighbors = 30, #30 on bianca!
+                repulsion.strength = 0.4, #~2x min.dist, repulsion to cells fr annat cluster, global separation
+                negative.sample.rate = 50, #ant ggr n.neighbors celler, global distance
+                n.epochs = 100,
+                n.components = 2
+              )
 
 
 ```
@@ -192,7 +186,7 @@ gex <- FindClusters(gex,
 
 table(gex@meta.data$seurat_clusters)
 
-print("GEX_DIMRED size:")
+cat("GEX_DIMRED size: \n")
 print(object.size(gex), units = "GB")
 
 gex
@@ -233,8 +227,8 @@ p1 <- DimPlot(gex,
                   pt.size = .1, 
                   group.by = "orig.ident", 
                   raster=FALSE) + 
-          NoLegend() + 
-          ggtitle("UMAP_1, by Sample")
+                      NoLegend() + 
+                      ggtitle("UMAP_1, by Sample")
 
 p2 <- DimPlot(gex, 
                   reduction = "umap_1", 
@@ -243,8 +237,8 @@ p2 <- DimPlot(gex,
                   label = TRUE, 
                   repel = TRUE, 
                   raster=FALSE) + 
-          NoLegend() + 
-          ggtitle("UMAP_1, by Cluster")
+                      NoLegend() + 
+                      ggtitle("UMAP_1, by Cluster")
 
 ggsave2("../results/UMAP_allCells.png", 
         plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
@@ -395,129 +389,9 @@ p3 <- DimPlot(gex,
               NoLegend() + 
               ggtitle("UMAP allCells, by celltype")
 
-
-
 ggsave2("../results/UMAP_allCells_celltypes.png", 
         plot_grid(p2, p3, ncol = 3, labels = "AUTO", align = "h"), 
         width = 30, height = 15, unit = "cm")
-
-
-```
-
-
-## Automated cluster annotation using singleR
-
-```{r}
-
-####------- read references
-load('../../singleR/singleR_ExprData.Rd')
-
-#remove ambigous B_cell from HPCAD fine labeles
-HPCAD <- HPCAD[,!colData(HPCAD)$label.fine == "B_cell"]
-
-ref.cells.list <- list(BPED = BPED, ICED = ICED, HPCAD = HPCAD)
-labels.list.main <-
-  list(
-    BPED = BPED$label.main,
-    ICED = ICED$label.main,
-    HPCAD = HPCAD$label.main)
-labels.list.fine <-
-  list(
-    BPED = BPED$label.fine,
-    ICED = ICED$label.fine,
-    HPCAD = HPCAD$label.fine)
-
-
-####----- determine celltypes using HPCAD reference
-cell.types.main.clust.HPCAD <- SingleR(
-  as.SingleCellExperiment(gex),
-  ref = ref.cells.list[[3]],
-  labels = labels.list.main[[3]],
-  method = c("cluster"),
-  clusters = as.SingleCellExperiment(gex)$seurat_clusters
-)
-####----- determine celltypes using BPEDreference
-cell.types.main.clust.BPED <- SingleR(
-  as.SingleCellExperiment(gex),
-  ref = ref.cells.list[[1]],
-  labels = labels.list.main[[1]],
-  method = c("cluster"),
-  clusters = as.SingleCellExperiment(gex)$seurat_clusters
-)
-
-####----- add celltypes to GEX meta data
-gex@meta.data[, "cluster.label.main.HPCAD"] <- NA
-for (i in 1:length(unique(gex@meta.data$seurat_clusters))) {
-  gex@meta.data[gex@meta.data$seurat_clusters == row.names(cell.types.main.clust.HPCAD)[i], "cluster.label.main.HPCAD"] <-
-    cell.types.main.clust.HPCAD$pruned.labels[i]
-}
-
-print(table(gex@meta.data$cluster.label.main.HPCAD))
-
-gex@meta.data[, "cluster.label.main.BPED"] <- NA
-for (i in 1:length(unique(gex@meta.data$seurat_clusters))) {
-  gex@meta.data[gex@meta.data$seurat_clusters == row.names(cell.types.main.clust.BPED)[i], "cluster.label.main.BPED"] <-
-    cell.types.main.clust.BPED$pruned.labels[i]
-}
-
-print(table(gex@meta.data$cluster.label.main.BPED))
-
-write.csv(
-  as.data.frame.matrix(
-    table(
-      gex@meta.data$cluster.label.main.HPCAD,
-      gex@meta.data$orig.ident
-    )
-  ),"../results/cell.types.main.clust.per.sample.HPCAD.csv",
-  row.names = TRUE
-)
-
-write.csv(
-  as.data.frame.matrix(
-    table(
-      gex@meta.data$cluster.label.main.BPED,
-      gex@meta.data$orig.ident
-    )
-  ),"../results/cell.types.main.clust.per.sample.BPED.csv",
-  row.names = TRUE
-)
-
-p4 <- DimPlot(
-  object = gex,
-  reduction = "umap_1",
-  pt.size = .1,
-  group.by = "cluster.label.main.HPCAD",
-  label = TRUE,
-  repel = TRUE,
-  raster=FALSE
-) +
-  NoLegend() + ggtitle("UMAP allCells, by Cluster cell type (HPCAD)")
-
-p5 <- DimPlot(
-  object = gex,
-  reduction = "umap_1",
-  pt.size = .1,
-  group.by = "cluster.label.main.BPED",
-  label = TRUE,
-  repel = TRUE,
-  raster=FALSE
-) +
-  NoLegend() + ggtitle("UMAP allCells, by Cluster cell type (BPED)")
-
-ggsave2("../results/UMAP_allCells_CellType_prediction.png",
-  plot_grid(
-    p2,
-    p3,
-    p4,
-    p5,
-    labels = "AUTO",
-    align = "h",
-    ncol = 2
-  ),
-  width = 30,
-  height = 30,
-  unit = "cm"
-)
 
 
 ```

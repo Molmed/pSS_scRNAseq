@@ -177,6 +177,7 @@ de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
 
 ```
 
+
 ## pseudo bulk DE between cell types and patient groups
 
 ```{r }
@@ -479,58 +480,6 @@ nrow(de_g[de_g$FDR <= 0.05, ])
 
 ```{r }
 
-
-
-```
-
-
-## glmGamPoi DE tests
-
-```{r }
-
-# #groups <- paste0(gex$seurat_clusters, '_', as.character(gex$patient_group))
-# groups <- paste0(gex$BcelltypeMain, '_', as.character(gex$patient_group))
-# gex$subgroups <- factor(groups)
-# sample_size <- table(gex$subgroups)
-# sample_size[sample_size > 100] <- 100
-# 
-# DGE_cells <- lapply(names(sample_size), function(x){ 
-#   set.seed(1)
-#   sample(colnames(gex)[gex$subgroups == x], size = sample_size[x])
-#   })
-# DGE_cells <- unlist(DGE_cells)
-# 
-# DGE_DATA <- gex[, DGE_cells]
-# 
-# fit <- glmGamPoi::glm_gp(data = as.matrix(DGE_DATA@assays$RNA@counts),
-#                          design = ~patient_group*seurat_clusters,
-#                          col_data = DGE_DATA@meta.data)
-# 
-# fit <- glmGamPoi::glm_gp(data = as.matrix(DGE_DATA@assays$RNA@counts),
-#                          design = ~patient_group*BcelltypeMain,
-#                          col_data = DGE_DATA@meta.data)
-# 
-# # fit <- glmGamPoi::glm_gp(data = as.matrix(DGE_DATA@assays$RNA@data),
-# #                          design = ~patient_group*seurat_clusters,
-# #                          col_data = DGE_DATA@meta.data)
-# 
-# 
-# dim(fit$Beta)
-# colnames(fit$Beta)
-# res <- glmGamPoi::test_de(fit,contrast = 5:26)
-# res <- glmGamPoi::test_de(fit,contrast = 27:92)
-# 
-# totest <- colnames(fit$Beta)
-# res <- glmGamPoi::test_de(fit, contrast = totest[c(27)])
-# 
-# 
-# 
-# saveRDS(fit, file = "../results/glmGamPoi_fit.rds")
-# #fit <- readRDS("../results/fit_tmp.rds")
-# head(fit)
-# str(fit)
-# 
-# glmGamPoi::test_de()
 
 
 ```

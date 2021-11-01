@@ -4,7 +4,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-
 # Dimensionality reduction and clustering of B-cells {#Dimred2}
 ## Load packages
 
@@ -369,6 +368,7 @@ ggsave2("../results/FeaturePlot_B-cells_myPars.png",
 
 
 ```
+
 
 #  patient subtypes per cluster
 

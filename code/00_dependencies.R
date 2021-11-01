@@ -1,9 +1,11 @@
 #00_dependencies.R
 
+
 ####----- system
 suppressMessages(library(future)) #for planning multiprocessess
 suppressMessages(library(BiocParallel))
 suppressMessages(library(pryr)) #check memory usage
+
 
 ####----- general
 suppressMessages(library(stringr)) #for string modulations, find and replace etc.
@@ -12,8 +14,7 @@ suppressMessages(library(rtracklayer))
 suppressMessages(library(dplyr))
 suppressMessages(library(tidyr))
 suppressMessages(library(future.apply))
-suppressMessages(library(glmGamPoi))
-suppressMessages(library(scales)) #scales for plotting
+
 
 ####----- plot
 suppressMessages(library(plotly))
@@ -30,21 +31,31 @@ library(niceRplots)
 suppressMessages(library(pheatmap))
 suppressMessages(library(ggpubr))
 suppressMessages(library(gridExtra))
+suppressMessages(library(scales)) #scales for plotting
+
 
 ####----- scRNAseq
 suppressMessages(library(Seurat)) #read and process scRNAseq data
 suppressMessages(library(scater))
+suppressMessages(library(scran))
 suppressMessages(library(scDblFinder))
 suppressMessages(library(harmony))
-suppressMessages(library(Nebulosa))
+suppressMessages(library(scPred))
+#suppressMessages(library(Nebulosa))
 #devtools::install_github("ncborcherding/scRepertoire@dev")
+suppressMessages(library(tidyseurat))
+suppressMessages(library(edgeR))
+suppressMessages(library(glmGamPoi))
+
+####----- VDJ
 suppressMessages(library(scRepertoire))#; packageVersion("scRepertoire") #local :[1] ‘1.3.4’; bianca:[1] ‘1.0.0’
+
+# Immcantation
 suppressMessages(library(alakazam))
 suppressMessages(library(shazam))
 suppressMessages(library(airr))
-suppressMessages(library(scran))
-suppressMessages(library(tidyseurat))
-suppressMessages(library(edgeR))
-suppressMessages(library(scPred))
+suppressMessages(library(scoper))
+
+
 
 
