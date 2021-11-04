@@ -24,29 +24,6 @@ gex <- readRDS("../results/GEX5_DIMRED2.rds")
 ```
 
 
-## get cell cycle score
-
-```{r}
-
-# gex <- CellCycleScoring(gex, 
-#                         s.features = cc.genes$s.genes, 
-#                         g2m.features = cc.genes$g2m.genes, 
-#                         set.ident = FALSE)
-# 
-# DimPlot(gex, reduction = "umap_2", group.by = "Phase", split.by = "cluster_cellType_manual_main")
-# 
-# table(gex$Phase, gex$orig.ident)
-# 
-# colnames(gex@meta.data)
-# 
-# res <- table(gex$Phase, gex$orig.ident)
-# res <- table(gex$Phase, gex$cluster_cellType_manual_fine)
-# res2 <- t( t(res) / colSums(res))
-
-
-
-```
-
 ## get B-cell cluster marker genes
 
 ```{r}
@@ -81,7 +58,10 @@ ord <- factor(sapply(unique(as.character(top5$gene)),
                      function(x) {
                        getcluster(DGE_temp, x, "seurat_clusters")
                      }))
+
 genes_to_plot <- unique(as.character(top5$gene))[order(as.numeric( as.character(ord) ))]
+
+genes_to_plot <- c("",)
 
 pdf(paste0("../results/DGE_B-cells_seurat_clusters_dotplot.pdf"), 
     width = 10, height = length(genes_to_plot) / 4 + 3 )
@@ -105,7 +85,7 @@ dev.off()
 
 stewart <- readRDS("../suppl/Stewart_et_al_2021/E-MTAB-9544_rds/scPure2_HB6_UMAP3D.rds")
 
-VlnPlot(stewart, c("nCount_RNA","nFeature_RNA", "percent.mt"), group.by = "library_id")
+#VlnPlot(stewart, c("nCount_RNA","nFeature_RNA", "percent.mt"), group.by = "library_id")
 
 #filter and process
 stewart <- subset(stewart, subset = nFeature_RNA > 200 & nFeature_RNA < 3000 & percent.mt < 10)
@@ -130,7 +110,16 @@ ref1 <- getFeatureSpace(stewart.lid.300, "library_id")
 ref1 <- trainModel(ref1)
 get_scpred(ref1)
 
+# |Cell type        |   n| Features|Method    |   ROC|  Sens|  Spec|
+# |:----------------|---:|--------:|:---------|-----:|-----:|-----:|
+# |Classical_Memory | 300|       50|svmRadial | 0.967| 0.803| 0.974|
+# |DN               | 300|       50|svmRadial | 0.933| 0.677| 0.960|
+# |IgM_Memory       | 300|       50|svmRadial | 0.963| 0.790| 0.965|
+# |Naive            | 300|       50|svmRadial | 0.947| 0.720| 0.960|
+# |Transitional     | 300|       50|svmRadial | 0.984| 0.873| 0.980|
+
 saveRDS(ref1, "../results/stewart_ref1_library_id.rds")
+#ref1 <- readRDS("../results/stewart_ref1_cluster.rds")
 
 #predict cell types
 gex <- scPredict(gex, ref1)
@@ -142,21 +131,15 @@ names(gex@meta.data)[names(gex@meta.data) == scPredcols[2]] <- paste0(scPredcols
 names(gex@meta.data)[names(gex@meta.data) == scPredcols[3]] <- paste0(scPredcols[3], "_ref1")
 names(gex@meta.data)[names(gex@meta.data) == "scpred_Naive"] <- "scpred_Naive_"
 
-#plot
-p1 <- DimPlot(gex, 
-              group.by = "scpred_prediction_ref1", 
-              reduction = "umap_2") + 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") +
-  ggtitle("predicted cell type, Stewart et al. 2021", subtitle = "by sorted cell type")
+rm(ref1)
+rm(stewart.lid.300)
 
 
 ####------------- per stewart cluster
 #subset seurat object
 Idents(object = stewart) <- "cluster"
 stewart.cl.300 <- subset(stewart, downsample = 300)
-head(stewart.cl.300@meta.data)
-table(stewart.cl.300$cluster)
+#rm(stewart)
 
 #train model
 ref2 <- getFeatureSpace(stewart.cl.300, "cluster")
@@ -177,6 +160,8 @@ get_scpred(ref2)
 # |DN4       | 300|       50|svmRadial | 0.969| 0.690| 0.984|
 
 saveRDS(ref2, "../results/stewart_ref2_cluster.rds")
+#ref2 <- readRDS("../results/stewart_ref2_cluster.rds")
+#rm(stewart.cl.300)
 
 #predict cell types
 gex <- scPredict(gex, ref2)
@@ -187,17 +172,23 @@ names(gex@meta.data)[names(gex@meta.data) == scPredcols[2]] <- paste0(scPredcols
 names(gex@meta.data)[names(gex@meta.data) == scPredcols[3]] <- paste0(scPredcols[3], "_ref2")
 
 #plot
+p1 <- DimPlot(gex, 
+              group.by = "scpred_prediction_ref1", 
+              reduction = "umap_2") + 
+        xlab("UMAP 1") + 
+        ylab("UMAP 2") +
+        ggtitle("predicted cell type, Stewart et al. 2021", 
+                subtitle = "by sorted cell type")
+
 p2 <- DimPlot(gex, 
               group.by = "scpred_prediction_ref2", 
               reduction = "umap_2") + 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") +
-  ggtitle("predicted cell type, Stewart et al. 2021", 
-          subtitle = "by clustered sorted celltype")
+        xlab("UMAP 1") + 
+        ylab("UMAP 2") +
+        ggtitle("predicted cell type, Stewart et al. 2021", 
+                subtitle = "by clustered sorted celltype")
 
-
-dev.off()
-#check cluster overlap with cell types
+####---- check cluster overlap with cell types
 #per sorted cell type
 hm1 <- round(sweep(as.data.frame.matrix(table(gex$seurat_clusters, 
                                               gex$scpred_prediction_ref1)), 
@@ -226,9 +217,7 @@ phm2 <- pheatmap(hm2,
          filename = "../results/cellType_B-cells_Stewart_et_al_2.png",
          number_format = "%.1f") 
 
-
 p3 <- tableGrob(table(gex$scpred_prediction_ref1, gex$scpred_prediction_ref2))
-
 p4 <- plot_grid(p1, p2, phm1[[4]], phm2[[4]], ncol = 2, labels = NULL) + bgcolor("white")
 
 ggsave2(paste0("../results/cellType_Stewart_perCell.png"), 
@@ -236,7 +225,7 @@ ggsave2(paste0("../results/cellType_Stewart_perCell.png"),
         width = 30, height = 30, unit = "cm")
 
 
-#add cluster cell type classification based on fraction of predicted cell type in cluster
+####---- add cluster cell type classification based on majority fraction of predicted cell type in cluster
 annot.df <- data.frame(cluster = rownames(hm1), 
                        annot_sort = colnames(hm1)[apply(hm1, 1, which.max)], 
                        annot_clust = colnames(hm2)[apply(hm2, 1, which.max)])
@@ -261,25 +250,25 @@ annotation_fine <- c(
   Naive = 0,#CCR7, BACH2, SELL, IL4R
   Naive = 1,#IGHD,FCER2
   Naive = 2,#IGHD,FCER2
-  IgM_Memory = 3,
-  Transitional = 4,# CD9, IGHD,FCER2
-  Classical_Memory = 5,
+  Memory_IgM = 3,
+  Naive_Transitional = 4,# CD9, IGHD,FCER2
+  Memory_Cl = 5,
   Naive_IFN = 6,#CCR7, BACH2, SELL, IL4R, IGHD, FCER2, + IFN regulated genes
   DN2 = 7, #IGHA1
-  Classical_Memory_stressed = 8,
-  DN_ID3 = 9, #ID3, LGALS3, ITGB1, IGHA1
+  Memory_Cl_str = 8,
+  DN1_ID3 = 9, #ID3, LGALS3, ITGB1, IGHA1
   Naive = 10,#COL19A1, CCR7, BACH2, SELL, IL4R, IGHD,FCER2
-  DN_IGHE = 11, #IGHE, IL13RA (allergy)
-  IgM_Memory = 12, #?? early memory?, no concrete marker, down regulates "naive genes"
+  DN4_IGHE = 11, #IGHE, IL13RA (allergy)
+  Memory_IgM = 12, #?? early memory?, no concrete marker, down regulates "naive genes"
   DN2_CXCR3 = 13, #ITGB7, IGHG1, IGHG2, IGHG3, CXCR3, IGHA1
-  IgM_Memory_CD1C = 14,#CD1C
+  Memory_IgM_CD1C = 14,#CD1C
   DN2_ITGAX = 15, #FCRL3, MPP6, ARL4D, ZEB2, ITGAX, ITGB7, IGHA1
-  Classical_Memory = 16, #IGHA
-  IgM_Memory_ALOX5 = 17, #?? ALOX5, ACADM, GID8, CMSS1
-  Classical_Memory_CD69_stressed = 18, #FOS, CD69, EGR1, DUSP1
+  Memory_Cl = 16, #IGHA
+  Memory_IgM_ALOX5 = 17, #?? ALOX5, ACADM, GID8, CMSS1
+  Memory_Cl_CD69_str = 18, #FOS, CD69, EGR1, DUSP1
   Memory_Platlet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
   Naive = 20,#
-  Classical_Memory_stressed = 21,#dead/dying cells
+  Memory_Cl_str = 21,#dead/dying cells
   Plasma_cell = 22
 )
 
@@ -318,14 +307,30 @@ gex@meta.data["cluster_cellType_manual_main"] <- names(annotation_main)[match(ge
 
 table(gex@meta.data$cluster_cellType_manual_fine, gex@meta.data$cluster_cellType_manual_main)
 
-p1 <- DimPlot(gex, group.by = "cluster_stewart_sort", reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2")+ 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") +
-  ggtitle("Stewart et al. 2021 celltypes", 
+p1 <- DimPlot(gex, 
+              group.by = "cluster_stewart_sort", 
+              reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2") +  
+      ggtitle("Stewart et al. 2021 celltypes", 
+          subtitle = "by sorted celltype")
+
+p2 <- DimPlot(gex, 
+              group.by = "cluster_stewart_cl", 
+              reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2") + 
+      ggtitle("Stewart et al. 2021 celltypes", 
           subtitle = "by clustered sorted celltype")
-p2 <- DimPlot(gex, group.by = "cluster_stewart_cl", reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2")
-p3 <- DimPlot(gex, group.by = "cluster_cellType_manual_fine", reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2")
-p4 <- DimPlot(gex, group.by = "cluster_cellType_manual_main", reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2")
+
+p3 <- DimPlot(gex, 
+              group.by = "cluster_cellType_manual_fine", 
+              reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2") + 
+      ggtitle("Manual cluster cell type annotation", 
+          subtitle = "fine")
+
+p4 <- DimPlot(gex, 
+              group.by = "cluster_cellType_manual_main", 
+              reduction = "umap_2") + xlab("UMAP 1") + ylab("UMAP 2") + 
+      ggtitle("Manual cluster cell type annotation", 
+          subtitle = "main")
+
 p5 <- plot_grid(p1, p2, p3, p4, ncol = 2) +  bgcolor("white")
 #p6 <- plot_grid(phm1[[4]], phm2[[4]], ncol = 2) + bgcolor("white")
 p7 <- tableGrob(table(gex@meta.data$cluster_stewart_sort, gex@meta.data$cluster_stewart_cl))
@@ -333,6 +338,184 @@ p7 <- tableGrob(table(gex@meta.data$cluster_stewart_sort, gex@meta.data$cluster_
 ggsave2(paste0("../results/cellType_Stewart_perCluster.png"), 
         plot_grid(p5, p7, ncol = 1, rel_heights = c(4, 1)) + bgcolor("white"), 
         width = 40, height = 30, unit = "cm")
+
+ggsave2(paste0("../results/UMAP_cellType_fine.png"), 
+        p3, 
+        width = 25, height = 20, unit = "cm")
+
+ggsave2(paste0("../results/UMAP_cellType_main.png"), 
+        p4, 
+        width = 20, height = 20, unit = "cm")
+
+
+```
+
+
+## plot Fig1C
+
+```{r}
+
+p1 <- DimPlot(gex, 
+              reduction = "umap_2", 
+              group.by = "cluster_cellType_manual_main") + 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") + 
+  ggtitle("celltypes main") + 
+    theme(axis.text = element_blank(),
+          axis.ticks = element_blank())
+
+ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
+
+p <- list()
+for (i in ig.features) {
+  
+  p[[i]] <- FeaturePlot(gex, 
+                        reduction = "umap_2", 
+                        features = i,
+                        pt.size = 0.1) + 
+    xlab("UMAP 1") + 
+    ylab("UMAP 2") + 
+    theme(legend.position = "none",
+          axis.text = element_blank(),
+          axis.ticks = element_blank())
+  
+}
+
+p2 <- plot_grid(plotlist = p, ncol = 3)
+
+ggsave2(paste0("../results/Fig1C.png"), 
+        plot_grid(p1, p2, ncol = 2, rel_widths = c(1.5, 1)) + bgcolor("white"), 
+        width = 30, height = 15, unit = "cm")
+
+
+```
+
+## plot Fig1D
+
+```{r}
+
+p <- DimPlot(gex, 
+              reduction = "umap_2", 
+              group.by = "cluster_cellType_manual_fine") + 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") + 
+  ggtitle("celltypes") + 
+    theme(axis.text = element_blank(),
+          axis.ticks = element_blank())
+
+ggsave2(paste0("../results/Fig1D.png"), 
+        p, 
+        width = 20, height = 15, unit = "cm") 
+
+```
+
+
+## get cell cycle score
+
+```{r}
+
+gex <- CellCycleScoring(gex,
+                        s.features = cc.genes$s.genes,
+                        g2m.features = cc.genes$g2m.genes,
+                        set.ident = FALSE)
+
+p1 <- DimPlot(gex, 
+              group.by = "Phase", 
+              split.by = "patient_group", 
+              reduction = "umap_2", pt.size = 0.6, ncol = 2, 
+              raster = TRUE, cols = c(brewer.pal(3, "Set3"), "grey")) + 
+              theme(legend.position = "none") + xlab("UMAP 1") + ylab("UMAP 2") + 
+              ggtitle("Cell cycle stage", subtitle = "main")
+
+p2 <- ggplot(gex@meta.data, aes(x = cluster_cellType_manual_fine, fill = Phase)) +
+        theme_classic() +
+        geom_bar(position = "fill") + 
+        ylab("proportion of cells") + 
+        xlab("") + 
+        #facet_grid(rows = vars(cluster_cellType_manual_fine)) +
+        facet_grid(rows = vars(patient_group)) +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+        scale_fill_brewer(palette="Set3", na.value="grey")
+
+ggsave2("../results/cluster_cell_cycle.png", 
+        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
+        width = 30, height = 14, unit = "cm")
+
+
+# res <- table(gex$Phase, gex$orig.ident)
+# res <- table(gex$Phase, gex$cluster_cellType_manual_fine)
+# res2 <- t( t(res) / colSums(res))
+
+
+```
+
+
+#  patient subtypes per cell type
+
+```{r}
+
+# mypal <- RColorBrewer::brewer.pal(4,"Set3")
+# 
+# res <- table(list(gex$cluster_cellType_manual_fine, gex$patient_group))
+# res <- t(res)
+# res <- res[,order(colSums(res),decreasing = T)]
+# res2 <- t( t(res) / colSums(res) )
+# res3 <- res / rowSums(res)
+# res4 <- t( t(res3) / colSums(res3) )
+# 
+# #plot proportion of cells per cluster
+# png(file = paste0("../results/cluster_patient_abundance.png"),
+#     width = 20, height = 8, units = "cm", res = 200)
+# mypar(1,1,mar = c(2,4,2,5), xpd=TRUE, cex.axis = 0.7)
+# barplot(res2*100, las = 1, col = mypal, ylab = "Proportion of cells\n")
+# legend("topright", legend = rownames(res2), bty = "n",fill = mypal, inset=c(-0.15,0))
+# dev.off()
+# 
+# #plot proportion of cells per cluster
+# png(file = paste0("../results/cluster_patient_cellcounts__cellTypes_abundance.png"),
+#     width = 20, height = 8, units = "cm", res = 200)
+# mypar(2, 1, mar = c(5, 4, 2, 5), xpd = TRUE, cex.axis = 0.6)
+# barplot(res, col = mypal, ylab = "Number of cells\n")
+# barplot(res2*100, las = 2, col = mypal, ylab = "Proportion of cells\n")
+# legend("topright", legend = rownames(res), bty = "n", fill = mypal, inset = c(-0.15, 0))
+# dev.off()
+
+str(gex@meta.data)
+
+p1 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
+                                        -table(cluster_cellType_manual_fine)[cluster_cellType_manual_fine]), 
+                                            fill = patient_group)) +
+        theme_classic() +
+        geom_bar(position = position_stack(reverse = FALSE)) + 
+        ylab("cells") + 
+        xlab("") + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+        scale_fill_brewer(palette = "Set3", na.value = "grey")
+
+p2 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
+                                        -table(cluster_cellType_manual_fine)[cluster_cellType_manual_fine]), 
+                                            fill = patient_group)) +
+        theme_classic() +
+        geom_bar(position = "fill") + 
+        ylab("proportion of cells") + 
+        xlab("") + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+        scale_fill_brewer(palette = "Set3", na.value = "grey")
+
+ggsave2("../results/cell_types_fine_perPatientGroup.png", 
+        plot_grid(p1, p2, ncol = 1, labels = NULL, align = "h"), 
+        width = 25, height = 14, unit = "cm")
+
+
+# barplot with cell types per patient
+# p2 <- ggplot(gex@meta.data, aes(y = patient_group, 
+#                                             fill = cluster_cellType_manual_fine)) +
+#         theme_classic() +
+#         geom_bar(position = "fill") + 
+#         ylab("") + 
+#         xlab("proportion of cells") + 
+#         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+#         scale_fill_brewer(palette = "Set3", na.value = "grey")
 
 
 ```
@@ -342,28 +525,24 @@ ggsave2(paste0("../results/cellType_Stewart_perCluster.png"),
 
 ```{r}
 
-plotExpression()
+# b_features <- c("IGHD", "AICDA", "BCL6", "MKI67", "CD83", "CD38", "CXCR4", "LY6D", "CD1D", "FOXO1", 
+#                 "CCR6", "IRF4", "SDC1", "PRDM1", "CD9", "CCR7", "EBF1", "CD74", "NR4A1" , "SLPI", "SDC1")
 
-b_features <- c("IGHD", "AICDA", "BCL6", "MKI67", "CD83", "CD38", "CXCR4", "LY6D", "CD1D", "FOXO1", 
-                "CCR6", "IRF4", "SDC1", "PRDM1", "CD9", "CCR7", "EBF1", "CD74", "NR4A1" , "SLPI", "SDC1")
-b_features2 <- c("RB1", "NT5E", "CD27", "CD19", "ITGAX", "FAS")
-b_features3 <-  c("CD38", "PTPRC")
-b_trans <- c("CD24", "CD38", "MME", "IGHM")
 ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
 
 c_features <- c("CCR7", "BACH2", "SELL", "IL4R", "IGHD", "FCER2", "IGHA1", "ID3", "LGALS3", "ITGB1", "COL19A1", "IGHE", "IL13RA1", "ITGB7", "IGHG1", "IGHG2", "IGHG3", "CXCR3", "IGHA1", "ALOX5", "ACADM", "GID8", "CMSS1", "FOS", "CD69", "EGR1", "DUSP1", "CCL5", "F13A1", "PPBP", "NRGN", "CLU")
 c_features <- c_features[order(c_features)]
 
-p1 <- VlnPlot(gex, 
-              features = c_features, 
-              group.by = "seurat_clusters", 
-              slot = "data", 
-              log = TRUE, 
-              ncol = 2)
-
-ggsave2("../results/VlnPlot_clusterMarkers.png", 
-        p1, 
-        width = 20, height = 80, unit = "cm")
+# p1 <- VlnPlot(gex, 
+#               features = c_features, 
+#               group.by = "seurat_clusters", 
+#               slot = "data", 
+#               log = TRUE, 
+#               ncol = 2)
+# 
+# ggsave2("../results/VlnPlot_clusterMarkers.png", 
+#         p1, 
+#         width = 20, height = 80, unit = "cm")
 
 
 p1 <- RidgePlot(gex, features = ig.features, group.by = "seurat_clusters", slot = "data", log = TRUE, ncol = 3)
