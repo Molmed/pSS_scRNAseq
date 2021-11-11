@@ -390,6 +390,29 @@ ggsave2(paste0("../results/Fig1C.png"),
 
 ```
 
+
+## plot SFig3
+
+```{r}
+
+p <- DimPlot(gex, 
+              reduction = "umap_2", 
+              group.by = "cluster_cellType_manual_main",
+              split.by = "patient_group", ncol = 2) + 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") + 
+  ggtitle("celltypes main") + 
+    theme(axis.text = element_blank(),
+          axis.ticks = element_blank())
+
+
+ggsave2(paste0("../results/SFig3.png"), 
+        p, 
+        width = 20, height = 15, unit = "cm")
+
+
+```
+
 ## plot Fig1D
 
 ```{r}
@@ -406,6 +429,45 @@ p <- DimPlot(gex,
 ggsave2(paste0("../results/Fig1D.png"), 
         p, 
         width = 20, height = 15, unit = "cm") 
+
+```
+
+ 
+## plot SFig4D
+
+```{r}
+
+gex$cluster_cluster_cellType_manual_fine <- paste(gex$seurat_clusters, 
+                                                  gex$cluster_cellType_manual_fine, 
+                                                  sep = "_")
+
+gex$cluster_cluster_cellType_manual_fine <- factor(gex$cluster_cluster_cellType_manual_fine, 
+                                                   levels = str_sort(unique(gex$cluster_cluster_cellType_manual_fine), numeric = TRUE))
+
+
+p <- DimPlot(gex, 
+             reduction = "umap_2", 
+             group.by = "cluster_cluster_cellType_manual_fine", 
+             pt.size = 0.01,
+             label = TRUE, 
+             repel = TRUE, 
+             label.box = TRUE, 
+             label.size = 1.5,
+             raster = FALSE) + 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") + 
+  ggtitle("cluster celltypes") + 
+    theme(axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "none")
+
+ggsave2(paste0("../results/SFig4.png"), 
+        p, 
+        width = 18, height = 15, unit = "cm")
+
+
+gex$cluster_cluster_cellType_manual_fine <- NULL
+
 
 ```
 
@@ -480,8 +542,6 @@ ggsave2("../results/cluster_cell_cycle.png",
 # legend("topright", legend = rownames(res), bty = "n", fill = mypal, inset = c(-0.15, 0))
 # dev.off()
 
-str(gex@meta.data)
-
 p1 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
                                         -table(cluster_cellType_manual_fine)[cluster_cellType_manual_fine]), 
                                             fill = patient_group)) +
@@ -489,7 +549,8 @@ p1 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
         geom_bar(position = position_stack(reverse = FALSE)) + 
         ylab("cells") + 
         xlab("") + 
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+              legend.position = "none") +
         scale_fill_brewer(palette = "Set3", na.value = "grey")
 
 p2 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
@@ -499,13 +560,95 @@ p2 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
         geom_bar(position = "fill") + 
         ylab("proportion of cells") + 
         xlab("") + 
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+              legend.position = "none") +
         scale_fill_brewer(palette = "Set3", na.value = "grey")
 
-ggsave2("../results/cell_types_fine_perPatientGroup.png", 
-        plot_grid(p1, p2, ncol = 1, labels = NULL, align = "h"), 
+p_legend <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
+                                        -table(cluster_cellType_manual_fine)[cluster_cellType_manual_fine]), 
+                                            fill = patient_group)) +
+        theme_classic() +
+        geom_bar(position = "fill") + 
+        scale_fill_brewer(palette = "Set3", na.value = "grey", name = "Patient group")
+
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+
+p3 <- plot_grid(p1, p2, ncol = 1, labels = NULL, align = "v")
+
+ggsave2("../results/cell_types_fine_perPatientGroup_2.png", 
+        plot_grid(p3, 
+                  p_legend, 
+                  ncol = 2, 
+                  rel_widths = c(5, 1), 
+                  labels = NULL, 
+                  align = "h") + bgcolor("white"), 
         width = 25, height = 14, unit = "cm")
 
+
+p <- ggplot(gex@meta.data, aes(x = patient_group, fill =  cluster_cellType_manual_fine)) +
+        theme_classic() +
+        geom_bar(position = "fill") + 
+        ylab("proportion of cells") + 
+        xlab("") +
+        ggtitle("celltype fine per patient subgroup") +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+ggsave2("../results/SFig3B.png", 
+        p, 
+        width = 20, height = 14, unit = "cm")
+
+
+
+####----- 
+cells <- t(as.data.frame(t(as.data.frame.matrix(table(gex$cluster_cellType_manual_fine, gex$orig.ident)))))
+cells <- as.data.frame(t(cells) / colSums(cells) )
+cells$orig.ident <- rownames(cells)
+
+cells <- as_tibble(cells) %>% pivot_longer(!orig.ident, names_to = "cellType", values_to = "count")
+
+cells$patient_group <-   unique(gex@meta.data[, c("orig.ident", "patient_group")])$patient_group[match(cells$orig.ident, unique(gex@meta.data[, c("orig.ident", "patient_group")])$orig.ident)]
+
+p <- list()
+for (i in unique(cells$cellType)){
+  
+p[[i]] <- ggplot(cells[cells$cellType == i, ], 
+                 aes(x = patient_group, y = count, fill = orig.ident)) +
+        theme_classic() +
+        geom_col(position = "dodge", stat='identity') + 
+        ylab("proportion of cells in sample") + 
+        xlab("") + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+              legend.position = "none") +
+  ggtitle(i) +
+  scale_y_continuous(labels = percent) 
+
+}
+
+ggsave2(paste0("../results/cellTypes_test.png"), 
+          plot_grid(plotlist = p, ncol = 3, labels = NULL, align = "h"),
+          width = 25, height = 25, unit = "cm")
+
+
+
+ggplot(cells, aes(x = cellType, y = count, fill = patient_group)) +
+        theme_classic() +
+        geom_violin(scale = "width") + 
+        ylab("proportion of cells in sample") + 
+        xlab("") + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+              legend.position = "none") +
+  ggtitle(i) +
+  scale_y_continuous(labels = percent)
+
+ggplot(cells, aes(x = cellType, y = count, fill = patient_group)) +
+        theme_classic() +
+        geom_col(position = "dodge") + 
+        ylab("proportion of cells in sample") + 
+        xlab("") + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+              legend.position = "none") +
+  ggtitle(i) +
+  scale_y_continuous(labels = percent)
 
 # barplot with cell types per patient
 # p2 <- ggplot(gex@meta.data, aes(y = patient_group, 

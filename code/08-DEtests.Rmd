@@ -4,7 +4,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-
 # DE tests and Visualization {#DE-tests}
 ## Load packages
 
@@ -47,433 +46,111 @@ table(gex$patient_group, useNA = "ifany")
 
 
 #DE tests
-## Per patient group per cluster
-
-```{r include=FALSE}
-
-# Genes_for_annotation_Paulo
-#groups <- paste0(gex$seurat_clusters, '_', as.character(gex$patient_group) )
-groups <- paste0(gex$BcelltypeMain, '_', as.character(gex$patient_group))
-gex$subgroups <- factor(groups)
-sample_size <- table(gex$subgroups)
-sample_size[ sample_size > 100 ] <- 100
-
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample( colnames(gex) [ gex$subgroups == x ] , size = sample_size[x])
-  })
-DGE_cells <- unlist(DGE_cells)
-
-DGE_DATA <- gex[, DGE_cells]
-# DGE_DATA <- SetIdent( DGE_DATA , value = "patient_group")
-
-
-detable_pat <- lapply(unique(DGE_DATA$BcelltypeMain), DGE_DATA = DGE_DATA, function(x, DGE_DATA){ 
-  temp <- DGE_DATA[, DGE_DATA$BcelltypeMain == x]
-  print(temp)
-  temp <- SetIdent( temp , value = "patient_group")
-  detable <- FindAllMarkers( temp, only.pos = T,max.cells.per.ident = 200,
-                          logfc.threshold = .1,assay = "RNA",
-                          min.pct = 0.05)
-  return( cbind(detable,cell_cluster= x) )
-})
-detable <- do.call(rbind, detable_pat)
-
-detable <- detable[ detable$p_val < 0.05,  ]
-detable$pct.diff <- detable$pct.1 - detable$pct.2
-detable$log.pct.diff <- log2( (detable$pct.1+1) / (detable$pct.2+1) )
-write.csv2(detable,"../results/DGE_B-cells_perPatientperCelltypeMain.csv")
-
-
-```
-
-
-## pseudo bulk DE between clusters/ cell types and patient groups for naive and memory B cells
+## pseudo bulk DE test between patient subgroups for celltypesFine
 
 ```{r }
+
 #https://jef.works/blog/2020/04/06/quickly-creating-pseudobulks/
 
-#BcelltypeMain <- as.factor(gex@meta.data$BcelltypeMain)
-#patient_group <- as.factor(gex@meta.data$patient_group)
+DGE_list <- list()
+for (j in unique(gex$cluster_cellType_manual_fine)){
 
-gex <- readRDS("../results/GEX7_BVDJ.rds") %>% 
-  DietSeurat(dimreducs = "umap_2") %>%  
-  tidyseurat::filter(orig.ident != "P024", 
-                     BcelltypeMain != "Unknown", 
-                     BcelltypeMain != "B_stressed",
-                     BcelltypeMain != "Plasma_cell",
-                     BcelltypeMain != "B_tissueMigration")
-
-gex$seurat_clusters <- as.factor(as.character(gex$seurat_clusters))
-
-#create a model matrix for pseudo bulk generation
-mm <- model.matrix(~ 0 + orig.ident:seurat_clusters, data = gex@meta.data); head(mm); colnames(mm)
-
-#sample x number of cells per condition
-groups <- paste0(gex$seurat_clusters, '_', as.character(gex$orig.ident))
-gex$subgroups <- factor(groups)
-sample_size <- table(gex$subgroups)
-#ncells <- min(sample_size)
-ncells <- 100
-sample_size[ sample_size > ncells ] <- ncells
-
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample( colnames(gex) [gex$subgroups == x ] , size = sample_size[x], replace = FALSE)
-  })
-DGE_cells <- unlist(DGE_cells)
-mm <- mm[DGE_cells, ]; dim(mm)
-
-# tidy colnames
-colnames(mm) <- gsub("orig.ident", "", colnames(mm))
-colnames(mm) <- gsub("seurat_clusters", "", colnames(mm))
-
-colnames(mm) <- gsub("_", "", colnames(mm))
-colnames(mm) <- gsub(":", "_", colnames(mm))
-
-# create pseudo bulk count matrix
-gex.mm <- gex@assays$RNA@counts[, DGE_cells] %*% mm; dim(gex.mm)
-gex.mm <- gex.mm[rowSums(gex.mm) != 0, ]; dim(gex.mm)
-
-cellcounts <- colSums(mm); length(cellcounts)
-
-y <- DGEList(gex.mm, 
-             sample = gsub("_.*", "", colnames(gex.mm)), 
-             group = gsub(".*_", "", colnames(gex.mm)),
-             remove.zeros = TRUE); y
-summary(y$samples$lib.size)
-
-y$samples$patient_group <- as.factor(unique(gex@meta.data[,c("orig.ident", "patient_group")])$patient_group[match(y$samples$samples, unique(gex@meta.data[,c("orig.ident", "patient_group")])$orig.ident)])
-
-y$samples$cluster <- as.factor(y$samples$group)
-
-y$samples$cell <- unique(gex@meta.data[,c("seurat_clusters", "BcelltypeMain")])$BcelltypeMain[match(y$samples$cluster, unique(gex@meta.data[,c("seurat_clusters", "BcelltypeMain")])$seurat_clusters)]
-
-#keep <- filterByExpr(y, group = "patient_group"); table(keep)
-#y <- y[keep, ]
-y <- calcNormFactors(y)
-
-cell <- y$samples$cell
-patient_group <- y$samples$patient_group 
-
-design <- model.matrix(~ 0 + patient_group*cluster, data = y$samples); colnames(design)
-colnames(design) <- gsub(":", "_", colnames(design))
-
-
-y_glm <- estimateDisp(y, design)
-fit <- glmQLFit(y_glm, design); colnames(fit$coefficients)
-
-paste0("cluster", unique(y$samples$cluster[y$samples$cell=="Memory"]))
-paste0("cluster", unique(y$samples$cluster[y$samples$cell=="Naive"]))
-match(paste0("cluster", unique(y$samples$cluster[y$samples$cell=="Memory"])), colnames(fit$coefficients))
-
-#conserved differences across patient groups
-qlm <- glmQLFTest(fit, coef = match(paste0("cluster", unique(y$samples$cluster[y$samples$cell=="Memory"])), colnames(fit$coefficients)))
-de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-
-
+  message(j)
   
+  #subset gex to only contain subtype j
+  gex.tmp <- gex %>% 
+    DietSeurat(dimreducs = "umap_2") %>% 
+    tidyseurat::filter(orig.ident != "P024", 
+                       cluster_cellType_manual_fine == j)
+
+  #create a model matrix for pseudo bulk generation
+  mm <- model.matrix(~ 0 + orig.ident, 
+                     data = gex.tmp@meta.data); head(mm); colnames(mm)
+  
+  #sample x number of cells per condition
+  gex.tmp$subgroups <- factor(as.character(gex.tmp$orig.ident))
+  sample_size <- table(gex.tmp$subgroups)
+  sample_size[sample_size > 100] <- 100
+  
+  DGE_cells <- lapply(names(sample_size), function(x){ 
+    set.seed(1)
+    sample(colnames(gex.tmp) [gex.tmp$subgroups == x] , 
+           size = sample_size[x], 
+           replace = FALSE)
+    })
+  
+  DGE_cells <- unlist(DGE_cells)
+  mm <- mm[DGE_cells, ]
+  
+  #clean up colnames
+  colnames(mm) <- gsub("orig.ident", "", colnames(mm))
+  
+  # create pseudo bulk count matrix
+  gex.mm <- gex.tmp@assays$RNA@counts[, DGE_cells] %*% mm; dim(gex.mm)
+  gex.mm <- gex.mm[rowSums(gex.mm) != 0, ]; dim(gex.mm)
+  
+  cellcounts <- colSums(mm); length(cellcounts)
+  
+  y <- DGEList(gex.mm, 
+               sample = gsub("_.*", "", colnames(gex.mm)), 
+               group = gsub(".*_", "", colnames(gex.mm)),
+               remove.zeros = TRUE); y
+  
+  y$samples$patient_group <- as.factor(unique(gex.tmp@meta.data[, c("orig.ident", "patient_group")])$patient_group[match(y$samples$samples, unique(gex.tmp@meta.data[, c("orig.ident", "patient_group")])$orig.ident)])
+  
+  keep <- apply(y$counts, 1, function(x){sum(x >= 5) >= 3}); table(keep)
+  y <- y[keep, ]
+  y <- calcNormFactors(y)
+  
+  design <- model.matrix(~ patient_group, data = y$samples); colnames(design)
+  colnames(design) <- gsub("patient_group", "", colnames(design))
+  
+  y_glm <- estimateDisp(y, design)
+  fit <- glmQLFit(y_glm, design); colnames(fit$coefficients)
+  
+  #conserved differences across patient subgroups
+  qlm <- glmQLFTest(fit, coef = 2:4)
+  de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
+  
+  de_g$celltypeFine <- j
+  de_g$gene <- rownames(de_g)
+  
+  DGE_list[[j]] <- de_g
+  
+  saveRDS(fit, paste0("../results/DGEfit_patientGroups_celltypeFine_", j,".rds"))
+  write.csv(de_g, paste0("../results/DGE_patientGroups_celltypeFine_", j,".csv"), row.names = TRUE)
+
+}
+
+saveRDS(DGE_list, paste0("../results/DGE_patientGroups_celltypeFine_listAll.rds"))
+
 
 ```
 
 
-## pseudo bulk DE between cell types and patient groups
+## dotplots for top expressed genes
 
 ```{r }
-#https://jef.works/blog/2020/04/06/quickly-creating-pseudobulks/
 
-#BcelltypeMain <- as.factor(gex@meta.data$BcelltypeMain)
-#patient_group <- as.factor(gex@meta.data$patient_group)
+#get top expressed genes
+tmp <- lapply(DGE_list, function(x){head(x, n = 20)})
+tmp <- do.call("rbind", tmp)
 
-gex <- readRDS("../results/GEX7_BVDJ.rds") %>% 
-  DietSeurat(dimreducs = "umap_2") %>%  
-  tidyseurat::filter(orig.ident != "P024", 
-                     BcelltypeMain != "Unknown", 
-                     BcelltypeMain != "B_stressed",
-                     BcelltypeMain != "Plasma_cell")
+# !!!! fix this !!!!
 
-#create a model matrix for pseudo bulk generation
-mm <- model.matrix(~ 0 + orig.ident:BcelltypeMain, data = gex@meta.data); head(mm); colnames(mm)
+detable$groups <- paste0(detable$cell_cluster, detable$cluster)
+detable %>% group_by(groups)  %>% top_n(-60, p_val) %>% top_n(40, pct.diff) %>% top_n(20, log.pct.diff) -> top5
+ord <- factor(sapply(unique(as.character(top5$gene)), function(x){getcluster(DGE_DATA, x, "subgroups")}))
+ord
 
-#sample x number of cells per condition
-groups <- paste0(gex$BcelltypeMain, '_', as.character(gex$orig.ident))
-gex$subgroups <- factor(groups)
-sample_size <- table(gex$subgroups)
-sample_size[ sample_size > 100 ] <- 100
-
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample( colnames(gex) [ gex$subgroups == x ] , size = sample_size[x], replace = FALSE)
-  })
-DGE_cells <- unlist(DGE_cells)
-mm <- mm[DGE_cells, ]
-
-#colnames(mm) <- gsub("patient_group", "", colnames(mm))
-colnames(mm) <- gsub("orig.ident", "", colnames(mm))
-colnames(mm) <- gsub("BcelltypeMain", "", colnames(mm))
-
-colnames(mm) <- gsub("_", "", colnames(mm))
-colnames(mm) <- gsub(":", "_", colnames(mm))
-
-# create pseudo bulk count matrix
-gex.mm <- gex@assays$RNA@counts[, DGE_cells] %*% mm; dim(gex.mm)
-gex.mm <- gex.mm[rowSums(gex.mm) != 0, ]; dim(gex.mm)
-
-cellcounts <- colSums(mm); length(cellcounts)
-
-
-y <- DGEList(gex.mm, 
-             sample = gsub("_.*", "", colnames(gex.mm)), 
-             group = gsub(".*_", "", colnames(gex.mm)),
-             remove.zeros = TRUE); y
-summary(y$samples$lib.size)
-
-y$samples$patient_group <- as.factor(unique(gex@meta.data[,c("orig.ident", "patient_group")])$patient_group[match(y$samples$samples, unique(gex@meta.data[,c("orig.ident", "patient_group")])$orig.ident)])
-
-# y$samples$clusters <- as.factor(unique(gex@meta.data[,c("orig.ident", "seurat_clusters")])$seurat_clusters[match(y$samples$samples, unique(gex@meta.data[,c("orig.ident", "seurat_clusters")])$orig.ident)])
-
-y$samples$cell <- as.factor(y$samples$group)
-
-#keep <- filterByExpr(y, group = "patient_group"); table(keep)
-#y <- y[keep, ]
-y <- calcNormFactors(y)
-
-cell <- y$samples$cell
-patient_group <- y$samples$patient_group 
-
-design <- model.matrix(~ 0 + patient_group*cell); colnames(design)
-colnames(design) <- gsub(":", "_", colnames(design))
-
-y_glm <- estimateDisp(y, design)
-fit <- glmQLFit(y_glm, design); colnames(fit$coefficients)
-
-
-#conserved differences across patient groups
-qlm <- glmQLFTest(fit, coef = 1:4)
-de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-
-#conserved differences across cell types
-qlm <- glmQLFTest(fit, coef = 5:6)
-de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-
-#differences between patient groups within naive cells
-qlm <- glmQLFTest(fit, coef = 10:12)
-de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-#de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-
-qlm <- glmQLFTest(fit, coef = c(10:12))
-de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-#de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-
-
-
-qlm <- glmQLFTest(fit, contrast = makeContrasts(patient_groupCTRL - patient_groupDNEG, levels = design))
-de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-nrow(de_g[de_g$FDR <= 0.05, ]) 
-  
+pdf( paste0("../results/DGE_B-cells_perPatientperCluster.pdf"),width = 20,height = length(ord)/6+2)
+mypar(1,1,mar=c(15,6,1,5))
+plot_dots(DGE_DATA, unique(as.character(top5$gene))[order(as.numeric( as.character(ord) ))], clustering = "subgroups", show_grid = T,main = "top cluster markers",cex.main=1,font.main=1,cex.col = 1,srt = 90,cex.row = 1.1)
+abline(v=cumsum(c(table(sub( "_.*","",names(table(DGE_DATA$subgroups))))))+0.5)
+dev.off()
 
 ```
 
-
-## pseudo bulk DE between clusters for naive B
-
-```{r }
-#https://jef.works/blog/2020/04/06/quickly-creating-pseudobulks/
-
-gex <- readRDS("../results/GEX7_BVDJ.rds") %>% 
-  DietSeurat(dimreducs = "umap_2") %>%  
-  tidyseurat::filter(orig.ident != "P024", 
-                     BcelltypeMain == "Naive")
-
-gex$seurat_clusters <- as.factor(as.character(gex$seurat_clusters))
-
-#create a model matrix for pseudo bulk generation
-mm <- model.matrix(~ 0 + orig.ident:seurat_clusters, data = gex@meta.data); head(mm); colnames(mm)
-
-#sample x number of cells per condition
-groups <- paste0(gex$seurat_clusters, '_', as.character(gex$orig.ident))
-gex$subgroups <- factor(groups)
-sample_size <- table(gex$subgroups)
-sample_size[ sample_size > 100 ] <- 100
-
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample( colnames(gex) [ gex$subgroups == x ] , size = sample_size[x], replace = FALSE)
-  })
-DGE_cells <- unlist(DGE_cells)
-mm <- mm[DGE_cells, ]
-
-#clean up colnames
-colnames(mm) <- gsub("orig.ident", "", colnames(mm))
-colnames(mm) <- gsub("seurat_clusters", "", colnames(mm))
-
-colnames(mm) <- gsub("_", "", colnames(mm))
-colnames(mm) <- gsub(":", "_", colnames(mm))
-
-# create pseudo bulk count matrix
-gex.mm <- gex@assays$RNA@counts[, DGE_cells] %*% mm; dim(gex.mm)
-gex.mm <- gex.mm[rowSums(gex.mm) != 0, ]; dim(gex.mm)
-
-cellcounts <- colSums(mm); length(cellcounts)
-
-
-y <- DGEList(gex.mm, 
-             sample = gsub("_.*", "", colnames(gex.mm)), 
-             group = gsub(".*_", "", colnames(gex.mm)),
-             remove.zeros = TRUE); y
-summary(y$samples$lib.size)
-
-y$samples$patient_group <- as.factor(unique(gex@meta.data[,c("orig.ident", "patient_group")])$patient_group[match(y$samples$samples, unique(gex@meta.data[,c("orig.ident", "patient_group")])$orig.ident)])
-
-# y$samples$clusters <- as.factor(unique(gex@meta.data[,c("orig.ident", "seurat_clusters")])$seurat_clusters[match(y$samples$samples, unique(gex@meta.data[,c("orig.ident", "seurat_clusters")])$orig.ident)])
-
-y$samples$cluster <- as.factor(y$samples$group)
-
-#keep <- filterByExpr(y, group = "patient_group"); table(keep)
-#y <- y[keep, ]
-y <- calcNormFactors(y)
-
-cluster <- y$samples$cluster
-patient_group <- y$samples$patient_group 
-
-design <- model.matrix(~ 0 + patient_group*cluster); colnames(design)
-colnames(design) <- gsub(":", "_", colnames(design))
-
-y_glm <- estimateDisp(y, design)
-fit <- glmQLFit(y_glm, design); colnames(fit$coefficients)
-
-
-#conserved differences across clusters for naive cells
-qlm <- glmQLFTest(fit, coef = 5:10)
-de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-de_g[rowMax(abs(de_g[, grep("logFC", colnames(de_g))])) > log2(1.5)]
-
-# #conserved differences across cell types
-# qlm <- glmQLFTest(fit, coef = 5:6)
-# de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-# de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-# 
-# #differences between patient groups within naive cells
-# qlm <- glmQLFTest(fit, coef = 10:12)
-# de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-# #de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-# 
-# qlm <- glmQLFTest(fit, coef = c(10:12))
-# de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-# #de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-
-
-
-qlm <- glmQLFTest(fit, contrast = makeContrasts(patient_groupCTRL - patient_groupDNEG, levels = design))
-de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-nrow(de_g[de_g$FDR <= 0.05, ]) 
-  
-
-```
-
-
-## pseudo bulk DE between clusters for naive B
-
-```{r }
-#https://jef.works/blog/2020/04/06/quickly-creating-pseudobulks/
-
-gex <- readRDS("../results/GEX7_BVDJ.rds") %>% 
-  DietSeurat(dimreducs = "umap_2") %>%  
-  tidyseurat::filter(orig.ident != "P024", 
-                     BcelltypeMain == "Naive")
-
-table(gex$seurat_clusters)
-gex$seurat_clusters <- as.factor(as.character(gex$seurat_clusters))
-
-table(gex$BcelltypeMain)
-
-dim(gex@meta.data)
-#create a model matrix for pseudo bulk generation
-mm <- model.matrix(~ 0 + orig.ident:seurat_clusters, data = gex@meta.data); head(mm); colnames(mm)
-
-#sample x number of cells per condition
-groups <- paste0(gex$seurat_clusters, '_', as.character(gex$orig.ident))
-gex$subgroups <- factor(groups)
-sample_size <- table(gex$subgroups)
-sample_size[ sample_size > 100 ] <- 100
-
-DGE_cells <- lapply(names(sample_size), function(x){ 
-  set.seed(1)
-  sample( colnames(gex) [ gex$subgroups == x ] , size = sample_size[x], replace = FALSE)
-  })
-DGE_cells <- unlist(DGE_cells)
-mm <- mm[DGE_cells, ]
-
-#clean up colnames
-colnames(mm) <- gsub("orig.ident", "", colnames(mm))
-colnames(mm) <- gsub("seurat_clusters", "", colnames(mm))
-
-colnames(mm) <- gsub("_", "", colnames(mm))
-colnames(mm) <- gsub(":", "_", colnames(mm))
-
-# create pseudo bulk count matrix
-gex.mm <- gex@assays$RNA@counts[, DGE_cells] %*% mm; dim(gex.mm)
-gex.mm <- gex.mm[rowSums(gex.mm) != 0, ]; dim(gex.mm)
-
-cellcounts <- colSums(mm); length(cellcounts)
-
-
-y <- DGEList(gex.mm, 
-             sample = gsub("_.*", "", colnames(gex.mm)), 
-             group = gsub(".*_", "", colnames(gex.mm)),
-             remove.zeros = TRUE); y
-summary(y$samples$lib.size)
-
-y$samples$patient_group <- as.factor(unique(gex@meta.data[,c("orig.ident", "patient_group")])$patient_group[match(y$samples$samples, unique(gex@meta.data[,c("orig.ident", "patient_group")])$orig.ident)])
-
-# y$samples$clusters <- as.factor(unique(gex@meta.data[,c("orig.ident", "seurat_clusters")])$seurat_clusters[match(y$samples$samples, unique(gex@meta.data[,c("orig.ident", "seurat_clusters")])$orig.ident)])
-
-y$samples$cluster <- as.factor(y$samples$group)
-
-#keep <- filterByExpr(y, group = "patient_group"); table(keep)
-#y <- y[keep, ]
-y <- calcNormFactors(y)
-
-cluster <- y$samples$cluster
-patient_group <- y$samples$patient_group 
-
-design <- model.matrix(~ 0 + patient_group*cluster); colnames(design)
-colnames(design) <- gsub(":", "_", colnames(design))
-
-y_glm <- estimateDisp(y, design)
-fit <- glmQLFit(y_glm, design); colnames(fit$coefficients)
-
-
-#conserved differences across clusters for naive cells
-qlm <- glmQLFTest(fit, coef = 5:10)
-de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-de_g[rowMax(abs(de_g[, grep("logFC", colnames(de_g))])) > log2(1.5)]
-
-# #conserved differences across cell types
-# qlm <- glmQLFTest(fit, coef = 5:6)
-# de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-# de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-# 
-# #differences between patient groups within naive cells
-# qlm <- glmQLFTest(fit, coef = 10:12)
-# de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-# #de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-# 
-# qlm <- glmQLFTest(fit, coef = c(10:12))
-# de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-# #de_g[rowMax(abs(de_g[,grep("logFC", colnames(de_g))])) > log2(1.5)]
-
-
-
-qlm <- glmQLFTest(fit, contrast = makeContrasts(patient_groupCTRL - patient_groupDNEG, levels = design))
-de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-nrow(de_g[de_g$FDR <= 0.05, ]) 
-  
-
-```
 
 
 ## DE between VH mutation classes for memory B-cells
@@ -489,7 +166,7 @@ nrow(de_g[de_g$FDR <= 0.05, ])
 
 ```{r}
 
-saveRDS(gex, file = "../results/xxx.rds")
+#saveRDS(gex, file = "../results/xxx.rds")
 
 ```
 

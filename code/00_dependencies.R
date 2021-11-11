@@ -8,7 +8,7 @@ suppressMessages(library(pryr)) #check memory usage
 
 
 ####----- general
-suppressMessages(library(stringr)) #for string modulations, find and replace etc.
+suppressMessages(library(stringr)) #for string modulations, find and replace, sort etc.
 suppressMessages(library(biomaRt))
 suppressMessages(library(rtracklayer))
 suppressMessages(library(dplyr))
@@ -49,6 +49,10 @@ suppressMessages(library(glmGamPoi))
 
 ####----- VDJ
 suppressMessages(library(scRepertoire))#; packageVersion("scRepertoire") #local :[1] ‘1.3.4’; bianca:[1] ‘1.0.0’
+#suppressMessages(library(dowser))
+#install.packages("dowser")
+#install.packages("ggtree") #package ‘ggtree’ is not available for this version of R
+#install.packages("phangorn") #package ‘phangorn’ is not available for this version of R
 
 # Immcantation
 suppressMessages(library(alakazam))
