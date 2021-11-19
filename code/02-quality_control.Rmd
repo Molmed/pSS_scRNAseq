@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 # QC and cell filtering {#QC}
 ## Load packages
 
@@ -29,11 +34,11 @@ colnames(annot) <- c("chromosome_name", "gene_id", "gene_biotype", "external_gen
 annot$chromosome_name <- as.character(annot$chromosome_name)
 annot[!grepl("^chr[123456789XYMT]", annot[, "chromosome_name"]), "chromosome_name"] <- "other"
 
+saveRDS(annot, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
+#annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
+
 cat("head(annot): \n")
 head(annot)
-
-saveRDS(annot, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
-
 
 ```
 
@@ -66,9 +71,8 @@ gex <- SplitObject(gex, split.by = "orig.ident")
 
 counts_features_quantile <- 0.98
 mito_cutoff <- 20
-ribo_cutoff <-5
+ribo_cutoff <- 5
 hb_cutoff <- 1
-
 
 gex <- lapply(gex, annot = annot, function(x, annot) {
   total <- colSums(x) #Total number of cells
@@ -79,12 +83,15 @@ gex <- lapply(gex, annot = annot, function(x, annot) {
   
   gene_biotype <- annot[match(rownames(x), annot$external_gene_name), "gene_biotype"]
   x$percent_protein_coding <- colSums(x[(gene_biotype == "protein_coding") &
-                (!is.na(gene_biotype)), ]) / total * 100
+                                          (!is.na(gene_biotype)), ]) / total * 100
   
   
-  x$count_th <- x$nCount_RNA > quantile(x$nCount_RNA, counts_features_quantile)
-  x$feature_th <- (x$nFeature_RNA > quantile(x$nFeature_RNA, counts_features_quantile)) |
+  x$count_th <- x$nCount_RNA > quantile(x$nCount_RNA, 
+                                        counts_features_quantile)
+  x$feature_th <- (x$nFeature_RNA > quantile(x$nFeature_RNA, 
+                                             counts_features_quantile)) |
     (x$nFeature_RNA < 200)
+  
   x$mito_th <- x$percent_mito > mito_cutoff
   x$ribo_th <- x$percent_ribo < ribo_cutoff
   x$hb_th <- x$percent_hb > hb_cutoff
@@ -95,6 +102,7 @@ gex <- lapply(gex, annot = annot, function(x, annot) {
 
 gex <- merge(gex[[1]] , gex[-1])
 
+#mark cells to be removed
 gex$cells_discard <- rowSums(gex@meta.data[, grepl("_th", colnames(gex@meta.data))]) > 0
 
 
@@ -199,10 +207,14 @@ for (i in my_pars){
                     x = "orig.ident", 
                     y = i, 
                     colour_by = "cells_discard") + 
-    theme(axis.text.x = element_text(angle = 90)) +
     ggtitle(i) +
     xlab("") + 
-    ylab(i)
+    ylab(i) + 
+    #scale_fill_continuous(name = "discard cell") +
+    theme(axis.text.x = element_text(angle = 90, 
+                                     hjust = 1, 
+                                     vjust = 0.5,
+                                     size = 8))
   
   p2 <- gex@meta.data %>% as_tibble() %>% 
     ggplot(aes_string(x = i)) + 
@@ -212,19 +224,9 @@ for (i in my_pars){
     NoLegend() +
     ggtitle(paste0(i, " per sample"))
   
-  # p3 <- gex@meta.data[!gex@meta.data$cells_discard,  ] %>% as_tibble() %>% 
-  #   ggplot(aes_string(x = i)) + 
-  #   geom_density(aes(color = orig.ident, fill= orig.ident), alpha = 0.1) + 
-  #   theme_classic() +
-  #   scale_x_log10() +
-  #   NoLegend() +
-  #   ggtitle(paste0(i, " per sample, filtered"))
-  
-  
   ggsave2(paste0("../results/QCplot_perSample", "_", i, ".png"), 
-          plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"),
+          plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + bgcolor("white"),
           width = 28, height = 12, unit = "cm")
-  
   
 }
 
@@ -249,11 +251,6 @@ gex <- gex[genes_keep, !gex$cells_discard]
 
 Idents(object = gex) <- "orig.ident"
 
-gex
-
-cat("GEX_FILTERED size: \n")
-print(object.size(gex), units = "GB")
-
 
 ```
 
@@ -263,6 +260,11 @@ print(object.size(gex), units = "GB")
 ```{r}
 
 saveRDS(gex, file = "../results/GEX2_FILTERED.rds")
+
+cat("GEX_FILTERED size: \n")
+print(object.size(gex), units = "GB")
+
+gex
 
 ```
 

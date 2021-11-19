@@ -89,6 +89,7 @@ print(object.size(gex), units = "GB")
 ```{r}
 
 saveRDS(gex, file = "../results/GEX4_BCELLS.rds")
+#gex <- readRDS(file = "../results/GEX4_BCELLS.rds")
 
 ```
 

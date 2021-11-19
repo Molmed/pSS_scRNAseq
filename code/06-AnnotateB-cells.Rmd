@@ -433,6 +433,40 @@ ggsave2(paste0("../results/Fig1D.png"),
 ```
 
  
+## dotplot for cluster marker genes
+
+```{r}
+
+cl_genes <- c("CCR7", "BACH2", "SELL", "IL4R", "IGHD", "FCER2", "CD9", "SELL", "IGHA1", "ID3", "LGALS3", "ITGB1", "COL19A1", "IGHE",  "ITGB7", "IGHG1", "IGHG2", "IGHG3", "CXCR3", "CD1C", "FCRL3", "MPP6", "ARL4D", "ZEB2", "ITGAX", "ALOX5", "ACADM", "GID8", "CMSS1", "FOS", "CD69", "EGR1", "DUSP1", "CCL5", "F13A1", "PPBP", "NRGN", "CLU")
+
+#"IL13RA",
+
+cl_genes <- unique(cl_genes)
+
+p <- DotPlot(gex, 
+        features = cl_genes, 
+        group.by = "cluster_cellType_manual_fine",
+        dot.scale = 4
+        ) +
+  theme_classic() +
+  xlab("") + 
+  ylab("") + 
+  coord_flip() + 
+  theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 1, 
+                                       vjust = 0.5,
+                                       size = 8),
+        panel.grid.major = element_line(colour="grey", size = rel(0.5)))
+
+ggsave2(paste0("../results/Fig1E.png"), 
+        p, 
+        width = 12, height = 14, unit = "cm") 
+
+
+
+```
+ 
+ 
 ## plot SFig4D
 
 ```{r}
@@ -512,7 +546,7 @@ ggsave2("../results/cluster_cell_cycle.png",
 ```
 
 
-#  patient subtypes per cell type
+#  patient subtypes per cell type Fig1F
 
 ```{r}
 
@@ -549,8 +583,10 @@ p1 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
         geom_bar(position = position_stack(reverse = FALSE)) + 
         ylab("cells") + 
         xlab("") + 
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-              legend.position = "none") +
+        theme(#axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+              legend.position = "none",
+              axis.text.x = element_blank(),
+              axis.ticks.x=element_blank()) +
         scale_fill_brewer(palette = "Set3", na.value = "grey")
 
 p2 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
@@ -560,8 +596,11 @@ p2 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
         geom_bar(position = "fill") + 
         ylab("proportion of cells") + 
         xlab("") + 
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-              legend.position = "none") +
+        theme(#axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+              legend.position = "none",
+              axis.text.x = element_blank(),
+              axis.ticks.x=element_blank()
+              ) +
         scale_fill_brewer(palette = "Set3", na.value = "grey")
 
 p_legend <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
@@ -585,6 +624,54 @@ ggsave2("../results/cell_types_fine_perPatientGroup_2.png",
         width = 25, height = 14, unit = "cm")
 
 
+
+#violin plot for Fig1F per celltype fine per orig.ident/patient_group
+
+p <- as_tibble(gex@meta.data) %>% 
+  select(orig.ident, cluster_cellType_manual_fine, patient_group) %>% 
+  add_count(orig.ident, cluster_cellType_manual_fine, .drop = FALSE) %>%
+  distinct() %>% 
+  group_by(orig.ident) %>% 
+  mutate(per =  prop.table(n)) %>%
+  drop_na()
+
+p$patient_group <- factor(p$patient_group, levels = sort(unique(p$patient_group)))
+
+#reorder factor for celltypeFine to match the other two plots
+theorder <- unique(names(sort(table(gex@meta.data$cluster_cellType_manual_fine)[gex@meta.data$cluster_cellType_manual_fine], decreasing = TRUE)))
+p$cluster_cellType_manual_fine <- factor(p$cluster_cellType_manual_fine, 
+                                         levels = theorder)
+
+p4 <- ggplot(p, 
+            aes(x = cluster_cellType_manual_fine,
+           y = per,
+           fill = patient_group
+           )) +
+            theme_classic() +
+            geom_violin(scale = "width", 
+                        draw_quantiles = c(0.25, 0.5, 0.75)) + 
+            ylab("proportion of cells in sample") + 
+            xlab("") + 
+            theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+                  legend.position = "none"
+                  ) +
+            scale_y_continuous(labels = percent) +
+            scale_fill_brewer(palette = "Set3", na.value = "grey")
+
+
+p3 <- plot_grid(p1, p2, p4, ncol = 1, labels = NULL, rel_heights = c(1, 1, 3) , align = "v")
+
+ggsave2("../results/cell_types_fine_perPatientGroup_3.png", 
+        plot_grid(p3, 
+                  p_legend, 
+                  ncol = 2, 
+                  rel_widths = c(5, 1), 
+                  labels = NULL, 
+                  align = "h") + bgcolor("white"), 
+        width = 25, height = 18, unit = "cm")
+
+
+####----
 p <- ggplot(gex@meta.data, aes(x = patient_group, fill =  cluster_cellType_manual_fine)) +
         theme_classic() +
         geom_bar(position = "fill") + 
@@ -608,13 +695,21 @@ cells <- as_tibble(cells) %>% pivot_longer(!orig.ident, names_to = "cellType", v
 
 cells$patient_group <-   unique(gex@meta.data[, c("orig.ident", "patient_group")])$patient_group[match(cells$orig.ident, unique(gex@meta.data[, c("orig.ident", "patient_group")])$orig.ident)]
 
+cells$patient_group <- factor(cells$patient_group, levels=sort(unique(cells$patient_group)))
+cells$orig.ident <- factor(cells$orig.ident)
+cells$cellType <- factor(cells$cellType)
+str(cells)
+
 p <- list()
 for (i in unique(cells$cellType)){
   
 p[[i]] <- ggplot(cells[cells$cellType == i, ], 
-                 aes(x = patient_group, y = count, fill = orig.ident)) +
+                 aes(x = patient_group, 
+                     y = count, 
+                     fill = patient_group)) +
         theme_classic() +
-        geom_col(position = "dodge", stat='identity') + 
+        geom_violin(scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+        #geom_col(position = "dodge", stat='identity') + 
         ylab("proportion of cells in sample") + 
         xlab("") + 
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
@@ -638,17 +733,12 @@ ggplot(cells, aes(x = cellType, y = count, fill = patient_group)) +
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
               legend.position = "none") +
   ggtitle(i) +
-  scale_y_continuous(labels = percent)
+  scale_y_continuous(labels = percent) +
+  scale_fill_brewer(palette = "Set3", na.value = "grey")
 
-ggplot(cells, aes(x = cellType, y = count, fill = patient_group)) +
-        theme_classic() +
-        geom_col(position = "dodge") + 
-        ylab("proportion of cells in sample") + 
-        xlab("") + 
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-              legend.position = "none") +
-  ggtitle(i) +
-  scale_y_continuous(labels = percent)
+
+
+
 
 # barplot with cell types per patient
 # p2 <- ggplot(gex@meta.data, aes(y = patient_group, 
@@ -715,6 +805,7 @@ plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
 ```{r}
 
 saveRDS(gex, file = "../results/GEX6_BANNOT.rds")
+#gex <- readRDS(file = "../results/GEX6_BANNOT.rds")
 
 ```
 

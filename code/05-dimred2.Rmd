@@ -64,7 +64,7 @@ p2 <- LabelPoints(plot = VariableFeaturePlot(gex),
 
 
 ggsave2("../results/VariableFeatures_B-cells.png",
-        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
+        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h"), 
         width = 30, height = 15, unit = "cm")
 
 
@@ -78,7 +78,6 @@ ggsave2("../results/VariableFeatures_B-cells.png",
 gex <- ScaleData(gex, 
                  features = VariableFeatures(object = gex),
                  vars.to.regress = c("nFeature_RNA"))
-
 
 ```
 
@@ -441,6 +440,7 @@ ggsave2("../results/UMAP_B-cells_patientGroup.png",
 ```{r}
 
 saveRDS(gex, file = "../results/GEX5_DIMRED2.rds")
+#gex <- readRDS(file = "../results/GEX5_DIMRED2.rds")
 
 ```
 

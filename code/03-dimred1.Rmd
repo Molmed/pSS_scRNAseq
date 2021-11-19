@@ -70,9 +70,7 @@ ggsave2("../results/VariableFeatures_allCells.png",
 #### ----- Regressing out nFeature_RNA
 gex <- ScaleData(gex, 
                  features = VariableFeatures(gex),
-                 vars.to.regress = c("nFeature_RNA")
-                 )
-
+                 vars.to.regress = c("nFeature_RNA"))
 
 ```
 
@@ -95,9 +93,6 @@ gex <- RunPCA(
 gex@assays$RNA@scale.data <- matrix(0)
 gc()
 
-gex
-
-
 ```
 
 
@@ -116,9 +111,6 @@ gex <- RunHarmony(
   project.dim = FALSE, #project.dim = FALSE needed for seurat object v4.0.0??
   verbose = TRUE
 )
-
-gex
-
 
 ```
 
@@ -144,7 +136,7 @@ p2 <- DimPlot(object = gex,
                   ggtitle("Harmony_1, by Sample")
 
 ggsave2("../results/PCA_harmony_allCells_.png", 
-        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
+        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h"), 
         width = 30, height = 15, unit = "cm")
 
 
@@ -193,8 +185,6 @@ table(gex@meta.data$seurat_clusters)
 
 cat("GEX_DIMRED size: \n")
 print(object.size(gex), units = "GB")
-
-gex
 
 ```
 
@@ -266,11 +256,14 @@ ggsave2("../results/UMAP_allCells_SFig2B.png",
 ```{r}
 
 ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", 
-                 "IGHG4",  "IGHD", "IGHE", "IGHM" )
+                 "IGHG4",  "IGHD", "IGHE", "IGHM")
+
 b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27", 
                "IGHA1", "IGHD", "IGHM", "JCHAIN", "MME")
+
 pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", 
                   "CD3E", "CD14", "LYZ", "CD8A")
+
 my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
 
 ####-----  PBMC markers
@@ -282,7 +275,7 @@ p.pbmc <- FeaturePlot(gex,
 
 ggsave2("../results/FeaturePlot_allCells_pbmcMarkers.png", 
         p.pbmc, 
-        width=25, height=25, unit="cm")
+        width = 25, height = 25, unit = "cm")
 
 ####-----  B markers
 p.b.markers <- FeaturePlot(gex, 
@@ -292,28 +285,28 @@ p.b.markers <- FeaturePlot(gex,
                              order = TRUE)
 ggsave2("../results/FeaturePlot_allCells_BMarkers.png", 
         p.b.markers, 
-        width=30, height=20, unit="cm")
+        width = 30, height = 20, unit="cm")
 
 ####-----  IG markers
 p.ig.markers <- FeaturePlot(gex, 
                               features = ig.features, 
                               reduction = "umap_1", 
-                              raster=FALSE, 
+                              raster = FALSE, 
                               order = TRUE)
 
 ggsave2("../results/FeaturePlot_allCells_IGMarkers.png", 
         p.ig.markers, 
-        width=25, height=25, unit="cm")
+        width = 25, height = 25, unit = "cm")
 
 ####-----  my_pars
 p.myPars <- FeaturePlot(gex, 
                           features = my_pars , 
                           reduction = "umap_1", 
-                          raster=FALSE, 
+                          raster = FALSE, 
                           order = TRUE)
 ggsave2("../results/FeaturePlot_allCells_myPars.png", 
         p.myPars, 
-        width=25, height=25, unit="cm")
+        width = 25, height = 25, unit="cm")
 
 
 ```
@@ -351,6 +344,7 @@ p2 <- DimPlot(gex,
 
 
 ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
+
 pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", 
                   "CD3E", "CD14", "LYZ", "CD8A")
 
@@ -385,11 +379,8 @@ for (i in pbmc.markers) {
 }
 
 p3 <- plot_grid(p1, p2, ncol = 1)
-
 p4 <- plot_grid(plotlist = pig, ncol = 3)
-
 p5 <- plot_grid(plotlist = pp, ncol = 3)
-
 
 ggsave2(paste0("../results/SFig2B.png"), 
         plot_grid(p3, NULL, p4, NULL, p5, ncol = 5, rel_widths = c(1, 0.1, 1.5, 0.1, 1.5)) + bgcolor("white"), 
@@ -490,6 +481,38 @@ ggsave2("../results/UMAP_allCells_celltypes_Fig1B.png",
         plot_grid(p3, ncol = 1, labels = NULL, align = "h"), 
         width = 12, height = 12, unit = "cm")
 
+counts <- as.data.frame.matrix(table(gex@meta.data$celltype, gex@meta.data$orig.ident))
+write.csv(counts, "../results/cellcounts_celltypes_orig.ident_GEX3_DIMRED1.csv", row.names = TRUE)
+
+```
+
+
+## SFig2C Dotplot for cluster marker genes
+
+```{r}
+
+m_genes <- c("MS4A1", "CD79A", "CD79B", "CD3E", "CD3D", "CD3G", 
+             "IL7R", "IL32", "FCN1", "LYZ", "CD14","JCHAIN", "MZB1")
+
+p <- DotPlot(gex, 
+        features = m_genes, 
+        group.by = "seurat_clusters",
+        dot.scale = 4
+        ) +
+  theme_classic() +
+  xlab("") + 
+  ylab("Seurat KNN clusters") + 
+  ggtitle("Cluster marker genes") +
+  coord_flip() + 
+  theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 1, 
+                                       vjust = 0.5,
+                                       size = 8),
+        panel.grid.major = element_line(colour = "grey", size = rel(0.5)))
+
+ggsave2(paste0("../results/SFig2C.png"), 
+        p, 
+        width = 12, height = 14, unit = "cm") 
 
 ```
 
@@ -499,6 +522,7 @@ ggsave2("../results/UMAP_allCells_celltypes_Fig1B.png",
 ```{r}
 
 saveRDS(gex, file = "../results/GEX3_DIMRED1.rds")
+#gex <- readRDS(file = "../results/GEX3_DIMRED1.rds")
 
 ```
 

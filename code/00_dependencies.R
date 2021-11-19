@@ -32,6 +32,7 @@ suppressMessages(library(pheatmap))
 suppressMessages(library(ggpubr))
 suppressMessages(library(gridExtra))
 suppressMessages(library(scales)) #scales for plotting
+#suppressMessages(library(lessR))
 
 
 ####----- scRNAseq

@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 # Read data {#Read Data}
 ## Load packages
 
@@ -16,8 +21,9 @@ source("./00_dependencies.R")
 samples <- str_replace(str_sort(list.files("../data/counts_mx"), numeric = TRUE),
                        "_filtered_feature_bc_matrix",
                        "")
-cat("Samples: \n")
-samples
+
+cat("Samples: \n", samples)
+
 
 ####----- Create a named vector with paths to samples
 samples.dirs <- sapply(samples, function(i) {
@@ -26,8 +32,8 @@ samples.dirs <- sapply(samples, function(i) {
   d10x
 })
 
-cat("Sample directories: \n")
-samples.dirs
+cat("Sample directories: \n", samples.dirs)
+
 
 ####----- Read count matrices
 gex_data <- Read10X(data.dir = samples.dirs,
@@ -42,8 +48,10 @@ gex <- CreateSeuratObject(gex_data,
                           min.features = 0,
                           names.field = 1)
 
-table(gex@meta.data$orig.ident)
-nrow(gex@meta.data)
+counts <- as.data.frame(table(gex@meta.data$orig.ident))
+colnames(counts) <- c("sample", "cells")
+write.csv(counts, "../results/cellcounts_GEX1_RAW.txt")
+
 
 ####-----  rm tmp objects
 rm(samples, samples.dirs, gex_data)
@@ -52,9 +60,13 @@ rm(samples, samples.dirs, gex_data)
 gex@meta.data$orig.ident <- gsub("P007[ab]", "P007", gex@meta.data$orig.ident)
 gex@meta.data$orig.ident <- gsub("P008[ab]", "P008", gex@meta.data$orig.ident)
 
-table(gex@meta.data$orig.ident)
+```
 
-####-----  add pheno info
+
+## add pheno info
+
+```{r}
+
 pheno <- read.table("../suppl/pheno/pSS_pheno_210623.csv", sep = ";", header = TRUE)
 colnames(pheno)[c(1, 3)] <- c("Sample_id", "orig.ident")
 pheno$orig.ident <- gsub("P007[ab]", "P007", pheno$orig.ident)
@@ -72,11 +84,22 @@ gex <- AddMetaData(gex, meta.data.tmp); head(gex@meta.data); table(gex@meta.data
 
 Idents(object = gex) <- "orig.ident"
 
-cat("GEX_RAW size: \n")
-print(object.size(gex), units = "GB")
 
-gex
+```
 
+
+## Add patient group
+
+```{r}
+
+gex$patient_group <- paste0(ifelse(gex$SSA == "YES", "SSA", ""), 
+                            "_", 
+                            ifelse(gex$SSB == "YES", "SSB", ""))
+
+pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
+gex$patient_group <- names(pat_annot)[match(gex$patient_group, pat_annot)]
+gex$patient_group[grep("^C00", gex$orig.ident) ] <- "CTRL"
+gex$patient_group <- factor(gex$patient_group, levels = c("CTRL", "DNEG", "SSA", "SSAB"))
 
 ```
 
@@ -86,6 +109,12 @@ gex
 ```{r include = FALSE}
 
 saveRDS(gex, file = "../results/GEX1_RAW.rds")
+#gex <- readRDS("../results/GEX1_RAW.rds")
+
+cat("GEX_RAW size: \n")
+print(object.size(gex), units = "GB")
+
+gex
 
 ```
 
