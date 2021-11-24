@@ -498,7 +498,7 @@ table(gex$orig.ident, useNA = "always")
 ```{r}
 
 #VDJ gene usage correlation
-VDJ_cor <- function(i, #seurat object containing meta data for VDJ gene usage
+VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usage
                     correl, #which correlation to use i.e. spearman or pearson...
                     VDJgene #VDJ gene to plot
                     ){
@@ -507,22 +507,22 @@ VDJ_cor <- function(i, #seurat object containing meta data for VDJ gene usage
   cat(correl, "\n")
   
   #remove allele information
-  i@meta.data[, VDJgene] <- unlist(lapply(strsplit(i@meta.data[, VDJgene], 
+  i[, VDJgene] <- unlist(lapply(strsplit(i[, VDJgene],
                                                    split = "\\*"),
-                                          function(x) {return(x[1])})) 
+                                          function(x) {return(x[1])}))
   
-  #i$seurat_clusters_patient_group <-paste0(i$seurat_clusters, "_", i$patient_group)
   i$celltype_patient_group <- paste0(i$cluster_cellType_manual_fine, 
                                      "-", 
                                      i$patient_group)
   
-  tmp <- table(list(i@meta.data[, VDJgene], 
-                    i$celltype_patient_group))
+  # tmp <- table(list(i@meta.data[, VDJgene], 
+  #                   i$celltype_patient_group))
+  
+  tmp <- as.data.frame.matrix(table(list(i[, VDJgene],
+                    i$celltype_patient_group)))
   
   cor_tmp <- cor(tmp, method = correl)
   cor_tmp[is.na(cor_tmp)] <- 0
-  
-  #cat(cor.test(tmp, method = correl))
 
   p <- pheatmap::pheatmap(cor_tmp, 
                      annotation_col = data.frame(cell_type = factor(sub("-.*", "", colnames(cor_tmp))),
@@ -536,21 +536,49 @@ VDJ_cor <- function(i, #seurat object containing meta data for VDJ gene usage
                       fontsize_col = 4,
                       border_color = NA,
                       main = paste(VDJgene, correl, "correlation"),
-                      color = colorRampPalette(c("lightblue", "gray90", "firebrick2"))(99))
+                      color = c(colorRampPalette(c("lightblue1", "lightblue2", "firebrick2"))(99)))
   
 }
 
-VDJ_cor(gex, "spearman", "v_call")
-VDJ_cor(gex, "pearson", "v_call")
+#for all cell types
+VDJ_cor(gex@meta.data, "spearman", "v_call")
+VDJ_cor(gex@meta.data, "pearson", "v_call")
 
-VDJ_cor(gex, "spearman", "d_call")
-VDJ_cor(gex, "pearson", "d_call")
+VDJ_cor(gex@meta.data, "spearman", "d_call")
+VDJ_cor(gex@meta.data, "pearson", "d_call")
 
-VDJ_cor(gex, "spearman", "j_call")
-VDJ_cor(gex, "pearson", "j_call")
+VDJ_cor(gex@meta.data, "spearman", "j_call")
+VDJ_cor(gex@meta.data, "pearson", "j_call")
 
-VDJ_cor(gex, "spearman", "c_call")
-VDJ_cor(gex, "pearson", "c_call")
+VDJ_cor(gex@meta.data, "spearman", "c_call")
+VDJ_cor(gex@meta.data, "pearson", "c_call")
+
+
+#for a subset of cell types
+gex.meta <- gex@meta.data[gex$cluster_cellType_manual_fine == "DN1_ID3" | 
+                          gex$cluster_cellType_manual_fine == "DN2" |
+                          gex$cluster_cellType_manual_fine == "DN2_CXCR3" |
+                          gex$cluster_cellType_manual_fine == "DN2_ITGAX" |
+                          gex$cluster_cellType_manual_fine == "DN4_IGHE" |
+                          gex$cluster_cellType_manual_fine == "Memory_Cl" |
+                          gex$cluster_cellType_manual_fine == "Memory_IgM" |
+                          gex$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
+                          gex$cluster_cellType_manual_fine == "Naive" |
+                          gex$cluster_cellType_manual_fine == "Naive_IFN" |
+                          gex$cluster_cellType_manual_fine == "Naive_Transitional", ]
+
+
+VDJ_cor(gex.meta, "spearman", "v_call")
+VDJ_cor(gex.meta, "pearson", "v_call")
+
+VDJ_cor(gex.meta, "spearman", "d_call")
+VDJ_cor(gex.meta, "pearson", "d_call")
+
+VDJ_cor(gex.meta, "spearman", "j_call")
+VDJ_cor(gex.meta, "pearson", "j_call")
+
+VDJ_cor(gex.meta, "spearman", "c_call")
+VDJ_cor(gex.meta, "pearson", "c_call")
 
 
 ```
@@ -1908,11 +1936,23 @@ ggsave2(paste0("../results/VDJ_muFull_celltypeFine_patient_group.png"),
           width = 30, height = 10, unit = "cm")
 
 
-####---- total VDJ mutation frequency - celltypeFine - orig.ident
 
+gex.meta <- gex@meta.data[gex$cluster_cellType_manual_fine == "DN1_ID3" | 
+                          gex$cluster_cellType_manual_fine == "DN2" |
+                          gex$cluster_cellType_manual_fine == "DN2_CXCR3" |
+                          gex$cluster_cellType_manual_fine == "DN2_ITGAX" |
+                          gex$cluster_cellType_manual_fine == "DN4_IGHE" |
+                          gex$cluster_cellType_manual_fine == "Memory_Cl" |
+                          gex$cluster_cellType_manual_fine == "Memory_IgM" |
+                          gex$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
+                          gex$cluster_cellType_manual_fine == "Naive" |
+                          gex$cluster_cellType_manual_fine == "Naive_IFN" |
+                          gex$cluster_cellType_manual_fine == "Naive_Transitional", ]
+
+####---- total VDJ mutation frequency - celltypeFine - orig.ident
 p <- list()
-for (i in sort(unique(gex$cluster_cellType_manual_fine))){
-p[[i]] <- ggplot(gex@meta.data[gex@meta.data$cluster_cellType_manual_fine == i, ], 
+for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
+p[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ], 
              aes(x = patient_group, 
                  y = mu_freq_total, 
                  fill = orig.ident)) +
@@ -1930,8 +1970,8 @@ p[[i]] <- ggplot(gex@meta.data[gex@meta.data$cluster_cellType_manual_fine == i, 
 }
 
 
-ggsave2(paste0("../results/VDJ_muFull_celltypeFine_orig.ident.png"), 
-          plot_grid(plotlist = p, ncol = 4, labels = NULL, align = "hv"),
+ggsave2(paste0("../results/VDJ_muFull_celltypeFine_orig.ident_2.png"), 
+          plot_grid(plotlist = p, ncol = 4, labels = NULL, align = "hv") + bgcolor("white"),
           width = 30, height = 30, unit = "cm")
 
 

@@ -430,6 +430,24 @@ ggsave2(paste0("../results/Fig1D.png"),
         p, 
         width = 20, height = 15, unit = "cm") 
 
+
+#plot 
+p <- DimPlot(gex, 
+             reduction = "umap_2", 
+             group.by = "cluster_cellType_manual_fine",
+             label = TRUE,label.size = 4, label.box = TRUE) + 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") + 
+  ggtitle("celltypes") + 
+    theme(axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "none")
+
+ggsave2(paste0("../results/UMAP_clusterCellTypeFine_labels.png"), 
+        p, 
+        width = 20, height = 15, unit = "cm") 
+
+
 ```
 
  
