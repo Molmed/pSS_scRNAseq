@@ -62,5 +62,9 @@ suppressMessages(library(airr))
 suppressMessages(library(scoper))
 
 
+#GSEA
+suppressMessages(library(enrichR))
+suppressMessages(library(fgsea))
+
 
 

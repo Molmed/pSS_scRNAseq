@@ -857,12 +857,62 @@ p <- as_tibble(gex@meta.data) %>%
   theme_classic() +
   xlab("") +
   ylab("percent of IGHV1-69 cells per patient group") +
+  ggtitle("IGHV1-69") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
   geom_boxplot()
 
 ggsave2(paste0("../results/VDJ_geneUsage_alleles_IGHV-69_perPatientGroup_perCelltypeFine.png"), 
           p,
-          width = 20, height = 12, unit = "cm")
+          width = 16, height = 12, unit = "cm")
+
+
+p <- as_tibble(gex@meta.data) %>% 
+  select(orig.ident, cluster_cellType_manual_main, IGHV, patient_group) %>% 
+  filter(IGHV == "IGHV1-69")  %>%  
+  add_count(orig.ident, cluster_cellType_manual_main, .drop = FALSE) %>% 
+  distinct() %>%
+  group_by(orig.ident) %>%
+  mutate(per =  prop.table(n)) %>% 
+  ggplot(aes(x = cluster_cellType_manual_main,
+             y = per,
+             fill = patient_group)) +
+  scale_y_continuous(labels = percent) +
+  theme_classic() +
+  xlab("") +
+  ylab("percent of IGHV1-69 cells per patient group") +
+  ggtitle("IGHV1-69") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  geom_boxplot()
+
+ggsave2(paste0("../results/VDJ_geneUsage_alleles_IGHV-69_perPatientGroup_perCelltypeMain.png"), 
+          p,
+          width = 12, height = 12, unit = "cm")
+
+
+# make pie chart with celltypeMain for each patient_group
+# !!!! fix this !!!!
+p <- as_tibble(gex@meta.data) %>% 
+  select(cluster_cellType_manual_main, IGHV, patient_group) %>% 
+  filter(IGHV == "IGHV1-69")  %>%  
+  add_count(patient_group, cluster_cellType_manual_main, .drop = FALSE) %>% 
+  distinct() %>%
+  group_by(patient_group) %>%
+  mutate(perc =  prop.table(n))
+
+ggplot(p, aes(x=1,y = perc, fill = cluster_cellType_manual_main)) +
+  geom_bar(stat = "identity") +
+  coord_polar(theta = "y", start = 0, direction = 1) +
+  theme_void() +
+  geom_text(aes(label = c(paste0(round(p$perc[1:5]*100, digits = 2), "%"), 
+                rep("", times = nrow(p) - 5))), 
+            position = position_stack(vjust = 0.5, reverse = FALSE),
+            size = 3.2)+
+  
+  xlim(0.5, 2.5) +
+  ggtitle("") +
+  scale_fill_discrete(name = "Cell type main") +
+  theme(legend.position = "none",
+        plot.title = element_text(hjust = 0.5))
 
  
 #IGHV1-18
@@ -1121,7 +1171,7 @@ imm4$perc <- round(imm4$cellcount / sum(imm4$cellcount) * 100, digits = 5)
 ####---- pie1 - all clonotypes
 p1 <- ggplot(imm4, aes(x = 2, y = cellcount, fill = clonocount)) +
   geom_bar(stat = "identity") +
-  coord_polar(theta = "y", start = 0, direction = 1)+
+  coord_polar(theta = "y", start = 0, direction = 1) +
   geom_text(aes(label = c(paste0(round(imm4$perc[1], digits = 2), "%"), 
                 rep("", times = nrow(imm4) - 1))), 
             position = position_stack(vjust = 0.5, reverse = TRUE),

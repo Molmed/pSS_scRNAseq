@@ -214,7 +214,7 @@ DGE_list_p <- lapply(DGE_list, function(x) {
 ngenes <- 15
 
 p_list <- list()
-for (i in sort(unique(gex$cluster_cellType_manual_fine))[1:15]){
+for (i in sort(unique(gex$cluster_cellType_manual_fine))[-c(7, 8, 12, 16)]){
 
   cat(i,"\n")
   
@@ -257,8 +257,81 @@ for (i in sort(unique(gex$cluster_cellType_manual_fine))[1:15]){
 }
 
 ggsave2("../results/DGE_B-cells_celltypeFine_dotplots.png", 
-        plot_grid(plotlist = p_list, ncol = 5, labels = NULL, align = "h"), 
-        width = 35, height = 20, unit = "cm")
+        plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h"), 
+        width = 28, height = 20, unit = "cm")
+
+
+```
+
+### GSEA celltypesFine
+
+```{r}
+
+#cluster genes before enrichR
+
+
+p_list <- list()
+for (i in sort(names(DGE_list))[-c(7, 8, 12)]){
+  
+  go_cluster <- enrichr(genes = DGE_list[[i]]$gene[1:50], 
+                        databases = c("GO_Biological_Process_2021", 
+                                      "WikiPathway_2021_Human",
+                                      "KEGG_2021_Human",
+                                      "MSigDB_Hallmark_2020"))
+  
+  go_cluster <- go_cluster$MSigDB_Hallmark_2020
+  go_cluster <- go_cluster[order(go_cluster$P.value), ]
+  go_cluster$logP <- -log10(go_cluster$P.value)
+  
+  p_list[[i]] <- ggplot(go_cluster[1:5,], aes(x = reorder(Term, logP), 
+                                              y = logP)) +
+    geom_col(position = "dodge") +
+    theme_classic() + 
+    coord_flip() +
+    theme(axis.text.x = element_text(angle = 0, 
+                                     hjust = 0.5, 
+                                     vjust = 0.5,
+                                     size = 12,
+                                     color = "black"),
+          axis.text.y = element_text(angle = 0, 
+                                     hjust = 1, 
+                                     vjust = 0.5,
+                                     size = 12,
+                                     color = "black"),
+            strip.background = element_blank(), 
+            strip.text.y = element_blank(),
+            legend.position = "none",
+            plot.margin = unit(c(0.2,0.2,0.2,0.2), "cm")) +
+      ylab(expression('-log10('~italic(P)~')')) +
+      xlab("") +
+      ggtitle(paste0(i)) +
+      geom_hline(aes(yintercept = 2), color = "black", linetype = "dashed")
+
+  
+}
+
+ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeFine.png"),
+          plot_grid(plotlist = p_list, 
+                    ncol = 4, 
+                    labels = NULL, 
+                    align = "vh" ) + bgcolor("white"),
+          width = 45, height = 24, unit = "cm")
+
+
+# DGE_list[[1]]$gene[1:50]
+# enrichR::listEnrichrDbs()[, "libraryName"]
+# go_cluster <- enrichr(genes = DGE_list[[1]]$gene[1:50], databases = c("GO_Biological_Process_2021",
+#                                                                       "WikiPathway_2021_Human",
+#                                                                       "KEGG_2021_Human",
+#                                                                       "MSigDB_Hallmark_2020"))
+# go_cluster <- go_cluster$MSigDB_Hallmark_2020
+# go_cluster <- go_cluster[order(go_cluster$P.value),]
+# 
+# mypar(1,1,mar=c(2,10,2,2))
+# barplot(-log10(go_cluster$P.value[5:1]),horiz=T,border=F,yaxs="i",
+#            names.arg=go_cluster$Term[5:1],las=1,cex.names=0.8)
+# abline(v = 2, lwd = 1, lty = 2, col ="gray20")
+
 
 
 ```
@@ -486,9 +559,83 @@ for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(3, 4, 6)]){
 
 }
 
-ggsave2("../results/DGE_B-cells_celltypeMain_dotplots.png", 
+ggsave2("../results/DGE_B-cells_celltypeMain_dotplots_2.png", 
         plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h"), 
-        width = 25, height = 15, unit = "cm")
+        width = 25, height = 10, unit = "cm")
+
+
+```
+
+
+### GSEA celltypesMain
+
+```{r}
+
+#cluster genes before enrichR
+
+
+p_list <- list()
+for (i in sort(names(DGE_list))[-c(3, 4, 6)]){
+  
+  go_cluster <- enrichr(genes = DGE_list[[i]]$gene[1:50], 
+                        databases = c("GO_Biological_Process_2021", 
+                                      "WikiPathway_2021_Human",
+                                      "KEGG_2021_Human",
+                                      "MSigDB_Hallmark_2020"))
+  
+  go_cluster <- go_cluster$MSigDB_Hallmark_2020
+  go_cluster <- go_cluster[order(go_cluster$P.value), ]
+  go_cluster$logP <- -log10(go_cluster$P.value)
+  
+  p_list[[i]] <- ggplot(go_cluster[1:6,], aes(x = reorder(Term, logP), 
+                                              y = logP)) +
+    geom_col(position = "dodge") +
+    theme_classic() + 
+    coord_flip() +
+    theme(axis.text.x = element_text(angle = 0, 
+                                     hjust = 0.5, 
+                                     vjust = 0.5,
+                                     size = 12,
+                                     color = "black"),
+          axis.text.y = element_text(angle = 0, 
+                                     hjust = 1, 
+                                     vjust = 0.5,
+                                     size = 12,
+                                     color = "black"),
+            strip.background = element_blank(), 
+            strip.text.y = element_blank(),
+            legend.position = "none",
+            plot.margin = unit(c(0.2,0.2,0.2,0.2), "cm")) +
+      ylab(expression('-log10('~italic(P)~')')) +
+      xlab("") +
+      ggtitle(paste0(i)) +
+      geom_hline(aes(yintercept = 2), color = "black", linetype = "dashed")
+
+  
+}
+
+ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeMain.png"),
+          plot_grid(plotlist = p_list, 
+                    ncol = 4, 
+                    labels = NULL, 
+                    align = "vh" ) + bgcolor("white"),
+          width = 40, height = 8, unit = "cm")
+
+
+# DGE_list[[1]]$gene[1:50]
+# enrichR::listEnrichrDbs()[, "libraryName"]
+# go_cluster <- enrichr(genes = DGE_list[[1]]$gene[1:50], databases = c("GO_Biological_Process_2021",
+#                                                                       "WikiPathway_2021_Human",
+#                                                                       "KEGG_2021_Human",
+#                                                                       "MSigDB_Hallmark_2020"))
+# go_cluster <- go_cluster$MSigDB_Hallmark_2020
+# go_cluster <- go_cluster[order(go_cluster$P.value),]
+# 
+# mypar(1,1,mar=c(2,10,2,2))
+# barplot(-log10(go_cluster$P.value[5:1]),horiz=T,border=F,yaxs="i",
+#            names.arg=go_cluster$Term[5:1],las=1,cex.names=0.8)
+# abline(v = 2, lwd = 1, lty = 2, col ="gray20")
+
 
 
 ```
@@ -497,6 +644,11 @@ ggsave2("../results/DGE_B-cells_celltypeMain_dotplots.png",
 ### violin plot for select DE features
 
 ```{r}
+tmp <- Seurat::Read10X_h5("/Users/gusarv/Downloads/TS_Trachea.h5ad")
+
+remotes::install_github("theislab/zellkonverter")
+install.packages("zellkonverter")
+library(zellkonverter)
 
 DE_features_ifn <- c("EIF2AK2", "IFI44L", "IFITM1", "STAT1")
 
