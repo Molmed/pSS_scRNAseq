@@ -442,6 +442,11 @@ ggsave2("../results/UMAP_B-cells_patientGroup.png",
 saveRDS(gex, file = "../results/GEX5_DIMRED2.rds")
 #gex <- readRDS(file = "../results/GEX5_DIMRED2.rds")
 
+gex@meta.data$SSA[gex@meta.data$orig.ident == "P024"] <- "YES"
+gex@meta.data$SSB[gex@meta.data$orig.ident == "P024"] <- "YES"
+gex@meta.data$patient_group[gex@meta.data$orig.ident == "P024"] <- "SSAB"
+table(gex@meta.data$patient_group, gex@meta.data$orig.ident)
+
 ```
 
 

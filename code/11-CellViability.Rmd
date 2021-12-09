@@ -1,0 +1,86 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# Cell Viability {#Viz}
+
+## Load packages
+
+```{r}
+
+source("./00_dependencies.R")
+
+```
+
+
+## Cell viability
+
+```{r}
+
+library("readxl")
+
+####-----  List samples
+samples <- list.files("../../../SampleCollection/1.Cellcounts")
+
+####-----  List files
+samples.files <- sapply(samples, function(i) {
+  d <- list.files(paste0("../../../SampleCollection/1.Cellcounts/", i), full.names = TRUE)
+  d <- d[grep(d, pattern = ".xlsx")]
+})
+
+####----- read files
+via <- lapply(samples.files, function(x){
+  v_out <- read_excel(x, sheet = 1)
+  v_out
+})
+
+####----- get viability cell
+via <- unlist(lapply(via, function(x){
+  x[33,2]
+  }))
+
+####----- remove sample 122 that was not sequenced
+via <- as.numeric(via[-5])
+
+####----- get mean viability and sd
+mean(via)
+sd(via)
+
+
+```
+
+
+## Library concentration
+
+```{r}
+data.col <- read_excel("/Users/gusarv/Documents/projekt/SjS/ChromiumVDJprep.1.6.xlsx", sheet = 1)
+
+#cDNA lib conc
+mean(na.omit(as.numeric(data.col[14,-c(1,2,21)]))) #[1] 2.185633
+sd(na.omit(as.numeric(data.col[14,-c(1,2,21)]))) #[1] 1.031113
+
+#GEX lib conc
+mean(as.numeric(data.col[64,-c(1,2,21)])) #[1] 24.776
+sd(as.numeric(data.col[64,-c(1,2,21)])) #[1] 8.753145
+colnames(data.col)
+
+#B lib conc
+mean(na.omit(as.numeric(data.col[41,-c(1,2,14,21)]))) #[1] 32.03071
+sd(na.omit(as.numeric(data.col[41,-c(1,2,14,21)]))) #[1] 14.50032
+colnames(data.col)
+
+```
+
+
+
+## Print sessionInfo()
+
+```{r}
+
+sessionInfo()
+
+```
+
+
+

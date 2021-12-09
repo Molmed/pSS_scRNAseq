@@ -14,7 +14,8 @@ suppressMessages(library(rtracklayer))
 suppressMessages(library(dplyr))
 suppressMessages(library(tidyr))
 suppressMessages(library(future.apply))
-
+suppressMessages(library(msa))
+suppressMessages(library(seqinr))
 
 ####----- plot
 suppressMessages(library(plotly))
@@ -60,7 +61,6 @@ suppressMessages(library(alakazam))
 suppressMessages(library(shazam))
 suppressMessages(library(airr))
 suppressMessages(library(scoper))
-
 
 #GSEA
 suppressMessages(library(enrichR))
