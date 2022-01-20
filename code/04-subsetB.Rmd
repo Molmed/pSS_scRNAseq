@@ -91,11 +91,6 @@ print(object.size(gex), units = "GB")
 saveRDS(gex, file = "../results/GEX4_BCELLS.rds")
 #gex <- readRDS(file = "../results/GEX4_BCELLS.rds")
 
-gex@meta.data$SSA[gex@meta.data$orig.ident == "P024"] <- "YES"
-gex@meta.data$SSB[gex@meta.data$orig.ident == "P024"] <- "YES"
-gex@meta.data$patient_group[gex@meta.data$orig.ident == "P024"] <- "SSAB"
-table(gex@meta.data$patient_group, gex@meta.data$orig.ident)
-
 ```
 
 

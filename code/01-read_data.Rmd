@@ -120,10 +120,6 @@ gex$patient_group <- factor(gex$patient_group, levels = c("CTRL", "DNEG", "SSA",
 saveRDS(gex, file = "../results/GEX1_RAW.rds")
 #gex <- readRDS("../results/GEX1_RAW.rds")
 
-gex@meta.data$SSA[gex@meta.data$orig.ident == "P024"] <- "YES"
-gex@meta.data$SSB[gex@meta.data$orig.ident == "P024"] <- "YES"
-gex@meta.data$patient_group[gex@meta.data$orig.ident == "P024"] <- "SSAB"
-table(gex@meta.data$patient_group, gex@meta.data$orig.ident)
 
 ```
 

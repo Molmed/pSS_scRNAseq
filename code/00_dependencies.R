@@ -1,6 +1,6 @@
 #00_dependencies.R
 
-
+install.packages('ggthemes', dependencies = TRUE)
 ####----- system
 suppressMessages(library(future)) #for planning multiprocessess
 suppressMessages(library(BiocParallel))
@@ -23,6 +23,8 @@ suppressMessages(library(ggplot2))
 suppressMessages(library(cowplot))
 suppressMessages(library(rafalib))
 suppressMessages(library(RColorBrewer))
+suppressMessages(library(ggthemes))
+
 # remotes::install_github("czarnewski/niceRplots")
 library(niceRplots)
 #source("../../niceRplots/R/add_fig_label.R")

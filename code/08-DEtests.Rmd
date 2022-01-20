@@ -659,7 +659,7 @@ gex_p <- gex %>%
   tidyseurat::filter(cluster_cellType_manual_main != "Plasma_cell",
                      cluster_cellType_manual_main != "Memory_Platlet",
                      cluster_cellType_manual_main != "Memory_stressed")
-gc()
+
 p2 <- VlnPlot(gex %>% 
   DietSeurat(dimreducs = "umap_2") %>% 
   tidyseurat::filter(cluster_cellType_manual_main != "Plasma_cell",
@@ -676,7 +676,10 @@ ggsave2("../results/VlnPlot_markers_b_features_3.png",
         p2, 
         width = 20, height = 10, unit = "cm")
 
+
+
 ```
+
 
 ### dotplots for top 50 differentially expressed genes celltypeFine 
 
@@ -737,6 +740,27 @@ ggsave2("../results/VlnPlot_markers_b_features_3.png",
 
 
 
+## plot expression for GWAS genes PMID: 34112769 https://pubmed-ncbi-nlm-nih-gov.ezproxy.its.uu.se/34112769/
+
+```{r }
+
+gwas_genes <- read.csv("/Users/gusarv/Desktop/pSS_GWASgenes_PMID34112769.txt", header = FALSE)
+gwas_genes <- unique(gwas_genes$V1)
+gwas_genes <- gwas_genes[!(gwas_genes %in% c("C6orf10", "HCG27", "LINC02571", "MSH5-SAPCD1", "LINC02571"))]
+
+p <- VlnPlot(gex, gwas_genes, group.by = "cluster_cellType_manual_main", split.by = "patient_group")
+
+ggsave2("../results/VlnPlot_gwas_2.png", 
+        p, 
+        width = 40, height = 60, unit = "cm")
+
+p <- VlnPlot(gex, "FCRL4", group.by = "cluster_cellType_manual_fine", split.by = "patient_group")
+dev.off()
+
+pheatmap(prop.table(as.matrix(as.data.frame.matrix(table(gex$patient_group, gex$cluster_size_airr))), 1 ))
+prop.table(as.matrix(as.data.frame.matrix(table(gex$patient_group, gex$cluster_size_airr))), 1 )
+
+```
 
 
 ## DE between VH mutation classes for memory B-cells

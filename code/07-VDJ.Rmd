@@ -13,6 +13,38 @@ source("./00_dependencies.R")
 
 ```
 
+```{r}
+library(Matrix)
+
+gex <- readRDS("../results/GEX6_BANNOT.rds")
+object.size(gex)
+gc()
+
+gex@assays$RNA@counts <- matrix()
+gex@assays$RNA@scale.data <- matrix()
+object.size(gex)
+gc()
+# a <- tabulate(gex@assays$RNA@data@i+1)
+# sel <- a >= 10
+# dim(gex)
+# sum(sel)
+# 
+# # gex <- gex[sel,]
+# gex@assays$RNA@data <- gex@assays$RNA@data[sel,]
+# object.size(gex)
+
+gex <- gex[,gex$orig.ident != "P024"]
+gc()
+
+to_remove <- c("pca_1","pca_2","scpred","scpred_projection")
+names(gex@reductions)
+saveRDS(gex@reductions,"gex_all_reductions.rds")
+gex@reductions <- gex@reductions[!(names(gex@reductions) %in% to_remove)]
+
+
+object.size(gex)
+
+```
 
 ## Load Seurat object
 
@@ -20,6 +52,10 @@ source("./00_dependencies.R")
 
 #gex <- readRDS("../results/GEX6_BANNOT.rds"); gex
 gex <- readRDS("../results/GEX6_BANNOT.rds") %>% 
+  DietSeurat(dimreducs = "umap_2") %>% 
+  tidyseurat::filter(orig.ident != "P024")
+
+gex <- gex  %>% 
   DietSeurat(dimreducs = "umap_2") %>% 
   tidyseurat::filter(orig.ident != "P024")
 
@@ -1169,7 +1205,7 @@ ggsave2(paste0("../results/VDJ_clono_diversityIndex_plots.png"),
 ```
 
 
-### clonotypes across samples
+### common clonotypes across samples
 
 ```{r}
 
@@ -1243,11 +1279,13 @@ p3 <- ggplot(imm4[6:nrow(imm4), ],
                                  #, "%"
                                  ), 
                 rep("", times = nrow(imm4) - 9))), 
-            position = position_stack(vjust = 0.6, reverse = FALSE),
-            size = 3.2)+
+            position = position_stack(vjust = 0.6, 
+                                      reverse = FALSE),
+            size = 3.2) +
   theme_void() +
   xlim(0.5, 2.5) +
-  ggtitle(paste0(sum(imm4$cellcount[6:nrow(imm4)]), " clonotypes\npresent in ≥ 6 samples")) +
+  ggtitle(paste0(sum(imm4$cellcount[6:nrow(imm4)]), 
+                 " clonotypes\npresent in ≥ 6 samples")) +
   scale_fill_discrete(name = "Samples per clonotype") +
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5)) +
@@ -1264,6 +1302,8 @@ ggsave2(paste0("../results/VDJ_clono_clonotypeDistribution_perSample_2.png"),
                     align = "v", 
                     rel_heights = c(5, 2)) + bgcolor("white"),
           width = 20, height = 12, unit = "cm")
+
+
 ```
 
 
@@ -1274,7 +1314,8 @@ ggsave2(paste0("../results/VDJ_clono_clonotypeDistribution_perSample_2.png"),
 ####--------------------------------------------------------------------- 
 ####---- get clonotypes present in ≥ 6 samples using output from compairr
 ####---------------------------------------------------------------------
-gex.meta <- gex@meta.data[gex@meta.data$orig.ident!= "P024", ]
+
+gex.meta <- gex@meta.data[gex@meta.data$orig.ident != "P024", ]
 pheno_2 <- unique(gex.meta[, c("orig.ident", "patient_group")])
 annot_junc <- unique(gex.meta[, c("cluster_no_airr", "junction_aa")])
 
@@ -1316,13 +1357,11 @@ pheatmap(tmp,
 ### most prevelent clonotypes across samples
 
 ```{R}
-
-gex.meta <- gex@meta.data[gex@meta.data$orig.ident!= "P024", ]
+gex.meta <- gex@meta.data[gex@meta.data$orig.ident != "P024", ]
 pheno_2 <- unique(gex.meta[, c("orig.ident", "patient_group")])
-annot_junc <- unique(gex.meta[, c("cluster_no_airr", "junction_aa")])
-
 tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
                                   gex.meta$orig.ident))
+
 #get clonotypes present in ≥ 2 samples
 tmp <- tmp[rowSums(tmp > 0) > 1, ]
 
@@ -1330,28 +1369,25 @@ tmp <- tmp[rowSums(tmp > 0) > 1, ]
 # outfile <- gex.meta[gex.meta$cluster_no_airr %in% rownames(tmp), c("barcode", "orig.ident", "cluster_cellType_manual_fine", "cluster_cellType_manual_main", "cluster_no_airr", "v_call", "d_call", "j_call", "c_call", "IGHV", "c_gene_10x", "junction", "junction_aa", "cdr3", "patient_group", "mu_load", "mu_freq_total")]
 # write.csv(outfile, "../results/1799_clonotypes.csv", sep = ",", col.names = TRUE, row.names = FALSE, quote = FALSE)
 
-colSums(as.data.frame.matrix(table(outfile$cluster_no_airr, outfile$orig.ident)))
-#make the data frame binary
+#make the clonotype data frame per sample binary
 tmp <- (tmp > 0) * 1
 
-
-
+#get number of samples for each clonotype within each subgroup
 pheno3 <- as.data.frame.matrix(table(pheno_2$orig.ident, pheno_2$patient_group))
 tmp3 <- as.matrix(tmp) %*% as.matrix(pheno3)
-tmp3 <- t(t(tmp3)/c(table(pheno_2$patient_group)))
+
+#normalize to number of samples in subgroup
+tmp3 <- t(t(tmp3)/c(table(pheno_2$patient_group))) 
 h.3 <- hclust(dist(tmp3, method = "binary"), method = "complete")
 #saveRDS(h.3, "../results/h.3.rds")
 
-plot(as.dendrogram(h.3))
-abline(h = 0.2, col ="red")
-#cl <- cutree(h.3, k = 15)
-clr <- cutree(h.3, h = 0.2)
+#plot(as.dendrogram(h.3)); abline(h = 0.2, col = "red")
+clr <- cutree(h.3, h = 0.2) # number of row clusters #15
 
-tmp4 <- rowsum(tmp, clr)
+tmp4 <- rowsum(tmp, clr) #number of clonotypes per sample in each row clade
 h.4 <- hclust(dist(t(tmp4), method = "binary"), method = "complete")
-plot(as.dendrogram(h.4))
-abline(h = 0.2, col ="red")
-clc <- cutree(h.4, h = 0.2)
+#plot(as.dendrogram(h.4)); abline(h = 0.2, col ="red") 
+clc <- cutree(h.4, h = 0.2) #number of colum clusters #4
 
 p1 <- pheatmap(tmp,
                cluster_cols = h.4,
@@ -1361,8 +1397,8 @@ p1 <- pheatmap(tmp,
                cutree_rows = length(unique(clr)),
                cutree_cols = length(unique(clc)),
                annotation_col = data.frame(patient_group = 
-                                             factor(pheno_2$patient_group[match(colnames(tmp),
-                                                                                pheno_2$orig.ident)]), 
+                         factor(pheno_2$patient_group[match(colnames(tmp),
+                                                  pheno_2$orig.ident)]), 
                                            row.names = colnames(tmp)),
                color = c("gray95", colorRampPalette(c("gray70", 
                                                       "orange3", 
@@ -1373,16 +1409,104 @@ p1 <- pheatmap(tmp,
                treeheight_col = 30,
                main = paste0(nrow(tmp), " clonotypes occuring in ≥ 2 samples"),
                show_rownames = FALSE,
-               filename = "../results/VDJ_clono_clonotypeDistribution_perSample_topClonotypes.png"
-         ) 
+               #filename = "../results/VDJ_clono_clonotypeDistribution_perSample_topClonotypes.png"
+         )
+
+```
 
 
-#IGHV
+### clonotype hamming distance
+
+```{R}
+head(tmp)
+
+### !!! FIX this !!! there are more a clonotype can contain several junction_aa or junction_nt
+
+annot_junc_aa <- unique(gex.meta[, c("cluster_no_airr", "junction_aa")])
+annot_junc_nt <- unique(gex.meta[, c("cluster_no_airr", "junction")])
+
+head(annot_junc_aa)
+xxx <- annot_junc_aa$junction_aa[annot_junc$cluster_no_airr %in% rownames(tmp)]
+res <- msa::msa(AAStringSet(xxx), method = "ClustalOmega", order = "input")
+hemoAln2 <- msaConvert(res, type = "seqinr::alignment")
+hemoAln2$nam <- xxx
+#head(hemoAln2)
+d <- seqinr::dist.alignment(hemoAln2, "identity")
+
+#range(d, na.rm = T)
+#table(is.na(d))
+d[is.na(d)] <- 1
+
+
+h.5 <- hclust(d, method = "ward.D2") 
+plot(as.dendrogram(h.5)); abline(h = 0.2, col ="red")
+dev.off()
+
+class(d)
+str(d)
+row.names(as.matrix(d))
+names(d)
+d
+head(h.3)
+head(h.3$labels)
+head(h.3$order)
+names(clr[clr == 14])
+
+range(as.matrix(d), na.rm = T)
+
+h.6 <- hclust(as.matrix(d), method = "ward.D2")
+plot(as.dendrogram(h.6)); abline(h = 0.2, col ="red")
+
+gex.meta$junction_aa[gex.meta$cluster_no_airr %in% names(clr[clr == 14])]
+
+p3 <- pheatmap(as.matrix(d),
+         cluster_cols = h.5,
+         cluster_rows = h.5,
+         #clustering_method = "ward.D2",
+         #cutree_cols = length(unique(cl)),
+         show_colnames = FALSE, 
+         show_rownames = FALSE,
+         #cutree_rows = length(unique(cl)),
+         #filename = "../results/VDJ_clono_clonotypeDistribution_hamm.dist_5.png",
+         scale = "row",
+         color = c(colorRampPalette(c("navy", "gray95", "firebrick"))(90)) 
+        )
+
+
+
+
+
+
+
+#h <- njs(d)
+#mypar(1,3)
+# plot(h,cex=.6)
+# 
+# h2 <- hclust(d, method = "ward.D2")
+# par(cex=.6, mar=c(4,2,1,30))
+# mypar(1,1)
+# plot(as.dendrogram(h2),horiz=T,axes=T,xpd=T, main="aa", xlab="distance")
+# par(cex=1)
+# add_letter(figlabels[1]); figlabels <- figlabels[-1]
+
+```
+
+###IGHV genes among most prevelent clonotypes
+
+```{R}
+
+
 tmp2 <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
-                                  gex.meta$IGHV))
+                                   gex.meta$IGHV))
 tmp2 <- tmp2[rownames(tmp), ]
 tmp2 <- tmp2[, !colSums(tmp2) == 0]
 tmp2 <- (tmp2 > 0) * 1
+
+
+### !!! fix column clustering here !!!!
+
+
+
 
 p2 <- pheatmap(tmp2,
          cluster_cols = TRUE,
@@ -1413,80 +1537,14 @@ plot_list[['p1']] = p1$gtable
 plot_list[['p2']] = p2$gtable
 
 ggsave2(paste0("../results/VDJ_clono_clonotypeDistribution_topClonotypes_2.png"),
-          plot_grid(plotlist = plot_list, 
-                    ncol = 2, 
-                    labels = NULL, 
-                    #align = "h",
-                    greedy = FALSE,
-                    rel_widths = c(1, 1)) + bgcolor("white"),
-          width = 25, height = 20, unit = "cm")
+        plot_grid(plotlist = plot_list, 
+                  ncol = 2, 
+                  labels = NULL, 
+                  #align = "h",
+                  greedy = FALSE,
+                  rel_widths = c(1, 1)) + bgcolor("white"),
+        width = 25, height = 20, unit = "cm")
 
-
-```
-
-
-### clonotype hamming distance
-
-```{R}
-head(tmp)
-
-
-xxx <- annot_junc$junction_aa[annot_junc$cluster_no_airr %in% rownames(tmp)]
-res <- msa::msa(AAStringSet(xxx), method = "ClustalOmega", order = "input")
-hemoAln2 <- msaConvert(res, type = "seqinr::alignment")
-hemoAln2$nam <- xxx
-head(hemoAln2)
-d <- seqinr::dist.alignment(hemoAln2, "identity")
-#range(d, na.rm = T)
-#table(is.na(d))
-d[is.na(d)] <- 1
-
-
-h.5 <- hclust(d, method = "ward.D2") 
-plot(as.dendrogram(h.5))
-
-abline(h = 0.2, col ="red")
-dev.off()
-class(d)
-str(d)
-row.names(as.matrix(d))
-names(d)
-d
-head(h.3)
-head(h.3$labels)
-head(h.3$order)
-names(clr[clr == 14])
-
-range(as.matrix(d))
-
-h.6 <- hclust(as.matrix(d), method = "ward.D2")
-
-gex.meta$junction_aa[gex.meta$cluster_no_airr %in% names(clr[clr == 14])]
-
-p3 <- pheatmap(as.matrix(d),
-         cluster_cols = h.5,
-         cluster_rows = h.5,
-         #clustering_method = "ward.D2",
-         #cutree_cols = length(unique(cl)),
-         show_colnames = FALSE, 
-         show_rownames = FALSE,
-         #cutree_rows = length(unique(cl)),
-         filename = "../results/VDJ_clono_clonotypeDistribution_hamm.dist_5.png",
-         scale = "row",
-         color = c(colorRampPalette(c("navy", "gray95", "firebrick"))(90)) 
-        )
-
-
-#h <- njs(d)
-#mypar(1,3)
-# plot(h,cex=.6)
-# 
-# h2 <- hclust(d, method = "ward.D2")
-# par(cex=.6, mar=c(4,2,1,30))
-# mypar(1,1)
-# plot(as.dendrogram(h2),horiz=T,axes=T,xpd=T, main="aa", xlab="distance")
-# par(cex=1)
-# add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ```
 
@@ -1521,17 +1579,6 @@ p <-pheatmap(cor_tmp,
                       border_color = NA,
                       main = paste("clonotype spearman correlation"),
                       color = colorRampPalette(c("lightblue", "gray30","firebrick2", "red"))(99))
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1592,14 +1639,14 @@ combined2 <- expression2List(gex, split.by = "cluster_cellType_manual_fine")
 combined2 <- expression2List(gex, split.by = "cluster_cellType_manual_main")
 str(combined2)
 
-clonalHomeostasis(combined2, cloneCall = "nt") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+clonalHomeostasis(combined2, cloneCall = "nt") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
-clonalProportion(combined2, cloneCall = "nt") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+clonalProportion(combined2, cloneCall = "nt") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 clonalDiversity(gex, cloneCall = "nt",group.by = "cluster_cellType_manual_fine")
 
 
-clonalOverlap(combined2, cloneCall="aa", method="overlap") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+clonalOverlap(combined2, cloneCall="aa", method="overlap") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 alluvialClonotypes(gex, cloneCall = "gene", 
                    y.axes = c("orig.ident", "seurat_clusters"), 
@@ -1625,7 +1672,7 @@ cairr.aa.x <- cairr.aa.x[order(-rowSums(cairr.aa.x)),]
 ```
 
 
-### clone phylogeny
+### clonotype phylogeny
 
 ```{r}
 library(phangorn)
@@ -1635,7 +1682,7 @@ BiocManager::install("phangorn")
 fdir <- system.file("extdata/trees", package = "phangorn")
 primates <- read.phyDat(file.path(fdir, "primates.dna"),
                         format = "interleaved")
-tree <- pratchet(primates, trace=0) |> acctran(primates)
+tree <- pratchet(primates, trace = 0) |> acctran(primates)
 parsimony(tree, primates)
 
 library(seqLogo)
@@ -1643,7 +1690,8 @@ library(seqLogo)
 BiocManager::install("seqLogo")
 
 seqLogo()
-seqLogo( t(subset(anc.mpr, getRoot(tree), 1:20)[[1]]), ic.scale=FALSE)
+seqLogo(t(subset(anc.mpr, getRoot(tree), 1:20)[[1]]), ic.scale = FALSE)
+
 
 ```
 
@@ -1660,9 +1708,9 @@ vdj_gene_mu  <- vdj_gene_mu %>%
   summarise(mu_mean = mean(mu_freq_total), n = n()) 
 
 vdj_gene_mu <- vdj_gene_mu[vdj_gene_mu$cluster_cellType_manual_main == "DN" |
-                           vdj_gene_mu$cluster_cellType_manual_main ==  "Memory" |
-                           vdj_gene_mu$cluster_cellType_manual_main ==  "Naive" |
-                           vdj_gene_mu$cluster_cellType_manual_main ==  "Transitional",]
+                           vdj_gene_mu$cluster_cellType_manual_main == "Memory" |
+                           vdj_gene_mu$cluster_cellType_manual_main == "Naive" |
+                           vdj_gene_mu$cluster_cellType_manual_main == "Transitional",]
 
 vdj_gene_mu$patient_group_gene <- paste(vdj_gene_mu$patient_group, 
                                         vdj_gene_mu$v_gene, sep = "_")
@@ -1688,7 +1736,7 @@ p <- ggplot(vdj, aes(x = reorder(v_gene, -seq_freq),
   
     
  ggsave2(paste0("../results/VDJ_mu_per_patGroup_perCellType_test.png"),
-          p ,
+          p,
           width = 25, height = 15, unit = "cm")
  
   
@@ -1705,39 +1753,55 @@ gex.meta <- gex@meta.data[gex$cluster_cellType_manual_main == "Memory" |
                           gex$cluster_cellType_manual_main == "Transitional", ]
                                                                       
 ####---- CDR3 mutation count ratio R/S - cell type fine - patient_group, 
-gex.meta$mu_count_cdr3_RSratio <- (gex.meta$mu_count_cdr3_r + 1) / (gex.meta$mu_count_cdr3_s + 1)
+gex.meta$mu_count_cdr3_RSratio <- log2((gex.meta$mu_count_cdr3_r + 1) / 
+                                         (gex.meta$mu_count_cdr3_s + 1))
+
+#remove cells with no mutations
+#Removed 181168 rows containing non-finite values (stat_ydensity). 
+gex.meta$mu_count_cdr3_RSratio[(gex.meta$mu_count_cdr3_r + 
+                                  gex.meta$mu_count_cdr3_s) == 0] <- NA
+
+nrow(gex.meta[!is.na(gex.meta$mu_count_cdr3_RSratio), ])
 
 p <- ggplot(gex.meta, 
              aes(x = cluster_cellType_manual_fine, 
                  y = mu_count_cdr3_RSratio, 
                  fill = patient_group)) +
       theme_classic() +
-      ggtitle("VDJ mutations, CDR3 - R / S") +
+      ggtitle(paste0("CDR3 mutation ratio Replacement/Silent for ", 
+                     nrow(gex.meta[!is.na(gex.meta$mu_count_cdr3_RSratio), ]),
+                     " mutated cells")) +
       theme(axis.text.x = element_text(angle = 45, 
                                        hjust = 1, vjust = 1)) +
-      ylab("mutation count ratio R/S") +
+      ylab("mutation count ratio R/S (log2)") +
       xlab("") +
-      #scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muCDR3_countRatio_CellTypeFine_patientGroup.png"), 
           p,
           width = 15, height = 15, unit = "cm")
 
-####---- CDR3 mutation count ratio R/S  - celltype main - patient group
 
+####---- CDR3 mutation count ratio R/S  - celltype main - patient group
 p <- ggplot(gex.meta,
             aes(x = cluster_cellType_manual_main, 
                 y = mu_count_cdr3_RSratio, 
                 fill = patient_group)) +
       theme_classic() +
-      ggtitle("VDJ mutations, CDR3 - R / S") +
+      ggtitle(paste0("CDR3 mutation ratio Replacement/Silent for", 
+                     nrow(gex.meta[!is.na(gex.meta$mu_count_cdr3_RSratio), ]),
+                     "mutated cells")) +
       theme(axis.text.x = element_text(angle = 45, 
                                      hjust = 1, vjust = 1)) +
-      ylab("mutation count ratio R/S") +
+      ylab("mutation count ratio R/S (log2)") +
       xlab("") +
       #scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muCDR3_countRatio_CelltypeMain_PatientGroup.png"), 
           p,
@@ -1757,7 +1821,10 @@ p1 <- ggplot(gex@meta.data,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 p2 <- ggplot(gex@meta.data, 
              aes(x = cluster_cellType_manual_fine, 
@@ -1766,11 +1833,15 @@ p2 <- ggplot(gex@meta.data,
       theme_classic() +
       ggtitle("VDJ mutations, CDR3 - silent") +
       theme(axis.text.x = element_text(angle = 45, 
-                                       hjust = 1, vjust = 1)) +
+                                       hjust = 1, 
+                                       vjust = 1)) +
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muCDR3_CellTypeFine_patientGroup_rs.png"), 
           plot_grid(p1, p2, nrow = 2, labels = NULL, align = "h"),
@@ -1786,11 +1857,15 @@ p1 <- ggplot(gex.meta,
       theme_classic() +
       ggtitle("CDR3 mutations - replacement") +
       theme(axis.text.x = element_text(angle = 45, 
-                                     hjust = 1, vjust = 1)) +
+                                     hjust = 1, 
+                                     vjust = 1)) +
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 p2 <- ggplot(gex.meta,
             aes(x = cluster_cellType_manual_main, 
@@ -1799,14 +1874,18 @@ p2 <- ggplot(gex.meta,
       theme_classic() +
       ggtitle("CDR3 mutations - silent") +
       theme(axis.text.x = element_text(angle = 45, 
-                                     hjust = 1, vjust = 1)) +
+                                     hjust = 1, 
+                                     vjust = 1)) +
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muCDR3_CelltypeMain_PatientGroup_rs.png"), 
-          plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"),
+          plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h"),
           width = 25, height = 10, unit = "cm")
 
 
@@ -1819,13 +1898,17 @@ p1 <- ggplot(gex.meta,
       theme_classic() +
       ggtitle("CDR3 mutations - replacement") +
       theme(axis.text.x=element_text(angle = 45, 
-                                     hjust = 1, vjust = 1), 
+                                     hjust = 1, 
+                                     vjust = 1), 
             legend.position = "none") +
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
       facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 p2 <- ggplot(gex.meta,
               aes(x = patient_group, 
@@ -1840,23 +1923,23 @@ p2 <- ggplot(gex.meta,
       xlab("") +
       scale_y_continuous(labels = percent)  +
       facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muCDR3_CelltypeMain_orig.ident_rs.png"), 
-          plot_grid(p1, p2, nrow = 2, labels = "AUTO", align = "h"),
+          plot_grid(p1, p2, nrow = 2, labels = NULL, align = "h"),
           width = 25, height = 15, unit = "cm")
 
 
 ####---- CDR3 mutation count - celltypeMain - patient group
 # split by replacement/silent
-
 # !!!! FIX THIS !!!
-
 as_tibble(gex.meta) %>% 
   group_by(cluster_cellType_manual_main, 
                                  patient_group, 
-                                 mu_count_cdr3_r) %>% 
-  
+                                 mu_count_cdr3_r) %>%
   summarise(cdr3_r = n() ) %>% 
   mutate(cdr3_r = cdr3_r/sum(cdr3_r)) %>%
   ggplot(aes(x = mu_count_cdr3_r, 
@@ -1870,7 +1953,72 @@ as_tibble(gex.meta) %>%
   ylab("fraction (%)") +
   facet_grid(cols = vars(cluster_cellType_manual_main))
 
-colnames(gex@meta.data)
+
+
+####---- fraction of CDR3 mutated cells per sample and celltypeMain
+p1 <- as_tibble(gex.meta) %>% 
+  select(cluster_cellType_manual_main, 
+         patient_group,
+         orig.ident,
+         mu_count_cdr3_r, 
+         mu_count_cdr3_s) %>% 
+  replace_na(list(mu_count_cdr3_r = 0, mu_count_cdr3_s = 0)) %>%
+  mutate(mu_cdr3_binary = mu_count_cdr3_r #+ mu_count_cdr3_s
+         ,
+         mu_cdr3_binary = (mu_cdr3_binary > 0) * 1,
+         mu_cdr3_binary = recode(mu_cdr3_binary, `0` = "Unmutated", `1` = "Mutated")) %>%
+  group_by(cluster_cellType_manual_main,
+           patient_group,
+           orig.ident, 
+           mu_cdr3_binary) %>%
+  summarise(cdr3_n = n()) %>%
+  mutate(cdr3_freq = cdr3_n / sum(cdr3_n)) %>%
+  filter(mu_cdr3_binary == "Mutated") %>%
+  ggplot(aes(x = cluster_cellType_manual_main, 
+             y = cdr3_freq, 
+             fill = patient_group)) +
+  theme_classic() + 
+  geom_boxplot() + 
+  ylab("Proportion of cells with \nreplacement mutations within CDR3") +
+  xlab("") +
+  scale_y_continuous(labels = percent) 
+  
+ggsave2(paste0("../results/VDJ_muCDR3_CelltypeMain_orig.ident_rprop.png"), 
+          plot_grid(p1, labels = NULL, align = "h"),
+          width = 25, height = 15, unit = "cm")
+
+
+####---- fraction of CDR3 mutated cells per sample and celltypeFine
+p1 <- as_tibble(gex.meta) %>% 
+  select(cluster_cellType_manual_fine, 
+         patient_group,
+         orig.ident,
+         mu_count_cdr3_r, 
+         mu_count_cdr3_s) %>% 
+  replace_na(list(mu_count_cdr3_r = 0, mu_count_cdr3_s = 0)) %>%
+  mutate(mu_cdr3_binary = mu_count_cdr3_r #+ mu_count_cdr3_s
+         ,
+         mu_cdr3_binary = (mu_cdr3_binary > 0) * 1,
+         mu_cdr3_binary = recode(mu_cdr3_binary, `0` = "Unmutated", `1` = "Mutated")) %>%
+  group_by(cluster_cellType_manual_fine,
+           patient_group,
+           orig.ident, 
+           mu_cdr3_binary) %>%
+  summarise(cdr3_n = n()) %>%
+  mutate(cdr3_freq = cdr3_n / sum(cdr3_n)) %>% 
+  filter(mu_cdr3_binary == "Mutated") %>%
+  ggplot(aes(x = cluster_cellType_manual_fine, 
+             y = cdr3_freq, 
+             fill = patient_group)) +
+  theme_classic() + 
+  geom_boxplot() + 
+  ylab("Proportion of cells with \nreplacement mutations within CDR3") +
+  xlab("") +
+  scale_y_continuous(labels = percent) 
+
+ggsave2(paste0("../results/VDJ_muCDR3_CelltypeFine_orig.ident_rprop.png"), 
+          plot_grid(p1, labels = NULL, align = "h"),
+          width = 25, height = 15, unit = "cm")
 
 
 ####---- VDJ mutation frequency up until bp 312 - celltypeFine - patient_group
@@ -1885,7 +2033,10 @@ p <- ggplot(gex@meta.data,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75)) 
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) 
 
 ggsave2(paste0("../results/VDJ_mu312_CellTypeFine_patientGroup.png"), 
           p,
@@ -1905,7 +2056,10 @@ p1 <- ggplot(gex@meta.data,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 p2 <- ggplot(gex@meta.data, 
              aes(x = cluster_cellType_manual_fine, 
@@ -1918,7 +2072,10 @@ p2 <- ggplot(gex@meta.data,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_mu312_CellTypeFine_patientGroup_rs.png"), 
           plot_grid(p1, p2, nrow = 2, labels = NULL, align = "h"),
@@ -1932,12 +2089,15 @@ p <- ggplot(gex.meta,
                 fill = patient_group)) +
       theme_classic() +
       ggtitle("VDJ mutations, IGHV until bp 312") +
-      theme(axis.text.x=element_text(angle = 45, 
+      theme(axis.text.x = element_text(angle = 45, 
                                      hjust = 1, vjust = 1)) +
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_mu312_celltype_patientGroup.png"), 
           p,
@@ -1957,7 +2117,10 @@ p <- ggplot(gex.meta,
       xlab("") +
       scale_y_continuous(labels = percent)  +
       facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_mu312_celltypeMain_orig.ident.png"), 
           p,
@@ -1977,7 +2140,10 @@ p1 <- ggplot(gex.meta,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 p2 <- ggplot(gex.meta,
             aes(x = cluster_cellType_manual_main, 
@@ -1990,7 +2156,10 @@ p2 <- ggplot(gex.meta,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_mu312_celltypeMain_patientGroup_rs.png"), 
           plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h"),
@@ -2010,7 +2179,10 @@ p1 <- ggplot(gex.meta,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 p2 <- ggplot(gex.meta,
             aes(x = cluster_cellType_manual_main, 
@@ -2018,12 +2190,15 @@ p2 <- ggplot(gex.meta,
                 fill = patient_group)) +
       theme_classic() +
       ggtitle("VDJ mutations, CDR1-3 - silent") +
-      theme(axis.text.x=element_text(angle = 45, 
+      theme(axis.text.x = element_text(angle = 45, 
                                      hjust = 1, vjust = 1)) +
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muFull_CDR_celltypeMain_patientGroup_rs.png"), 
           plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h"),
@@ -2043,7 +2218,10 @@ p1 <- ggplot(gex.meta,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 p2 <- ggplot(gex.meta,
             aes(x = cluster_cellType_manual_main, 
@@ -2056,7 +2234,10 @@ p2 <- ggplot(gex.meta,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muFull_FWR_byCelltype_rs_perPatientGroup.png"), 
           plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h"),
@@ -2078,7 +2259,10 @@ p1 <- ggplot(gex.meta,
       xlab("") +
       scale_y_continuous(labels = percent)  +
       facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 p2 <- ggplot(gex.meta,
               aes(x = patient_group, 
@@ -2093,7 +2277,10 @@ p2 <- ggplot(gex.meta,
       xlab("") +
       scale_y_continuous(labels = percent)  +
       facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muFull_CDR_celltypeMain_orig.ident_rs.png"), 
           plot_grid(p1, p2, nrow = 2, labels = NULL, align = "h"),
@@ -2115,7 +2302,10 @@ p1 <- ggplot(gex.meta,
       xlab("") +
       scale_y_continuous(labels = percent)  +
       facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 p2 <- ggplot(gex.meta,
               aes(x = patient_group, 
@@ -2130,7 +2320,10 @@ p2 <- ggplot(gex.meta,
       xlab("") +
       scale_y_continuous(labels = percent)  +
       facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muFull_FWR_celltypeMain_orig.ident_rs.png"), 
           plot_grid(p1, p2, nrow = 2, labels = NULL, align = "h"),
@@ -2151,7 +2344,10 @@ p <- ggplot(gex.meta,
       ylab("mutation count ratio R/S") +
       xlab("") +
       #scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muFull_CDR_countRatio_celltypeFine_patientGroup.png"), 
           p,
@@ -2171,7 +2367,10 @@ p1 <- ggplot(gex@meta.data,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 p2 <- ggplot(gex@meta.data, 
              aes(x = cluster_cellType_manual_fine, 
@@ -2184,7 +2383,10 @@ p2 <- ggplot(gex@meta.data,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muFull_CDR_celltypeFine_patientGroup_rs.png"), 
           plot_grid(p1, p2, nrow = 2, labels = NULL, align = "h"),
@@ -2205,7 +2407,10 @@ p <- ggplot(gex.meta,
       ylab("mutation count ratio R/S") +
       xlab("") +
       #scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muFull_FWR_countRatio_celltypeFine_patientGroup.png"), 
           p,
@@ -2225,7 +2430,9 @@ p1 <- ggplot(gex@meta.data,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75), trim = TRUE)
 
 p2 <- ggplot(gex@meta.data, 
              aes(x = cluster_cellType_manual_fine, 
@@ -2238,7 +2445,10 @@ p2 <- ggplot(gex@meta.data,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = percent) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muFull_FWR_celltypeFine_patientGroup_rs.png"), 
           plot_grid(p1, p2, nrow = 2, labels = NULL, align = "h"),
@@ -2258,7 +2468,10 @@ p <- ggplot(gex.meta,
       xlab("") +
       scale_y_continuous(labels = percent)  +
       scale_fill_discrete(name = "patient group") +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muFull_celltypeMain_patientGroup.png"), 
           p,
@@ -2279,11 +2492,28 @@ p <- ggplot(gex.meta,
       scale_y_continuous(labels = percent)  +
       scale_fill_discrete(name = "patient group") +
       facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75))
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
 
 ggsave2(paste0("../results/VDJ_muFull_celltypeMain_orig.ident.png"), 
           p,
           width = 30, height = 10, unit = "cm")
+
+
+
+x <- factor(paste0(gex$cluster_cellType_manual_fine,"_",gex$patient_group))
+mm <- sparse.model.matrix(~0+x)
+colnames(mm) <- gsub(".*[)]","",colnames(mm))
+dim(mm)
+x <- gex$mu_freq_total
+x[is.na(x)] <- 0
+res <- t(x) %*% mm
+res <- res / colSums(mm)
+res <- matrix(res,nrow = 4,byrow = F)
+
+pheatmap(res)
 
 ####---- total VDJ mutation frequency - celltypeFine - patient_group
 p <- ggplot(gex@meta.data, 
@@ -2298,7 +2528,10 @@ p <- ggplot(gex@meta.data,
       xlab("") +
       scale_y_continuous(labels = percent) +
       scale_fill_discrete(name = "patient group") +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75)) 
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) 
 
 ggsave2(paste0("../results/VDJ_muFull_celltypeFine_patient_group.png"), 
           p,
@@ -2337,7 +2570,10 @@ p[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ],
       ggtitle(i) +
       scale_y_continuous(labels = percent) +
       scale_fill_discrete(name = "patient group") +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75)) 
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) 
 }
 
 
@@ -2353,7 +2589,10 @@ p[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ],
              aes(x = orig.ident, 
                  y = mu_freq_total, 
                  fill = patient_group)) +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75)) +
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) +
       theme_classic() +
       theme(axis.text.x = element_text(angle = 90, 
                                        hjust = 0, 
@@ -2375,7 +2614,10 @@ p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ],
       theme_classic() +
       scale_y_continuous(labels = percent) +
       scale_fill_discrete(name = "patient group") +
-      geom_violin(alpha = 0.8, scale = "width", draw_quantiles = c(0.25, 0.5, 0.75)) 
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) 
 
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 

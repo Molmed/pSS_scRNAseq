@@ -260,11 +260,7 @@ Idents(object = gex) <- "orig.ident"
 ```{r}
 
 saveRDS(gex, file = "../results/GEX2_FILTERED.rds")
-
-gex@meta.data$SSA[gex@meta.data$orig.ident == "P024"] <- "YES"
-gex@meta.data$SSB[gex@meta.data$orig.ident == "P024"] <- "YES"
-gex@meta.data$patient_group[gex@meta.data$orig.ident == "P024"] <- "SSAB"
-table(gex@meta.data$patient_group, gex@meta.data$orig.ident)
+#gex <- readRDS("../results/GEX2_FILTERED.rds")
 
 ```
 

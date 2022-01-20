@@ -357,12 +357,14 @@ ggsave2(paste0("../results/UMAP_cellType_main.png"),
 
 p1 <- DimPlot(gex, 
               reduction = "umap_2", 
-              group.by = "cluster_cellType_manual_main") + 
+              group.by = "cluster_cellType_manual_main",
+              pt.size = 0.1) + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
   ggtitle("celltypes main") + 
     theme(axis.text = element_blank(),
-          axis.ticks = element_blank())
+          axis.ticks = element_blank(),
+          legend.position = "bottom")
 
 ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
 
@@ -372,19 +374,27 @@ for (i in ig.features) {
   p[[i]] <- FeaturePlot(gex, 
                         reduction = "umap_2", 
                         features = i,
-                        pt.size = 0.1) + 
-    xlab("UMAP 1") + 
-    ylab("UMAP 2") + 
+                        pt.size = 0.2,
+                        order = TRUE,
+                        cols = c("lightgray", "blue", "navy")) + 
+    #xlab("") + 
+    #ylab("") + 
+    theme_void() +
+    #theme_classic() +
     theme(legend.position = "none",
-          axis.text = element_blank(),
-          axis.ticks = element_blank())
+          #axis.text = element_blank(),
+          #axis.ticks = element_blank(),
+          #axis.title = element_blank(),
+          plot.title = element_text(hjust = 0.5, vjust = 0),
+          plot.margin = unit(c(0, 0, 0, 0), "cm")) + 
+    NoLegend()
   
 }
 
-p2 <- plot_grid(plotlist = p, ncol = 3)
+p2 <- plot_grid(plotlist = p, ncol = 3, align = "hv", scale = 1.1) 
 
 ggsave2(paste0("../results/Fig1C.png"), 
-        plot_grid(p1, p2, ncol = 2, rel_widths = c(1.5, 1)) + bgcolor("white"), 
+        plot_grid(p1, p2, ncol = 2, rel_widths = c(1.1, 1)) + bgcolor("white"), 
         width = 30, height = 15, unit = "cm")
 
 
@@ -419,7 +429,7 @@ ggsave2(paste0("../results/SFig3.png"),
 
 p <- DimPlot(gex, 
               reduction = "umap_2", 
-              group.by = "cluster_cellType_manual_fine") + 
+              group.by = "cluster_cellType_manual_fine", pt.size = 0.1) + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
   ggtitle("celltypes") + 
@@ -435,7 +445,7 @@ ggsave2(paste0("../results/Fig1D.png"),
 p <- DimPlot(gex, 
              reduction = "umap_2", 
              group.by = "cluster_cellType_manual_fine",
-             label = TRUE,label.size = 4, label.box = TRUE) + 
+             label = TRUE, label.size = 4, label.box = TRUE, pt.size = 0.1) + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
   ggtitle("celltypes") + 
@@ -996,11 +1006,6 @@ plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h")
 ## Save rds GEX6_BANNOT.rds
 
 ```{r}
-
-gex@meta.data$SSA[gex@meta.data$orig.ident == "P024"] <- "YES"
-gex@meta.data$SSB[gex@meta.data$orig.ident == "P024"] <- "YES"
-gex@meta.data$patient_group[gex@meta.data$orig.ident == "P024"] <- "SSAB"
-table(gex@meta.data$patient_group, gex@meta.data$orig.ident)
 
 saveRDS(gex, file = "../results/GEX6_BANNOT.rds")
 #gex <- readRDS(file = "../results/GEX6_BANNOT.rds")
