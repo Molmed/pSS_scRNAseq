@@ -1,6 +1,7 @@
 #00_dependencies.R
 
-install.packages('ggthemes', dependencies = TRUE)
+#install.packages('ggthemes', dependencies = TRUE)
+
 ####----- system
 suppressMessages(library(future)) #for planning multiprocessess
 suppressMessages(library(BiocParallel))

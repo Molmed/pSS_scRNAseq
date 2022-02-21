@@ -39,6 +39,10 @@ cells <- as_tibble(gex@meta.data) %>%
             Plasma = sum(celltype == "Plasma"),
             T_cell = sum(celltype == "T_cell")) 
 
+#colSums(cells[,2:ncol(cells)])
+#     tot   B_cell Monocyte   Plasma   T_cell 
+#  242572   232166     4252      113     6041 
+
 p1 <- cells %>% gather(celltype, cellcount, B_cell:T_cell) %>% 
  ggplot(aes(x = orig.ident, 
             y = cellcount, 

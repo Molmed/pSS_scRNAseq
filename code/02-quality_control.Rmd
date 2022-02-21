@@ -109,53 +109,7 @@ gex$cells_discard <- rowSums(gex@meta.data[, grepl("_th", colnames(gex@meta.data
 ```
 
 
-## Plot filter params
-
-```{r}
-
-png(paste0("../results/QC_nCount.png"), w = 20, h = 20, units = "cm", res = 200)
-plot(sort(gex@meta.data$nCount_RNA),
-     xlab = "cell",
-     ylab ="nCount",
-     main = "nCount")
-dev.off()
-
-png(paste0("../results/QC_nFeature.png"), w = 20, h = 20, units = "cm", res = 200)
-plot(sort(gex@meta.data$nFeature_RNA),
-     xlab = "cell",
-     ylab ="nFeature",
-     main = "nFeature")
-dev.off()
-
-png(paste0("../results/QC_perc.mito.png"), w = 20, h = 20, units = "cm", res = 200)
-plot(sort(gex@meta.data$percent_mito),
-     xlab = "cell",
-     ylab = "percent mito",
-     main = "percent mito")
-abline(h = mito_cutoff, col = "red")
-dev.off()
-
-png(paste0("../results/QC_perc.ribo.png"), w = 20, h = 20, units = "cm", res = 200)
-plot(sort(gex@meta.data$percent_ribo),
-     xlab = "cell",
-     ylab = "percent ribo",
-     main = "percent ribo")
-abline(h = ribo_cutoff, col = "red")
-dev.off()
-
-png(paste0("../results/QC_perc.hb.png"), w = 20, h = 20, units = "cm", res = 200)
-plot(sort(gex@meta.data$percent_hb),
-     xlab = "cell",
-     ylab = "percent hb",
-     main = "percent hb")
-abline(h = hb_cutoff, col = "red")
-dev.off()
-
-
-```
-
-
-# Summarize and Plot QC
+# Summarize QC
 
 ```{r}
 
@@ -196,39 +150,52 @@ ggsave2(paste0("../results/Discarded_cellcounts.png"),
           p_discarded_stats,
           width = 25, height = 20, unit = "cm")
 
-my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
+```
 
-#violin and density plot
+
+# Plot QC
+
+```{r}
+
+#violins
+my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
+names(my_pars) <- c("count_th", "feature_th", "mito_th", "ribo_th", "hb_th")
+
+p_out <- list()
 for (i in my_pars){
   
   print(i)
   
-  p1 <- plotColData(as.SingleCellExperiment(gex), 
+  p_out[[i]] <- plotColData(as.SingleCellExperiment(gex), 
                     x = "orig.ident", 
                     y = i, 
-                    colour_by = "cells_discard") + 
-    ggtitle(i) +
+                    colour_by = names(my_pars)[which(my_pars == i)]) + 
+    ggtitle(paste0(i, 
+                   ", discarded cells: ", 
+                   sum(gex@meta.data[,names(my_pars)[which(my_pars == i)]]))) +
     xlab("") + 
     ylab(i) + 
-    #scale_fill_continuous(name = "discard cell") +
     theme(axis.text.x = element_text(angle = 90, 
                                      hjust = 1, 
                                      vjust = 0.5,
-                                     size = 8))
-  
-  p2 <- gex@meta.data %>% as_tibble() %>% 
-    ggplot(aes_string(x = i)) + 
-    geom_density(aes(color = orig.ident, fill= orig.ident), alpha = 0.1) + 
-    theme_classic() +
-    scale_x_log10() +
-    NoLegend() +
-    ggtitle(paste0(i, " per sample"))
-  
-  ggsave2(paste0("../results/QCplot_perSample", "_", i, ".png"), 
-          plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + bgcolor("white"),
-          width = 28, height = 12, unit = "cm")
-  
+                                     size = 8),
+          legend.position = "none")
+
 }
+
+#get legend
+p_legend <- plotColData(as.SingleCellExperiment(gex), 
+                                 x = "orig.ident", 
+                                 y = my_pars[1], 
+                                 colour_by = "cells_discard") +
+  scale_fill_continuous(name = "Discarded cells")
+
+p_out[["legend"]] <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+
+ggsave2(paste0("../results/SFig1.png"), 
+        plot_grid(plotlist = p_out, ncol = 2, labels = NULL, align = "hv") + bgcolor("white"),
+        width = 21, height = 21, unit = "cm")
+
 
 ```
 
