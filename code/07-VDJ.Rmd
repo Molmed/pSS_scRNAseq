@@ -1340,7 +1340,7 @@ imm3 <- table(imm2)
 imm4 <- data.frame(table(rowSums(imm3 > 0)))
 colnames(imm4) <- c("clonocount", "cellcount")
 imm4$perc <- round(imm4$cellcount / sum(imm4$cellcount) * 100, digits = 5)
-
+head(imm4)
 
 ####---- pie1 - all clonotypes
 p1 <- ggplot(imm4, aes(x = 2, y = cellcount, fill = clonocount)) +
@@ -1453,6 +1453,11 @@ pheno3 <- as.data.frame.matrix(table(pheno_2$orig.ident, pheno_2$patient_group))
 tmp3 <- as.matrix(tmp2) %*% as.matrix(pheno3)
 tmp3 <- t(t(tmp3)/c(table(pheno_2$patient_group)))
 h.1 <- hclust(dist(tmp3, method = "binary"), method = "complete")
+#h.1 %>% as.dendrogram %>% plot
+
+clr <- cutree(h.1, h = 0.2) # number of row clusters #15
+
+table(clr)
 
 ann_cols <- list(patient_group = c(CTRL = "#F8766D", 
                                    DNEG = "#7CAE00", 
@@ -1549,10 +1554,33 @@ p1 <- pheatmap(tmp,
                treeheight_row = 40,
                treeheight_col = 30,
                main = paste0(nrow(tmp), " clonotypes occuring in ≥ 2 samples"),
-               #filename = "../results/VDJ_clono_clonotypeDistribution_perSample_topClonotypes_2.png"
+               filename = "../results/VDJ_clono_clonotypeDistribution_perSample_topClonotypes_3.png",
                show_rownames = FALSE
          )
 
+
+# library(dendextend)
+# unique(p1$tree_row$labels[p1$tree_row$order])
+# dendr <- h.3  %>% as.dendrogram
+# dendc <- h.4  %>% as.dendrogram
+# gplots::heatmap.2(tmp,
+#                   dendrogram = "both",
+#                   Rowv = dendr,
+#                   Colv = dendc)
+# dev.off()
+
+
+unique(clr[p1$tree_row$order])
+table(clr[p1$tree_row$order])
+
+#Clusters containing CTRL
+sum(table(clr[p1$tree_row$order])[c(1,4,6,8,9,12,12,15)]) #396
+
+#pSS clusters, i.e. without clonotypes also in CTRL 
+sum(table(clr[p1$tree_row$order]))-sum(table(clr[p1$tree_row$order])[c(1,4,6,8,9,12,12,15)]) #[1] 1403
+
+#SSA/SSAB clusters
+sum(table(clr[p1$tree_row$order])[c(5)]) #[1] 457
 
 ```
 
@@ -1569,7 +1597,7 @@ annot_junc_aa <- unique(gex.meta[, c("cluster_no_airr", "junction_aa")])
 
 xxx <- annot_junc_aa$junction_aa[annot_junc_aa$cluster_no_airr %in% rownames(tmp)]
 names(xxx) <- annot_junc_aa$cluster_no_airr[annot_junc_aa$cluster_no_airr %in% rownames(tmp)]
-
+length(xxx)
 xxx <- annot_junc_nt$junction[annot_junc_nt$cluster_no_airr %in% rownames(tmp)]
 names(xxx) <- annot_junc_nt$cluster_no_airr[annot_junc_nt$cluster_no_airr %in% rownames(tmp)]
 
@@ -1635,10 +1663,10 @@ p3 <- pheatmap(as.matrix(d),
          #cutree_cols = length(unique(cl)),
          show_colnames = FALSE, 
          show_rownames = FALSE,
-         cutree_rows = 4,
-         cutree_cols = 4,
+         cutree_rows = 9,
+         cutree_cols = 9,
          #cutree_rows = length(unique(cl)),
-         filename = "../results/VDJ_clono_clonotypeDistribution_hamm.dist_8.png",
+         filename = "../results/VDJ_clono_clonotypeDistribution_hamm.dist_10.png",
          scale = "row",
          color = c(colorRampPalette(c("navy", "gray95", "firebrick"))(90)) 
         )
@@ -1992,10 +2020,11 @@ p <- ggplot(vdj, aes(x = reorder(v_gene, -seq_freq),
 
 ```{r}
 
-gex.meta <- gex@meta.data[gex$cluster_cellType_manual_main == "Memory" | 
+gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_main == "Memory" | 
                           gex$cluster_cellType_manual_main == "Naive" |
                           gex$cluster_cellType_manual_main == "DN" |
-                          gex$cluster_cellType_manual_main == "Transitional", ]
+                          gex$cluster_cellType_manual_main == "Transitional") &
+                          gex$orig.ident !="P024", ]
                                                                       
 ####---- CDR3 mutation count ratio R/S - cell type fine - patient_group, 
 gex.meta$mu_count_cdr3_RSratio <- log2((gex.meta$mu_count_cdr3_r + 1) / 
@@ -2146,178 +2175,6 @@ ggsave2(paste0("../results/VDJ_muCDR3_CelltypeFine_orig.ident_rprop_2.png"),
           width = 30, height = 15, unit = "cm")
 
 
-####---- VDJ mutation frequency for CDR1-3 - celltypeMain - patient_group 
-#split by replacement/silent
-p1 <- ggplot(gex.meta,
-             aes(x = cluster_cellType_manual_main, 
-                 y = mu_freq_cdr_r, 
-                 fill = patient_group)) +
-      theme_classic() +
-      ggtitle("VDJ mutations, CDR1-3 - replacement") +
-      theme(axis.text.x = element_text(angle = 45, 
-                                       hjust = 1, 
-                                       vjust = 1)) +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE)
-
-p2 <- ggplot(gex.meta,
-             aes(x = cluster_cellType_manual_main, 
-                 y = mu_freq_cdr_s, 
-                 fill = patient_group)) +
-      theme_classic() +
-      ggtitle("VDJ mutations, CDR1-3 - silent") +
-      theme(axis.text.x = element_text(angle = 45, 
-                                       hjust = 1, 
-                                       vjust = 1)) +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE)
-
-ggsave2(paste0("../results/VDJ_muFull_CDR_celltypeMain_patientGroup_rs.png"), 
-          plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h"),
-          width = 25, height = 10, unit = "cm")
-
-
-####---- VDJ mutation frequency for FWR1-4 celltypeMain - patient_group 
-# split by replacement/silent
-p1 <- ggplot(gex.meta,
-             aes(x = cluster_cellType_manual_main, 
-                 y = mu_freq_fwr_r, 
-                 fill = patient_group)) +
-      theme_classic() +
-      ggtitle("VDJ mutations, FWR1-4 - replacement") +
-      theme(axis.text.x = element_text(angle = 45, 
-                                     hjust = 1, 
-                                     vjust = 1)) +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE)
-
-p2 <- ggplot(gex.meta,
-            aes(x = cluster_cellType_manual_main, 
-                y = mu_freq_fwr_s, 
-                fill = patient_group)) +
-      theme_classic() +
-      ggtitle("VDJ mutations, FWR1-4 - silent") +
-      theme(axis.text.x = element_text(angle = 45, 
-                                       hjust = 1, 
-                                       vjust = 1)) +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      scale_y_continuous(labels = percent)  +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE)
-
-ggsave2(paste0("../results/VDJ_muFull_FWR_byCelltype_rs_perPatientGroup.png"), 
-          plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h"),
-          width = 25, height = 10, unit = "cm")
-
-
-####----  total VDJ mutation frequency for CDR1-3 - celltypeMain -  orig.ident 
-# split by replacement/silent
-p1 <- ggplot(gex.meta,
-             aes(x = patient_group, 
-                 y = mu_freq_cdr_r,
-                 fill = orig.ident)) +
-      theme_classic() +
-      ggtitle("VDJ mutations, CDR1-3 - replacement") +
-      theme(axis.text.x = element_text(angle = 45, 
-                                       hjust = 1, 
-                                       vjust = 1), 
-            legend.position = "none") +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      scale_y_continuous(labels = percent)  +
-      facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE)
-
-p2 <- ggplot(gex.meta,
-              aes(x = patient_group, 
-                  y = mu_freq_cdr_s,
-                  fill = orig.ident)) +
-      theme_classic() +
-      ggtitle("VDJ mutations, CDR1-3 - silent") +
-      theme(axis.text.x = element_text(angle = 45, 
-                                       hjust = 1, 
-                                       vjust = 1), 
-            legend.position = "none") +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      scale_y_continuous(labels = percent)  +
-      facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE)
-
-ggsave2(paste0("../results/VDJ_muFull_CDR_celltypeMain_orig.ident_rs.png"), 
-          plot_grid(p1, p2, nrow = 2, labels = NULL, align = "h"),
-          width = 25, height = 18, unit = "cm")
-
-
-####----  total VDJ mutation frequency for FWR1-4 - celltypeMain - orig.ident 
-# split by replacement/silent
-p1 <- ggplot(gex.meta,
-             aes(x = patient_group, 
-                 y = mu_freq_fwr_r,
-                 fill = orig.ident)) +
-      theme_classic() +
-      ggtitle("VDJ mutations, FWR1-4 - replacement") +
-      theme(axis.text.x = element_text(angle = 45, 
-                                       hjust = 1, 
-                                       vjust = 1), 
-            legend.position = "none") +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      scale_y_continuous(labels = percent)  +
-      facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE)
-
-p2 <- ggplot(gex.meta,
-              aes(x = patient_group, 
-                  y = mu_freq_fwr_s,
-                  fill = orig.ident)) +
-      theme_classic() +
-      ggtitle("VDJ mutations, FWR1-4 - silent") +
-      theme(axis.text.x = element_text(angle = 45, 
-                                       hjust = 1, 
-                                       vjust = 1), 
-            legend.position = "none") +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      scale_y_continuous(labels = percent)  +
-      facet_grid(cols = vars(cluster_cellType_manual_main)) +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE)
-
-ggsave2(paste0("../results/VDJ_muFull_FWR_celltypeMain_orig.ident_rs.png"), 
-          plot_grid(p1, p2, nrow = 2, labels = NULL, align = "h"),
-          width = 25, height = 18, unit = "cm")
-
-
 ####---- VDJ mutation count ratio R / S for CDR1-3 - celltypeFine - patient_group
 gex.meta$mu_count_cdr_RSratio <- log2((gex.meta$mu_count_cdr_r + 1) / 
                                         (gex.meta$mu_count_cdr_s + 1))
@@ -2344,9 +2201,6 @@ ggsave2(paste0("../results/VDJ_muFull_CDR_countRatio_celltypeFine_patientGroup.p
           width = 15, height = 15, unit = "cm")
 
 
-
-
-
 ####---- total VDJ mutation frequency - celltypeMain - patient_group
 p <- ggplot(gex.meta,
             aes(x = cluster_cellType_manual_main, 
@@ -2371,16 +2225,26 @@ ggsave2(paste0("../results/VDJ_muFull_celltypeMain_patientGroup.png"),
           width = 20, height = 6, unit = "cm")
 
 
-####---- total VDJ mutation frequency - celltypeMain - orig.ident
+####---- total VDJ mutation frequency - celltypeMain - orig.ident 
+
+## !!! FIX THIS !!! as for cell type fine below
+
+
+tmp <- data.frame(orig.ident = gex.meta$orig.ident, patient_group = gex.meta$patient_group)
+tmp <- tmp[order(tmp$patient_group), ]
+tmp <- unique(tmp)
+gex.meta$orig.ident <- factor(gex.meta$orig.ident, levels = tmp$orig.ident)
+
+
 p <- ggplot(gex.meta,
-            aes(x = patient_group, 
+            aes(x = orig.ident, 
                 y = mu_freq_total,
-                fill = orig.ident)) +
+                fill = patient_group)) +
       theme_classic() +
       ggtitle("VDJ mutations") +
-      theme(axis.text.x = element_text(angle = 45, 
-                                       hjust = 1, 
-                                       vjust = 1), 
+      theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 0.5, 
+                                       vjust = 0.5), 
             legend.position = "none") +
       ylab("mutated bp (%)") +
       xlab("") +
@@ -2392,22 +2256,32 @@ p <- ggplot(gex.meta,
                   draw_quantiles = c(0.25, 0.5, 0.75),
                   trim = TRUE)
 
-ggsave2(paste0("../results/VDJ_muFull_celltypeMain_orig.ident.png"), 
-          p,
-          width = 30, height = 10, unit = "cm")
+
+## get legend
+p_legend <- ggplot(gex.meta, 
+             aes(x = orig.ident, 
+                 y = mu_freq_total, 
+                 fill = patient_group)) +
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) +
+      theme_classic() + 
+      theme(legend.position = "bottom", legend.box = "horizontal") +
+      scale_fill_discrete(name = "Patient group")
+  
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
 
 
-# x <- factor(paste0(gex$cluster_cellType_manual_fine,"_",gex$patient_group))
-# mm <- sparse.model.matrix(~0+x)
-# colnames(mm) <- gsub(".*[)]","",colnames(mm))
-# dim(mm)
-# x <- gex$mu_freq_total
-# x[is.na(x)] <- 0
-# res <- t(x) %*% mm
-# res <- res / colSums(mm)
-# res <- matrix(res,nrow = 4,byrow = F)
-# pheatmap(res)
+ggsave2(paste0("../results/VDJ_muFull_celltypeMain_orig.ident_2.png"), 
+          plot_grid(p, p_legend, 
+                    ncol = 1, labels = NULL, 
+                    align = "hv", rel_heights = c(1.5, 0.1)) + bgcolor("white"),
+          width = 30, height = 12, unit = "cm")
+
+
+
 
 ####---- total VDJ mutation frequency - celltypeFine - patient_group
 p <- ggplot(gex@meta.data, 
@@ -2434,7 +2308,7 @@ ggsave2(paste0("../results/VDJ_muFull_celltypeFine_patient_group.png"),
 
 
 
-gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" | 
+gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
                           gex$cluster_cellType_manual_fine == "DN2" |
                           gex$cluster_cellType_manual_fine == "DN2_CXCR3" |
                           gex$cluster_cellType_manual_fine == "DN2_ITGAX" |
@@ -2442,27 +2316,35 @@ gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
                           gex$cluster_cellType_manual_fine == "Memory_Cl" |
                           gex$cluster_cellType_manual_fine == "Memory_IgM" |
                           gex$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
+                          gex$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
                           gex$cluster_cellType_manual_fine == "Naive" |
                           gex$cluster_cellType_manual_fine == "Naive_IFN" |
+                          gex$cluster_cellType_manual_fine == "Memory_Cl_CD69_str" |
+                          gex$cluster_cellType_manual_fine == "Memory_Cl_str" |
+                          gex$cluster_cellType_manual_fine == "Memory_Platlet" |
                           gex$cluster_cellType_manual_fine == "Naive_Transitional") &
                           gex$orig.ident !="P024", ]
-table(gex.meta$orig.ident)
+table(gex$cluster_cellType_manual_fine)
+
 
 ####---- total VDJ mutation frequency - celltypeFine - orig.ident
-
-#!!!! add sample names here !!!!
+# relevel orig.ident to plot in the patient group order
+tmp <- data.frame(orig.ident = gex.meta$orig.ident, patient_group = gex.meta$patient_group)
+tmp <- tmp[order(tmp$patient_group), ]
+tmp <- unique(tmp)
+gex.meta$orig.ident <- factor(gex.meta$orig.ident, levels = tmp$orig.ident)
 
 p <- list()
 for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
 p[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ], 
-             aes(x = patient_group, 
+             aes(x = orig.ident, 
                  y = mu_freq_total, 
-                 fill = orig.ident)) +
+                 fill = patient_group)) +
       theme_classic() +
       ggtitle("VDJ mutations") +
-      theme(axis.text.x = element_text(angle = 45, 
-                                       hjust = 1, 
-                                       vjust = 1),
+      theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 0.5, 
+                                       vjust = 0.5),
             legend.position = "none") +
       ylab("mutated bp (%)") +
       xlab("") +
@@ -2472,19 +2354,11 @@ p[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ],
       geom_violin(alpha = 0.8, 
                   scale = "width", 
                   draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE) 
+                  trim = TRUE)  
 }
 
-
-ggsave2(paste0("../results/VDJ_muFull_celltypeFine_orig.ident_2.png"), 
-          plot_grid(plotlist = p, ncol = 4, labels = NULL, align = "hv") + bgcolor("white"),
-          width = 30, height = 30, unit = "cm")
-
-
-####---- total VDJ mutation frequency - celltypeFine - orig.ident (with pat labels)
-p <- list()
-for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
-p[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ], 
+## get legend
+p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == unique(gex$cluster_cellType_manual_fine)[1], ], 
              aes(x = orig.ident, 
                  y = mu_freq_total, 
                  fill = patient_group)) +
@@ -2492,43 +2366,19 @@ p[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ],
                   scale = "width", 
                   draw_quantiles = c(0.25, 0.5, 0.75),
                   trim = TRUE) +
-      theme_classic() +
-      theme(axis.text.x = element_text(angle = 90, 
-                                       hjust = 0, 
-                                       vjust = 0.5,
-                                       size = 7),
-            legend.position = "none") +
-      #ylim(0, 0.30) +
-      scale_y_continuous(labels = percent, limits = c(0, 0.25)) +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      ggtitle(i) 
-      
-}
-
-p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ], 
-             aes(x = orig.ident, 
-                 y = mu_freq_total, 
-                 fill = patient_group)) +
-      theme_classic() +
-      scale_y_continuous(labels = percent) +
-      scale_fill_discrete(name = "patient group") +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE) 
-
+      theme_classic() + 
+      theme(legend.position = "bottom", legend.box = "horizontal") +
+      scale_fill_discrete(name = "Patient group")
+  
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
-p_plots <- plot_grid(plotlist = p, ncol = 4, labels = NULL, align = "hv")
+# make plot
+p1 <- plot_grid(plotlist = p, ncol = 3, labels = NULL, align = "hv") + bgcolor("white")
 
 ggsave2(paste0("../results/VDJ_muFull_celltypeFine_orig.ident_3.png"), 
-          plot_grid(p_plots, p_legend, 
-                    ncol = 2, 
-                    rel_widths = c(10, 1), 
-                    labels = NULL, 
-                    align = "hv") + bgcolor("white"),
-          width = 35, height = 30, unit = "cm")
+          plot_grid(p1, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + bgcolor("white"),
+          width = 30, height = 25, unit = "cm")
+
 
 
 ```
@@ -2537,6 +2387,7 @@ ggsave2(paste0("../results/VDJ_muFull_celltypeFine_orig.ident_3.png"),
 ###  plot CDR3 aa attributes
 
 ```{r}
+
 # "cdr3_aa_length"               
 # "cdr3_aa_gravy"               
 # "cdr3_aa_bulk"                 
@@ -2546,7 +2397,6 @@ ggsave2(paste0("../results/VDJ_muFull_celltypeFine_orig.ident_3.png"),
 # "cdr3_aa_basic"               
 # "cdr3_aa_acidic"
 # "cdr3_aa_aromatic"
-
 
 #### ----- per cell type
 #subeset gex to only include relevant cell types
