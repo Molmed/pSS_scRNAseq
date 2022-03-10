@@ -1029,6 +1029,121 @@ p <- as_tibble(gex@meta.data) %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
   geom_boxplot()
 
+
+
+
+gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
+                          gex$cluster_cellType_manual_fine == "DN2" |
+                          gex$cluster_cellType_manual_fine == "DN2_CXCR3" |
+                          gex$cluster_cellType_manual_fine == "DN2_ITGAX" |
+                          gex$cluster_cellType_manual_fine == "DN4_IGHE" |
+                          gex$cluster_cellType_manual_fine == "Memory_Cl" |
+                          gex$cluster_cellType_manual_fine == "Memory_IgM" |
+                          gex$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
+                          gex$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
+                          gex$cluster_cellType_manual_fine == "Naive" |
+                          gex$cluster_cellType_manual_fine == "Naive_IFN" |
+                          gex$cluster_cellType_manual_fine == "Memory_Cl_CD69_str" |
+                          gex$cluster_cellType_manual_fine == "Memory_Cl_str" |
+                          gex$cluster_cellType_manual_fine == "Memory_Platlet" |
+                          gex$cluster_cellType_manual_fine == "Naive_Transitional") &
+                          gex$orig.ident !="P024", ]
+gex.meta$cluster_cellType_manual_fine <- as.factor(gex.meta$cluster_cellType_manual_fine)
+gex.meta$IGHV <- as.factor(gex.meta$IGHV)
+gex.meta$orig.ident <- as.factor(gex.meta$orig.ident)
+
+p <- select(gex.meta, orig.ident, cluster_cellType_manual_fine, IGHV) %>% 
+  group_by(orig.ident, cluster_cellType_manual_fine, IGHV, .drop = FALSE) %>%
+  summarise(n = n()) %>%
+  mutate(percent = n/sum(n)) %>%
+  filter(IGHV == "IGHV1-69")  %>% 
+  left_join(select(gex.meta, orig.ident, patient_group) %>% distinct()) %>%
+  ggplot(aes(x = cluster_cellType_manual_fine,
+             y = percent,
+             fill = patient_group)) +
+  scale_y_continuous(labels = percent) +
+  theme_classic() +
+  xlab("") +
+  ylab("percent IGHV1-69 cells per patient group") +
+  ggtitle("IGHV1-69") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
+
+ggsave2(paste0("../results/VDJ_geneUsage_IGHV-69_perPatientGroupPerCelltype.png"), 
+          p,
+          width = 20, height = 12, unit = "cm")
+
+
+
+####---- per sample
+
+tmp <- data.frame(orig.ident = gex.meta$orig.ident, patient_group = gex.meta$patient_group)
+tmp <- tmp[order(tmp$patient_group), ]
+tmp <- unique(tmp)
+gex.meta$orig.ident <- factor(gex.meta$orig.ident, levels = tmp$orig.ident)
+
+
+p <- list()
+for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
+p[[i]] <- select(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ], 
+                 orig.ident, 
+                 IGHV) %>% 
+  group_by(orig.ident,
+           IGHV, 
+           .drop = FALSE) %>%
+  summarise(n = n()) %>%
+  mutate(percent = n/sum(n)) %>%
+  filter(IGHV == "IGHV1-69")  %>% 
+  left_join(select(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ], 
+                   orig.ident, 
+                   patient_group) %>% 
+              distinct()) %>%
+  ggplot(aes(x = orig.ident,
+             y = percent,
+             fill = patient_group)) +
+  scale_y_continuous(labels = percent) +
+  theme_classic() +
+  xlab("") +
+  ylab("percent IGHV1-69 cells") +
+  ggtitle(paste0(i, " IGHV1-69")) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  geom_bar()
+}
+
+
+
+
+
+
+
+## get legend
+p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == unique(gex$cluster_cellType_manual_fine)[1], ], 
+             aes(x = orig.ident, 
+                 y = mu_freq_total, 
+                 fill = patient_group)) +
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) +
+      theme_classic() + 
+      theme(legend.position = "bottom", legend.box = "horizontal") +
+      scale_fill_discrete(name = "Patient group")
+  
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+
+# make plot
+p1 <- plot_grid(plotlist = p, ncol = 3, labels = NULL, align = "hv") + bgcolor("white")
+
+ggsave2(paste0("../results/VDJ_muFull_celltypeFine_orig.ident_3.png"), 
+          plot_grid(p1, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + bgcolor("white"),
+          width = 30, height = 25, unit = "cm")
+
+
+add_count(orig.ident, cluster_cellType_manual_fine, .drop = FALSE) %>%
+  
 ggsave2(paste0("../results/VDJ_geneUsage_alleles_IGHV-69_perPatientGroup_perCelltypeFine.png"), 
           p,
           width = 16, height = 12, unit = "cm")

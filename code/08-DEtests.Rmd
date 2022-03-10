@@ -580,7 +580,8 @@ for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(3, 4, 6)]){
   DGE_DATA <- gex %>% 
   DietSeurat(dimreducs = "umap_2") %>% 
   tidyseurat::filter(orig.ident != "P024", 
-                       cluster_cellType_manual_main == i)
+                     cluster_cellType_manual_main == i,
+                     )
 
   p_list[[i]] <- DotPlot(DGE_DATA, 
         features = p_features, 
@@ -603,6 +604,10 @@ for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(3, 4, 6)]){
 }
 
 ggsave2("../results/DGE_B-cells_celltypeMain_dotplots_2.png", 
+        plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h"), 
+        width = 25, height = 10, unit = "cm")
+
+ggsave2("../results/DGE_B-cells_celltypeMain_mutstat_dotplots_2.png", 
         plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h"), 
         width = 25, height = 10, unit = "cm")
 
@@ -741,7 +746,7 @@ ggplot(aes(x = orig.ident,
                                      color = "black")) +
   geom_hline(aes(yintercept = 0.02), color = "black", linetype = "dashed")
 
-mut_stat$mut <- ifelse(mut_stat$mean < 0.02, "unmutated", "mutated")
+mut_stat$mut <- ifelse(mut_stat$mean < 0.025, "unmutated", "mutated")
 
 
 mut_stat <- gex@meta.data %>% 
@@ -764,9 +769,23 @@ mut_stat2 <- gex@meta.data %>%
                            Memory <= 0.02 ~ "Unmutated", 
                            TRUE ~ "Mutated"))
 
-
+colnames(gex@meta.data)
 gex@meta.data$mut_stat <- mut_stat2$mut[match(gex@meta.data$orig.ident, mut_stat2$orig.ident)]
 
+tmp <- unique(gex@meta.data[, c("patient_group", "mut_stat", "orig.ident")])  
+table(tmp$patient_group,tmp$mut_stat)
+  #      Mutated Unmutated
+  # CTRL       4         0
+  # DNEG       6         0
+  # SSA        7         1
+  # SSAB       3         6
+
+tmp <- gex@meta.data %>% filter(orig.ident != "P024",
+                                patient_group == "SSAB")
+
+tmp <- as.data.frame.matrix(table(tmp[, c("cluster_cellType_manual_fine", "mut_stat")]))
+
+tmp <- mutate(tmp, muFrac=Mutated/sum(Mutated)*100, unFrac=Unmutated/sum(Unmutated)*100)
 
 
 
@@ -783,12 +802,18 @@ for (j in sort(unique(gex$cluster_cellType_manual_main))[-6]){
   message(j)
   
   #subset gex to only contain subtype j
-  gex.tmp <- gex %>% 
-    DietSeurat(dimreducs = "umap_2") %>% 
-    tidyseurat::filter(orig.ident != "P024", 
+  # gex.tmp <- gex %>%
+  #   DietSeurat(dimreducs = "umap_2") %>%
+  #   tidyseurat::filter(orig.ident != "P024",
+  #                      cluster_cellType_manual_main == j,
+  #                      patient_group == "SSA" |
+  #                        patient_group == "SSAB")
+  
+  gex.tmp <- gex %>%
+    DietSeurat(dimreducs = "umap_2") %>%
+    tidyseurat::filter(orig.ident != "P024",
                        cluster_cellType_manual_main == j,
-                       patient_group == "SSA" | 
-                         patient_group == "SSAB")
+                       patient_group == "SSAB")
 
   print(table(gex.tmp@meta.data$patient_group))
   
@@ -835,7 +860,7 @@ for (j in sort(unique(gex$cluster_cellType_manual_main))[-6]){
   colnames(design) <- gsub("patient_group", "", colnames(design))
 
   y_glm <- estimateDisp(y, design)
-  fit <- glmQLFit(y_glm, design); colnames(fit$coefficients)
+  fit <- glmQLFit(y_glm, design); print(colnames(fit$coefficients))
 
   #conserved differences between differentially mutated groups
   qlm <- glmQLFTest(fit, coef = 2)
@@ -851,13 +876,132 @@ for (j in sort(unique(gex$cluster_cellType_manual_main))[-6]){
 
 }
 
-saveRDS(DGE_list, "../results/DGE_B-cells_celltypeMain_mutationStatus_listAll.rds")
+saveRDS(DGE_list, "../results/DGE_B-cells_celltypeMain_mutationStatus_listAll_SSAB.rds")
 #DGE_list <- readRDS("../results/DGE_B-cells_celltypeMain_patientGroups_listAll.rds")
 
-head(DGE_list[7])
+#head(DGE_list[[1]], n = 50)
+
+for (i in names(DGE_list)){
+  
+  print(i)
+  print(nrow(DGE_list[[i]]))
+  print(nrow(DGE_list[[i]][DGE_list[[i]]$FDR < 0.1, ]))
+  print(head(DGE_list[[i]], n = 10))
+  
+}
+
+
+
 ```
 
+
 ## subset and plot mut_stat DE genes celltypeMain
+### filter and plot dotplots for top expressed genes for celltypesMain
+
+```{r}
+
+#filter DE genes
+FDR_cutoff <- 0.25
+FC_cutoff <- 1.5
+PCTexpr_cutoff <- 10
+
+####---- subset and make plots
+DGE_list_p <- lapply(DGE_list, function(x) {
+  
+  a <- x
+  
+  print(unique(a$celltypeMain))
+  
+  #filter on FDR
+  a <- a[a$FDR <= FDR_cutoff, ]
+  
+  cat("after FDR: ",nrow(a), "\n")
+  
+  #subset GEX to only include cell type
+  gex_tmp <- gex %>% 
+    DietSeurat(dimreducs = "umap_2") %>% 
+    tidyseurat::filter(cluster_cellType_manual_main == unique(a$celltypeMain))
+  
+  cat("nrow GEX: ", nrow(gex_tmp@meta.data), "\n")
+  
+  #get "pct.exp" and "avg.exp" for filtering
+  p <- DotPlot(gex_tmp, features = rownames(a), group.by = "patient_group")
+  p <- p$data %>%  pivot_wider(names_from = "id", 
+                               values_from = c("pct.exp", "avg.exp"), 
+                               id_cols = "features.plot")
+  a <- cbind(a, p)
+  
+  #filter on fold change
+  a <- a[apply(a[, 1:3], 1, max) > log2(FC_cutoff) |
+         apply(a[, 1:3], 1, min) < log2(1/FC_cutoff), ]
+  
+  cat("after FC: ",nrow(a), "\n")
+  
+  #filter on percent expressed
+  a <- a[apply(a[, 11:13], 1, max) > PCTexpr_cutoff, ]
+  
+  cat("after %e: ",nrow(a), "\n")
+
+  return(a)
+  
+   }
+  )
+
+
+####---- plot dotplots to list
+ngenes <- 25
+
+p_list <- list()
+for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(3, 4, 6)]){
+
+  cat(i,"\n")
+  
+  a <- as_tibble(DGE_list[[i]]) %>% filter(FDR < 0.25) %>% arrange(PValue) %>% pull(gene)
+  
+  cat(length(a),"\n")
+  cat(a,"\n")
+  
+  if(length(a) < ngenes) {
+    p_features <- a
+  } else {
+    p_features <- a[1:ngenes]
+  }
+  
+  cat(length(p_features),"\n")
+  
+  #subset gex
+  DGE_DATA <- gex %>% 
+  DietSeurat(dimreducs = "umap_2") %>% 
+  tidyseurat::filter(orig.ident != "P024", 
+                     cluster_cellType_manual_main == i,
+                     patient_group == "SSAB")
+
+  p_list[[i]] <- DotPlot(DGE_DATA, 
+        features = p_features, 
+        group.by = "mut_stat",
+        dot.scale = 4) +
+  theme_classic() +
+  xlab("") + 
+  ylab("") + 
+  ggtitle(i) +
+  coord_flip() + 
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, 
+                                   vjust = 0.5,
+                                   size = 8),
+        legend.position = "none",
+        plot.title = element_text(hjust = 0.5,
+                                  size = 10),
+        panel.grid.major = element_line(colour = "grey", size = rel(0.5)))
+
+}
+
+ggsave2("../results/DGE_B-cells_celltypeMain_mutstat_dotplots_2.png", 
+        plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h"), 
+        width = 25, height = 10, unit = "cm")
+
+
+```
 
 
 ## pseudo bulk DE test between patients with different VDJ mu status for celltypesFine
@@ -870,11 +1014,16 @@ for (j in sort(unique(gex$cluster_cellType_manual_fine))[-16]){
   message(j)
   
   #subset gex to only contain subtype j
-  gex.tmp <- gex %>% 
+  # gex.tmp <- gex %>% 
+  #   DietSeurat(dimreducs = "umap_2") %>% 
+  #   tidyseurat::filter(orig.ident != "P024", 
+  #                      cluster_cellType_manual_fine == j,
+  #                      patient_group == "SSA" | 
+  #                        patient_group == "SSAB")
+    gex.tmp <- gex %>% 
     DietSeurat(dimreducs = "umap_2") %>% 
     tidyseurat::filter(orig.ident != "P024", 
                        cluster_cellType_manual_fine == j,
-                       patient_group == "SSA" | 
                          patient_group == "SSAB")
 
   print(table(gex.tmp@meta.data$patient_group))
@@ -902,11 +1051,16 @@ for (j in sort(unique(gex$cluster_cellType_manual_fine))[-16]){
   colnames(mm) <- gsub("orig.ident", "", colnames(mm))
 
   # create pseudo bulk count matrix
-  gex.mm <- gex.tmp@assays$RNA@counts[, DGE_cells] %*% mm
-  gex.mm <- gex.mm[rowSums(gex.mm) != 0, ]
+  gex.mm <- gex.tmp@assays$RNA@counts[, DGE_cells] %*% mm; dim(gex.mm)
+  gex.mm <- gex.mm[rowSums(gex.mm) != 0, ]; dim(gex.mm)
 
   cellcounts <- colSums(mm)
-
+  
+  #remove BCR genes
+  gex.mm <- gex.mm[!grepl("^IGH", rownames(gex.mm)), ]; dim(gex.mm)
+  gex.mm <- gex.mm[!grepl("^IGK", rownames(gex.mm)), ]; dim(gex.mm)
+  gex.mm <- gex.mm[!grepl("^IGL", rownames(gex.mm)), ]; dim(gex.mm)
+  
   y <- DGEList(gex.mm,
                sample = gsub("_.*", "", colnames(gex.mm)),
                group = gsub(".*_", "", colnames(gex.mm)),
@@ -938,14 +1092,14 @@ for (j in sort(unique(gex$cluster_cellType_manual_fine))[-16]){
 
 }
 
-saveRDS(DGE_list, "../results/DGE_B-cells_celltypeFine_mutationStatus_listAll.rds")
+saveRDS(DGE_list, "../results/DGE_B-cells_celltypeFine_mutationStatus_listAll_SSAB.rds")
 #DGE_list <- readRDS("../results/DGE_B-cells_celltypeMain_patientGroups_listAll.rds")
 
 for (i in names(DGE_list)){
   print(i)
-  print(nrow(head(DGE_list[[i]])))
+  print(nrow(DGE_list[[i]]))
   print(nrow(DGE_list[[i]][DGE_list[[i]]$FDR < 0.1, ]))
-  print(head(head(DGE_list[[i]])))
+  print(head(DGE_list[[i]], n = 10))
 }
 
 

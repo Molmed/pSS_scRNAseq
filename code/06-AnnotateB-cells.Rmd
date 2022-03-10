@@ -84,6 +84,12 @@ dev.off()
 ```{r}
 #https://pubmed.ncbi.nlm.nih.gov/33815362/
 
+#Transitional (CD19+IgD+CD27-CD10+)
+#Naïve (CD19+IgD+CD27-CD10-)
+#IgM Memory (CD19+IgD+CD27+)
+#Classical Memory (CD19+IgD-CD27+)
+#Double Negative (CD19+IgD-CD27-)
+
 stewart <- readRDS("../suppl/Stewart_et_al_2021/E-MTAB-9544_rds/scPure2_HB6_UMAP3D.rds")
 
 #VlnPlot(stewart, c("nCount_RNA","nFeature_RNA", "percent.mt"), group.by = "library_id")
@@ -267,7 +273,7 @@ annotation_fine <- c(
   Memory_Cl = 16, #IGHA
   Memory_IgM_ALOX5 = 17, #?? ALOX5, ACADM, GID8, CMSS1
   Memory_Cl_CD69_str = 18, #FOS, CD69, EGR1, DUSP1
-  Memory_Platlet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
+  Memory_Platelet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
   Naive = 20,#
   Memory_Cl_str = 21,#dead/dying cells
   Plasma_cell = 22
@@ -296,7 +302,7 @@ annotation_main <- c(
   Memory = 16, #IGHA1
   Memory = 17, #?? ALOX5, ACADM, GID8, CMSS1
   Memory_stressed = 18, #FOS, CD69, EGR1, DUSP1
-  Memory_Platlet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
+  Memory_Platelet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
   Naive = 20,#
   Memory_stressed = 21,#dead/dying cells
   Plasma_cell = 22
@@ -304,7 +310,6 @@ annotation_main <- c(
 
 gex@meta.data["cluster_cellType_manual_main"] <- names(annotation_main)[match(gex$seurat_clusters,
                                                                      annotation_main)] 
-
 
 table(gex@meta.data$cluster_cellType_manual_fine, gex@meta.data$cluster_cellType_manual_main)
 
