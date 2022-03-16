@@ -3,8 +3,9 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-# Dimensionality reduction, clusterimg, and cluster annotation {#Dimred1}
 
+
+# Dimensionality reduction, clusterimg, and cluster annotation {#Dimred1}
 ## Load packages
 
 ```{r}
@@ -183,9 +184,6 @@ gex <- FindClusters(gex,
 
 table(gex@meta.data$seurat_clusters)
 
-cat("GEX_DIMRED size: \n")
-print(object.size(gex), units = "GB")
-
 ```
 
 
@@ -202,7 +200,7 @@ cluster_means <-
 adj <- (1 - cor(cluster_means)) / 2
 h <- hclust(as.dist(adj), method = "ward.D2")
 
-png("../results/hclust_clusters_allCells_clustRes.png", 
+png("../results/hclust_clusters_allCells.png", 
     width = 1500, 
     height = 1500, 
     units = "px")
@@ -211,183 +209,6 @@ dev.off()
 
 
 ```
-
-
-## Plot 2D UMAP for all cells
-
-```{r}
-
-p1 <- DimPlot(gex, 
-                  reduction = "umap_1", 
-                  pt.size = .1, 
-                  group.by = "orig.ident", 
-                  raster = FALSE) + 
-                      NoLegend() + 
-                      ggtitle(paste0(nrow(gex@meta.data), " cells, by sample"))  +
-          ylab("UMAP 2") +
-          xlab("UMAP 1") +
-  theme(axis.text = element_blank(),
-          axis.ticks = element_blank())
-
-p2 <- DimPlot(gex, 
-                  reduction = "umap_1", 
-                  pt.size = .1, 
-                  group.by = "seurat_clusters", 
-                  label = TRUE, 
-                  repel = TRUE, 
-                  raster = FALSE) + 
-                      NoLegend() + 
-                      ggtitle(paste0("by cluster")) +
-          ylab("UMAP 2") +
-          xlab("UMAP 1") +
-  theme(axis.text = element_blank(),
-          axis.ticks = element_blank())
-
-ggsave2("../results/UMAP_allCells_SFig2B.png", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h"), 
-        width = 30, height = 15, unit = "cm")
-
-
-```
-
-
-## Plot marker genes
-
-```{r}
-
-ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", 
-                 "IGHG4",  "IGHD", "IGHE", "IGHM")
-
-b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27", 
-               "IGHA1", "IGHD", "IGHM", "JCHAIN", "MME")
-
-pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", 
-                  "CD3E", "CD14", "LYZ", "CD8A")
-
-my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
-
-####-----  PBMC markers
-p.pbmc <- FeaturePlot(gex, 
-                        features = pbmc.markers, 
-                        reduction = "umap_1", 
-                        raster=FALSE, 
-                        order = TRUE) 
-
-ggsave2("../results/FeaturePlot_allCells_pbmcMarkers.png", 
-        p.pbmc, 
-        width = 25, height = 25, unit = "cm")
-
-####-----  B markers
-p.b.markers <- FeaturePlot(gex, 
-                             features = b.markers, 
-                             reduction = "umap_1", 
-                             raster=FALSE, 
-                             order = TRUE)
-ggsave2("../results/FeaturePlot_allCells_BMarkers.png", 
-        p.b.markers, 
-        width = 30, height = 20, unit="cm")
-
-####-----  IG markers
-p.ig.markers <- FeaturePlot(gex, 
-                              features = ig.features, 
-                              reduction = "umap_1", 
-                              raster = FALSE, 
-                              order = TRUE)
-
-ggsave2("../results/FeaturePlot_allCells_IGMarkers.png", 
-        p.ig.markers, 
-        width = 25, height = 25, unit = "cm")
-
-####-----  my_pars
-p.myPars <- FeaturePlot(gex, 
-                          features = my_pars , 
-                          reduction = "umap_1", 
-                          raster = FALSE, 
-                          order = TRUE)
-ggsave2("../results/FeaturePlot_allCells_myPars.png", 
-        p.myPars, 
-        width = 25, height = 25, unit="cm")
-
-
-```
-
-
-#SFig2A
-
-```{r}
-
-p1 <- DimPlot(gex, 
-                  reduction = "umap_1", 
-                  pt.size = .05, 
-                  group.by = "orig.ident", 
-                  raster = TRUE) + 
-                      NoLegend() + 
-                      ggtitle(paste0(nrow(gex@meta.data), " cells, by sample"))  +
-          ylab("UMAP 2") +
-          xlab("UMAP 1") +
-  theme(axis.text = element_blank(),
-          axis.ticks = element_blank())
-
-p2 <- DimPlot(gex, 
-                  reduction = "umap_1", 
-                  pt.size = .05, 
-                  group.by = "seurat_clusters", 
-                  label = TRUE, 
-                  repel = TRUE, 
-                  raster = TRUE) + 
-                      NoLegend() + 
-                      ggtitle(paste0("by cluster")) +
-          ylab("UMAP 2") +
-          xlab("UMAP 1") +
-  theme(axis.text = element_blank(),
-          axis.ticks = element_blank())
-
-
-ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
-
-pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", 
-                  "CD3E", "CD14", "LYZ", "CD8A")
-
-pig <- list()
-for (i in ig.features) {
-  
-  pig[[i]] <- FeaturePlot(gex, 
-                        reduction = "umap_1", 
-                        features = i,
-                        pt.size = 0.8) + 
-    xlab("UMAP 1") + 
-    ylab("UMAP 2") + 
-    theme(legend.position = "none",
-          axis.text = element_blank(),
-          axis.ticks = element_blank())
-  
-}
-
-pp <- list()
-for (i in pbmc.markers) {
-  
-  pp[[i]] <- FeaturePlot(gex, 
-                        reduction = "umap_1", 
-                        features = i,
-                        pt.size = 0.5) + 
-    xlab("UMAP 1") + 
-    ylab("UMAP 2") + 
-    theme(legend.position = "none",
-          axis.text = element_blank(),
-          axis.ticks = element_blank())
-  
-}
-
-p3 <- plot_grid(p1, p2, ncol = 1)
-p4 <- plot_grid(plotlist = pig, ncol = 3)
-p5 <- plot_grid(plotlist = pp, ncol = 3)
-
-ggsave2(paste0("../results/SFig2B.png"), 
-        plot_grid(p3, NULL, p4, NULL, p5, ncol = 5, rel_widths = c(1, 0.1, 1.5, 0.1, 1.5)) + bgcolor("white"), 
-        width = 30, height = 15, unit = "cm")
-
-
-```     
 
 
 ## Get cluster marker genes
@@ -449,70 +270,191 @@ dev.off()
 ```{r}
 
 annotation <- c(
-  B_cell = 0,
-  B_cell = 1,
-  B_cell = 2,
-  B_cell = 3,
-  B_cell = 4,
-  B_cell = 5,
-  B_cell = 8,
-  T_cell = 6,
+  `B-cell` = 0,
+  `B-cell` = 1,
+  `B-cell` = 2,
+  `B-cell` = 3,
+  `B-cell` = 4,
+  `B-cell` = 5,
+  `B-cell` = 8,
+  `T-cell` = 6,
   Monocyte = 7,
-  Plasma_cell = 9
+  `Plasma cell` = 9
 )
 
-gex$celltype <- names(annotation)[match(gex$seurat_clusters, annotation)] 
+gex$celltype <- names(annotation)[match(gex$seurat_clusters, annotation)]
+gex$celltype <- as.factor(gex$celltype)
 
-p3 <- DimPlot(gex, 
-                  reduction = "umap_1", 
-                  pt.size = .01, 
-                  group.by = "celltype", 
-                  label = TRUE, 
-                  repel = TRUE, 
-                  raster = TRUE) + 
-             ggtitle(paste0("cell types")) +
-          ylab("UMAP 2") +
-          xlab("UMAP 1") +
-  theme(axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        legend.position = "none")
-
-ggsave2("../results/UMAP_allCells_celltypes_Fig1B.png", 
-        plot_grid(p3, ncol = 1, labels = NULL, align = "h"), 
-        width = 12, height = 12, unit = "cm")
-
-counts <- as.data.frame.matrix(table(gex@meta.data$celltype, gex@meta.data$orig.ident))
-write.csv(counts, "../results/cellcounts_celltypes_orig.ident_GEX3_DIMRED1.csv", row.names = TRUE)
 
 ```
 
 
-## SFig2C Dotplot for cluster marker genes
+## plot Figure 1B Fig1B
+### UMAP of allCells
 
 ```{r}
 
-m_genes <- c("MS4A1", "CD79A", "CD79B", "CD3E", "CD3D", "CD3G", 
-             "IL7R", "IL32", "FCN1", "LYZ", "CD14","JCHAIN", "MZB1")
 
-p <- DotPlot(gex, 
-        features = m_genes, 
-        group.by = "seurat_clusters",
-        dot.scale = 4
-        ) +
-  theme_classic() +
-  xlab("") + 
-  ylab("Seurat KNN clusters") + 
-  ggtitle("Cluster marker genes") +
-  coord_flip() + 
-  theme(axis.text.x = element_text(angle = 90, 
-                                       hjust = 1, 
-                                       vjust = 0.5,
-                                       size = 8),
-        panel.grid.major = element_line(colour = "grey", size = rel(0.5)))
+p3 <- DimPlot(gex, 
+               reduction = "umap_1", 
+               pt.size = .01, 
+               group.by = "celltype", 
+               label = TRUE, 
+               repel = TRUE, 
+               raster = TRUE,
+               cols = brewer.pal(4,"Set3")) + 
+          ggtitle(paste0("")) +
+          ylab("UMAP 2") +
+          xlab("UMAP 1") +
+          theme(axis.text = element_blank(),
+                axis.ticks = element_blank(),
+                legend.position = "none",
+                plot.title = element_text(hjust = 0))
 
-ggsave2(paste0("../results/SFig2C.png"), 
-        p, 
-        width = 12, height = 14, unit = "cm") 
+ggsave2("../results/Fig1B.png", 
+        p3, 
+        width = 12, height = 12, unit = "cm", dpi = 300)
+
+counts <- as.data.frame.matrix(table(gex@meta.data$celltype, gex@meta.data$orig.ident))
+write.csv(counts, "../results/cellcounts_celltypes_orig.ident_GEX3_DIMRED1.csv", row.names = TRUE)
+
+
+```
+
+
+## Plot Celltypes per sample
+### Supplementary Figure S2A (SFig2A)
+
+```{r}
+
+cells <- as_tibble(gex@meta.data) %>%
+  group_by(orig.ident) %>%
+  summarise(tot = length(orig.ident),
+            `B-cell` = sum(celltype == "B-cell"),
+            Monocyte = sum(celltype == "Monocyte"),
+            `Plasma cell` = sum(celltype == "Plasma cell"),
+            `T-cell` = sum(celltype == "T-cell")) 
+
+#colSums(cells[,2:ncol(cells)])
+#     tot   B-cell Monocyte   Plasma cell   T-cell 
+#  242572   232166     4252      113     6041 
+
+p4 <- cells %>% gather(celltype, cellcount, `B-cell`:`T-cell`) %>% 
+ ggplot(aes(x = orig.ident, 
+            y = cellcount, 
+            fill = celltype)) + 
+  theme_classic() + 
+  geom_bar(stat = "identity", 
+           color = "black", 
+           position = position_stack(reverse = TRUE)) + 
+  theme(legend.title = element_blank(),
+        axis.text.x = element_text(face = "bold", angle = 90, vjust = 0.5, hjust = 1),
+        axis.text.y = element_text(face = "bold")) +
+  xlab("") +
+  ylab("cell count") +
+  scale_fill_manual(values = brewer.pal(4,"Set3")) +
+  ggtitle(paste0("B-cells and Plasma cells: ", sum(cells$`B-cell`) + sum(cells$`Plasma cell`) , "\n", 
+                 "Total cells: ", sum(cells$tot)))
+
+ggsave2(paste0("../results/SFig2A_4.png"), 
+        plot_grid(p3, p4, align = "hv", ncol = 2, rel_widths = c(1, 1.8)) +
+        bgcolor("white") + 
+        border("white")  ,
+        width = 25, height = 10, unit = "cm", dpi = 300)
+
+
+```
+
+
+## Plot Dimplot and markler genes for all cells
+### Supplementary Figure 2B (SFig2B)
+
+```{r}
+
+p1 <- DimPlot(gex, 
+                  reduction = "umap_1", 
+                  pt.size = .05, 
+                  group.by = "orig.ident", 
+                  raster = TRUE) + 
+          NoLegend() + 
+          labs(title = paste0(nrow(gex@meta.data), " cells"),
+               subtitle = "by sample") +
+          ylab("UMAP 2") +
+          xlab("UMAP 1") +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.title = element_text(hjust = 0))
+
+
+p2 <- DimPlot(gex, 
+                  reduction = "umap_1", 
+                  pt.size = .05, 
+                  group.by = "seurat_clusters", 
+                  label = TRUE, 
+                  repel = TRUE, 
+                  raster = TRUE) + 
+          NoLegend() + 
+          labs(title = "",
+               subtitle = "by cluster") +
+          ylab("UMAP 2") +
+          xlab("UMAP 1") +
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        plot.title = element_text(hjust = 0))
+
+
+ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4", 
+                 "IGHD", "IGHE", "IGHM")
+
+pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", 
+                  "CD3E", "CD14", "LYZ", "CD8A")
+
+pig <- list()
+for (i in ig.features) {
+  
+  pig[[i]] <- FeaturePlot(gex, 
+                        reduction = "umap_1", 
+                        features = i,
+                        pt.size = 0.5,
+                        order = TRUE,
+                        cols = c("lightgray", "blue", "navy")) + 
+    xlab("") + 
+    ylab("") + 
+    theme(legend.position = "none",
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0))
+  
+}
+
+pp <- list()
+for (i in pbmc.markers) {
+  
+  pp[[i]] <- FeaturePlot(gex, 
+                        reduction = "umap_1", 
+                        features = i,
+                        pt.size = 0.5,
+                        order = TRUE,
+                        cols = c("lightgray", "blue", "navy")) + 
+    xlab("") + 
+    ylab("") + 
+    theme(legend.position = "none",
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0))
+  
+}
+
+p3 <- plot_grid(p1, p2, ncol = 1)
+p4 <- plot_grid(plotlist = pig, ncol = 3)
+p5 <- plot_grid(plotlist = pp, ncol = 3)
+
+ggsave2(paste0("../results/SFig2B_3.png"), 
+        plot_grid(p3, NULL, p4, NULL, p5, ncol = 5, rel_widths = c(1, 0.1, 1.5, 0.1, 1.5)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 30, height = 15, unit = "cm", dpi = 300)
+
 
 ```
 

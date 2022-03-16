@@ -2,6 +2,8 @@
 
 #install.packages('ggthemes', dependencies = TRUE)
 
+#reticulate::conda_export("../results/environment_R_pSSscRNAseq")
+
 ####----- system
 suppressMessages(library(future)) #for planning multiprocessess
 suppressMessages(library(BiocParallel))
@@ -17,6 +19,7 @@ suppressMessages(library(tidyr))
 suppressMessages(library(future.apply))
 suppressMessages(library(msa))
 suppressMessages(library(seqinr))
+suppressMessages(library(Matrix))
 
 ####----- plot
 suppressMessages(library(plotly))
@@ -68,6 +71,12 @@ suppressMessages(library(scoper))
 #GSEA
 suppressMessages(library(enrichR))
 suppressMessages(library(fgsea))
+
+
+
+#save sessionInfo()
+thesession <- sessionInfo()
+saveRDS(thesession, paste0("../results/sessionInfo", Sys.Date(), ".rds"))
 
 
 

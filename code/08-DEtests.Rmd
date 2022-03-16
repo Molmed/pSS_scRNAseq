@@ -38,7 +38,7 @@ table(gex$patient_group, useNA = "always")
 ```
 
 
-#DE tests celltypesFine
+#celltypesFine DE tests 
 ## pseudo bulk DE test between patient subgroups for celltypesFine
 
 ```{r}
@@ -213,10 +213,13 @@ DGE_list_p <- lapply(DGE_list, function(x) {
 ####---- plot dotplots to list
 ngenes <- 15
 
-#for (i in sort(unique(gex$cluster_cellType_manual_fine))[-c(7, 8, 12, 16)])
+plotlist <- c("DN1_ID3", "DN2", "DN2_CXCR3", "DN2_ITGAX", "DN4", "Memory_Cl", "Memory_IgM",
+              "Memory_IgM_ALOX5", "Memory_IgM_CD1C", "Naive", "Naive_IFN", "Naive_Transitional")
 
+#for (i in sort(unique(gex$cluster_cellType_manual_fine))[-c(7, 8, 12, 16)])
+gex$cluster_cellType_manual_fine
 p_list <- list()
-for (i in sort(unique(gex$cluster_cellType_manual_fine))[-c(16)]){
+for (i in sort(unique(plotlist))){
 
   cat(i,"\n")
   
@@ -380,7 +383,7 @@ ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeFine_GOBP.png"),
 ```
 
 
-#DE tests celltypesMain
+# celltypesMain DE tests 
 ## pseudo bulk DE test between patient subgroups for celltypesMain
 
 ```{r }
@@ -723,7 +726,7 @@ ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeMain_GOBP.png"),
 ```
 
 
-#DE tests celltypesMain mu status
+# DE tests celltypesMain mu status
 ## vizualize cutoff and add categorical variable for mutation status
 
 ```{r }
@@ -783,9 +786,68 @@ table(tmp$patient_group,tmp$mut_stat)
 tmp <- gex@meta.data %>% filter(orig.ident != "P024",
                                 patient_group == "SSAB")
 
+gex.tmp <- gex %>% 
+    DietSeurat(dimreducs = "umap_2") %>% 
+    tidyseurat::filter(orig.ident != "P024", 
+                       patient_group == "SSAB")
+
+gex.tmp <- SetIdent(gex.tmp, value = "c_call")
+
+p1 <- DimPlot(gex.tmp, 
+              reduction = "umap_2", 
+              #group.by = "mut_stat",
+              split.by = "mut_stat",
+              pt.size = 0.1) + 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") + 
+  ggtitle("celltypes main") + 
+    theme(axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "bottom")
+
+ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
+
+p <- list()
+for (i in ig.features) {
+  
+  p[[i]] <- FeaturePlot(gex, 
+                        reduction = "umap_2", 
+                        features = i,
+                        pt.size = 0.2,
+                        order = TRUE,
+                        cols = c("lightgray", "blue", "navy")) + 
+    #xlab("") + 
+    #ylab("") + 
+    theme_void() +
+    #theme_classic() +
+    theme(legend.position = "none",
+          #axis.text = element_blank(),
+          #axis.ticks = element_blank(),
+          #axis.title = element_blank(),
+          plot.title = element_text(hjust = 0.5, vjust = 0),
+          plot.margin = unit(c(0, 0, 0, 0), "cm")) + 
+    NoLegend()
+  
+}
+
+p2 <- plot_grid(plotlist = p, ncol = 3, align = "hv", scale = 1.1) 
+
+ggsave2(paste0("../results/Fig1C.png"), 
+        plot_grid(p1, p2, ncol = 2, rel_widths = c(1.1, 1)) + bgcolor("white"), 
+        width = 30, height = 15, unit = "cm")
+
+
+as.data.frame.matrix(table(tmp[, c("mu_load", "c_call","cluster_cellType_manual_fine")]))
+
+
+table(tmp[, c("mu_load", "c_call", "cluster_cellType_manual_fine")])
+table(tmp[, c("mu_load", "c_call","mut_stat")])
+
 tmp <- as.data.frame.matrix(table(tmp[, c("cluster_cellType_manual_fine", "mut_stat")]))
 
-tmp <- mutate(tmp, muFrac=Mutated/sum(Mutated)*100, unFrac=Unmutated/sum(Unmutated)*100)
+tmp <- mutate(tmp, 
+              muFrac=Mutated/sum(Mutated)*100,
+              unFrac=Unmutated/sum(Unmutated)*100)
 
 
 

@@ -227,12 +227,12 @@ cluster_means <-
 adj <- (1 - cor(cluster_means)) / 2
 h <- hclust(as.dist(adj), method = "complete")
 
-png("../results/hclust_clusters_B-cells_clustRes.png", 
+png("../results/hclust_clusters_B-cells.png", 
     width = 1000, 
     height = 1000, 
     units = "px",
     pointsize = 20)
-par(las=2)
+par(las = 2)
 plot(as.dendrogram(h))
 dev.off()
 
@@ -240,136 +240,7 @@ dev.off()
 ```
 
 
-## Plot 2D UMAP B-cells
-
-```{r}
-
-p1 <- DimPlot(gex, 
-                  reduction = "umap_2", 
-                  pt.size = .1, 
-                  group.by = "orig.ident", 
-                  raster=FALSE) + 
-              NoLegend() + 
-              ggtitle("UMAP B-cells, by Sample")
-
-p2 <- DimPlot(gex, 
-                  reduction = "umap_2", 
-                  pt.size = .1, 
-                  group.by = "seurat_clusters", 
-                  label = TRUE, 
-                  repel = TRUE, 
-                  raster=FALSE) + 
-              NoLegend() + 
-              ggtitle("UMAP B-cells, by Cluster")
-
-ggsave2("../results/UMAP_B-cells.png", 
-        plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
-        width = 30, height = 15, unit = "cm")
-
-
-```
-
-
-## Plot 3D UMAP B-cells
- 
-```{r}
-
-df <- data.frame(gex@reductions$umap_2_3d@cell.embeddings)
-df <- data.frame(df, seurat_clusters = gex$seurat_clusters, orig.ident = gex$orig.ident)
-colnames(df)[1:3] <- c("UMAP_1","UMAP_2","UMAP_3")
-pal <- c(scales::hue_pal()(8), 
-         RColorBrewer::brewer.pal(9, "Set1"),  
-         RColorBrewer::brewer.pal(8, "Set2") )
-
-
-####------- by cluster
-p_State <- plot_ly(df, 
-                   x = ~UMAP_1, 
-                   y = ~UMAP_2, 
-                   z = ~UMAP_3, 
-                   color = ~seurat_clusters,
-                   colors = pal, size=.5) %>%  add_markers() %>%
-  layout(scene = list(xaxis = list(title = 'UMAP_1'), 
-                      yaxis = list(title = 'UMAP_2'), 
-                      zaxis = list(title = 'UMAP_3')))
-
-htmlwidgets::saveWidget(p_State, "../results/UMAP_B-cells_3d_clusters.html")
-
-
-####------- by orig.ident
-p_State <- plot_ly(df, 
-                   x = ~UMAP_1, 
-                   y = ~UMAP_2, 
-                   z = ~UMAP_3, 
-                   color = ~orig.ident,
-                   colors = pal, size = .5) %>%  add_markers() %>%
-  layout(scene = list(xaxis = list(title = 'UMAP_1'), 
-                      yaxis = list(title = 'UMAP_2'), 
-                      zaxis = list(title = 'UMAP_3')))
-
-htmlwidgets::saveWidget(p_State, "../results/UMAP_B-cells_3d_orig.ident.html")
-
-
-```
-
-
-## Plot marker genes B-cells
-
-```{r}
-
-ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
-b.markers <- c("CD79A", "CD79B", "MS4A1", "CD19", "CD27", "IGHA1", "IGHD", "IGHM", "JCHAIN", "MME")
-pbmc.markers <- c("MS4A1", "CD19", "CD27", "CD79A", "GNLY", "CD3E", "CD14", "LYZ", "CD8A")
-my_pars <- c("nCount_RNA", "nFeature_RNA", "percent_mito", "percent_ribo", "percent_hb")
-
-#pbmc
-p.pbmc.markers <- FeaturePlot(gex, 
-                                features = pbmc.markers, 
-                                reduction = "umap_2", 
-                                raster = FALSE,
-                                order = TRUE)
-
-ggsave2("../results/FeaturePlot_B-cells_pbmcMarkers.png", 
-        p.pbmc.markers, 
-        width = 25, height = 25, unit = "cm")
-
-####-----  B markers
-p.b.markers <- FeaturePlot(gex, 
-                             features = b.markers, 
-                             reduction = "umap_2", 
-                             raster = FALSE,
-                             order = TRUE)
-
-ggsave2("../results/FeaturePlot_B-cells_BMarkers.png",
-        p.b.markers, 
-        width = 25, height = 25, unit = "cm")
-
-####-----  ig markers
-p.ig.markers <- FeaturePlot(gex, 
-                              features = ig.features, 
-                              reduction = "umap_2", 
-                              raster = FALSE,
-                              order = TRUE)
-
-ggsave2("../results/FeaturePlot_B-cells_IGMarkers.png",
-        p.ig.markers, 
-        width = 25, height = 25, unit = "cm")
-
-####-----  my_pars
-p.myPars <- FeaturePlot(gex, 
-                          features = my_pars , 
-                          reduction = "umap_2", 
-                          raster = FALSE, 
-                          order = TRUE)
-ggsave2("../results/FeaturePlot_B-cells_myPars.png", 
-        p.myPars, 
-        width = 25, height = 25, unit = "cm")
-
-
-```
-
-
-#  patient subtypes per cluster
+## patient subtypes per cluster
 
 ```{r}
 

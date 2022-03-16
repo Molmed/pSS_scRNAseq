@@ -24,66 +24,16 @@ gex <- readRDS("../results/GEX3_DIMRED1.rds")
 ```
 
 
-## Plot Celltypes per sample
-
-```{r}
-
-# head(gex@meta.data)
-# cells <- t(table(gex@meta.data$celltype, gex@meta.data$orig.ident))
-
-cells <- as_tibble(gex@meta.data) %>%
-  group_by(orig.ident) %>%
-  summarise(tot = length(orig.ident),
-            B_cell = sum(celltype == "B_cell"),
-            Monocyte = sum(celltype == "Mono"),
-            Plasma = sum(celltype == "Plasma"),
-            T_cell = sum(celltype == "T_cell")) 
-
-#colSums(cells[,2:ncol(cells)])
-#     tot   B_cell Monocyte   Plasma   T_cell 
-#  242572   232166     4252      113     6041 
-
-p1 <- cells %>% gather(celltype, cellcount, B_cell:T_cell) %>% 
- ggplot(aes(x = orig.ident, 
-            y = cellcount, 
-            fill = celltype)) + 
-  theme_classic() + 
-  geom_bar(stat = "identity", 
-           color = "black", 
-           position = position_stack(reverse = TRUE)) + 
-  theme(legend.title = element_blank(),
-        axis.text.x = element_text(face = "bold", angle = 90, vjust = 0.5, hjust = 1),
-        axis.text.y = element_text(face = "bold")) +
-  xlab("") +
-  ylab("count") +
-  ggtitle(paste0("cell count: B-cells / total (", 
-                 sum(cells$B_cell), " / ", 
-                 sum(cells$tot), ")"))
-
-ggsave2(paste0("../results/celltype_counts_allCells.png"), 
-          p1,
-          width = 25, height = 10, unit = "cm")
-
-
-```
-
-
 ## subset Seurat object to only include B-cell clusters
 
 ```{r}
 
 Idents(object = gex) <- "celltype"
-gex <- subset(gex, idents = c("B_cell", "Plasma"))
+gex <- subset(gex, idents = c("B-cell", "Plasma cell"))
 
 colnames(gex@meta.data)[colnames(gex@meta.data) == "seurat_clusters"] <- "seurat_clusters_1"
 DefaultAssay(object = gex) <- "RNA"; gex
 Idents(object = gex) <- "orig.ident"
-
-gex
-
-cat("GEX_BCELLS size: \n")
-print(object.size(gex), units = "GB")
-
 
 ```
 

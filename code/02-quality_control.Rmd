@@ -3,6 +3,8 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
+
+
 # QC and cell filtering {#QC}
 ## Load packages
 
@@ -38,7 +40,8 @@ saveRDS(annot, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
 #annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
 
 cat("head(annot): \n")
-head(annot)
+print(head(annot))
+
 
 ```
 
@@ -150,10 +153,12 @@ ggsave2(paste0("../results/Discarded_cellcounts.png"),
           p_discarded_stats,
           width = 25, height = 20, unit = "cm")
 
+
 ```
 
 
-# Plot QC
+## Plot QC
+### Supplementary Figure 1 (SFig1)
 
 ```{r}
 
@@ -171,7 +176,7 @@ for (i in my_pars){
                     y = i, 
                     colour_by = names(my_pars)[which(my_pars == i)]) + 
     ggtitle(paste0(i, 
-                   ", discarded cells: ", 
+                   ", cells marked to be discarded: ", 
                    sum(gex@meta.data[,names(my_pars)[which(my_pars == i)]]))) +
     xlab("") + 
     ylab(i) + 
@@ -179,6 +184,7 @@ for (i in my_pars){
                                      hjust = 1, 
                                      vjust = 0.5,
                                      size = 8),
+          plot.title = element_text(size = 8),
           legend.position = "none")
 
 }
@@ -192,8 +198,10 @@ p_legend <- plotColData(as.SingleCellExperiment(gex),
 
 p_out[["legend"]] <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
-ggsave2(paste0("../results/SFig1.png"), 
-        plot_grid(plotlist = p_out, ncol = 2, labels = NULL, align = "hv") + bgcolor("white"),
+ggsave2(paste0("../results/SFig1_2.png"), 
+        plot_grid(plotlist = p_out, ncol = 2, labels = NULL, align = "hv") + 
+          bgcolor("white") + 
+          border("white"),
         width = 21, height = 21, unit = "cm")
 
 
@@ -212,7 +220,6 @@ annot_coding <- unique(annot[!(annot$chromosome_name %in% c("chrY", "other", "ch
                        c("external_gene_name", "gene_biotype", "chromosome_name")])
 
 genes_keep <- rownames(gex) %in% annot_coding$external_gene_name
-table(genes_keep)
 
 gex <- gex[genes_keep, !gex$cells_discard] 
 
