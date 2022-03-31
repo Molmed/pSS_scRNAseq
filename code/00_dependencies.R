@@ -28,6 +28,7 @@ suppressMessages(library(cowplot))
 suppressMessages(library(rafalib))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(ggthemes))
+suppressMessages(library(scales))
 
 # remotes::install_github("czarnewski/niceRplots")
 library(niceRplots)

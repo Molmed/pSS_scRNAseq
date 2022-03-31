@@ -117,6 +117,11 @@ for (j in sort(unique(gex$cluster_cellType_manual_fine))){
 
 saveRDS(DGE_list, "../results/DGE_B-cells_celltypeFine_patientGroups_listAll.rds")
 #DGE_list <- readRDS("../results/DGE_B-cells_celltypeFine_patientGroups_listAll.rds")
+lapply(DGE_list, function(x){head(x)})
+
+DGE_list$DN4$celltypeFine <- "DN4"
+DGE_list$Memory_Platelet$celltypeFine <- "Memory_Platelet"
+
 names(DGE_list)
 
 ```
@@ -160,7 +165,7 @@ write.csv(DGE_list_out, paste0("../results/DGE_B-cells_celltypeFine_all_FDR", FD
 ```
 
 
-### filter and plot dotplots for top expressed genes celltypeFine 
+### plot SFig5, filter and plot dotplots for top expressed genes celltypeFine, Supplementary Figure 5
 
 ```{r}
 
@@ -184,7 +189,6 @@ DGE_list_p <- lapply(DGE_list, function(x) {
   gex_tmp <- gex %>% 
     DietSeurat(dimreducs = "umap_2") %>% 
     tidyseurat::filter(cluster_cellType_manual_fine == unique(a$celltypeFine))
-  
   
   #get "pct.exp" and "avg.exp" for filtering
   p <- DotPlot(gex_tmp, features = rownames(a), group.by = "patient_group")
@@ -211,13 +215,11 @@ DGE_list_p <- lapply(DGE_list, function(x) {
 
 
 ####---- plot dotplots to list
-ngenes <- 15
+ngenes <- 20
 
 plotlist <- c("DN1_ID3", "DN2", "DN2_CXCR3", "DN2_ITGAX", "DN4", "Memory_Cl", "Memory_IgM",
               "Memory_IgM_ALOX5", "Memory_IgM_CD1C", "Naive", "Naive_IFN", "Naive_Transitional")
 
-#for (i in sort(unique(gex$cluster_cellType_manual_fine))[-c(7, 8, 12, 16)])
-gex$cluster_cellType_manual_fine
 p_list <- list()
 for (i in sort(unique(plotlist))){
 
@@ -265,15 +267,15 @@ for (i in sort(unique(plotlist))){
 #         plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h"), 
 #         width = 28, height = 20, unit = "cm")
 
-ggsave2("../results/DGE_B-cells_celltypeFine_dotplots_3.png", 
+ggsave2("../results/SFig5.png", 
         plot_grid(plotlist = p_list, ncol = 3, labels = NULL, align = "hv"), 
-        width = 26, height = 32, unit = "cm")
+        width = 26, height = 30, unit = "cm")
 
 
 ```
 
 
-### GSEA celltypesFine (GO_Biological_Process_2021 and MSigDB_Hallmark_2020)
+### plot SFig6 and SFig8, GSEA celltypesFine (GO_Biological_Process_2021 and MSigDB_Hallmark_2020)
 
 ```{r}
 
@@ -282,9 +284,10 @@ p_listBP <- list()
 gse_listH <- list()
 gse_listBP <- list()
 
-for (i in sort(names(DGE_list))[-c(3, 4, 6)]){}
+plotlist <- c("DN1_ID3", "DN2", "DN2_CXCR3", "DN2_ITGAX", "DN4", "Memory_Cl", "Memory_IgM",
+              "Memory_IgM_ALOX5", "Memory_IgM_CD1C", "Naive", "Naive_IFN", "Naive_Transitional")
 
-for (i in sort(names(DGE_list))){
+for (i in plotlist){
   
   go_cluster <- enrichr(genes = DGE_list[[i]]$gene[1:50], 
                         databases = c("GO_Biological_Process_2021", 
@@ -366,19 +369,23 @@ write.csv(do.call(rbind.data.frame, gse_listBP),
           "../results/DGE_B-cells_GSE_celltypeFine_GOBP.csv", 
           row.names = FALSE)
 
-ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeFine_hallmarks.png"),
+ggsave2(paste0("../results/SFig6.png"),
           plot_grid(plotlist = p_listH, 
                     ncol = 3, 
                     labels = NULL, 
-                    align = "vh" ) + bgcolor("white"),
+                    align = "vh" )  +
+          bgcolor("white") + 
+          border("white"),
           width = 35, height = 25, unit = "cm")
 
-ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeFine_GOBP.png"),
+ggsave2(paste0("../results/SFig8.png"),
           plot_grid(plotlist = p_listBP, 
                     ncol = 3, 
                     labels = NULL, 
-                    align = "vh" ) + bgcolor("white"),
-          width = 55, height = 32, unit = "cm")
+                    align = "vh" )  +
+          bgcolor("white") + 
+          border("white"),
+          width = 58, height = 32, unit = "cm")
 
 ```
 
@@ -506,7 +513,7 @@ write.csv(DGE_list_out, paste0("../results/DGE_B-cells_celltypeMain_all_FDR", FD
 ```
 
 
-### filter and plot dotplots for top expressed genes for celltypesMain
+### plot Fig2A, filter and plot dotplots for top expressed genes for celltypesMain
 
 ```{r}
 
@@ -618,7 +625,7 @@ ggsave2("../results/DGE_B-cells_celltypeMain_mutstat_dotplots_2.png",
 ```
 
 
-### GSEA celltypesMain (GO_Biological_Process_2021 and MSigDB_Hallmark_2020)
+### plot FIG2B and SFig7, GSEA celltypesMain (GO_Biological_Process_2021 and MSigDB_Hallmark_2020)
 
 ```{r}
 

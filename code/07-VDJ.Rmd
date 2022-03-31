@@ -466,7 +466,7 @@ table(igh_10x$c_gene_10x, useNA = "always")
 gex <- AddMetaData(gex, igh_10x)
 
 gex$c_gene_10x <- factor(gex$c_gene_10x, levels = sort(unique(gex$c_gene_10x)))
-
+gex$c_gene_10x <- as.character(gex$c_gene_10x)
 
 ```
 
@@ -497,9 +497,15 @@ table(gex.meta$orig.ident, gex.meta$cluster_cellType_manual_fine)
 
 ## Analyse and visualize immcantation and scRepertoir output
 ### VDJ gene usage
-#### plot VDJ correlation Figure 3B and Supplementary Figure S11A-C
+#### plot FiG3B VDJ correlation and Supplementary Figure S11A-C
 
 ```{r}
+
+colors_cellTypeFine2 <- c(brewer.pal(5, "Blues"), 
+  brewer.pal(4, "YlOrRd"),
+  brewer.pal(3, "Greens")[c(3,2,1)])
+
+names(colors_cellTypeFine2) <- sort(unique(gex.meta$cluster_cellType_manual_fine))
 
 #VDJ gene usage correlation
 VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usage
@@ -530,7 +536,8 @@ VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usa
                                      DNEG = "#7CAE00", 
                                      SSA = "#00BFC4", 
                                      SSAB = "#C77CFF"),
-                   cluster = scales::hue_pal()(15))
+                   #cluster = scales::hue_pal()(15),
+                   cell_type = colors_cellTypeFine2)
   
   titles <- data.frame(gexnames = c("v_call", "d_call", "j_call", "c_gene_10x"),
                        outnames = c("V", "D", "J", "IGH c"))
@@ -545,10 +552,10 @@ VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usa
                                                                             "",
                                                                             colnames(cor_tmp))),
                                                  row.names = colnames(cor_tmp)),
-                     annotation_colors = ann_cols[1],
+                     annotation_colors = ann_cols[1:2],
                      breaks = seq(0, 1, length.out = 100),
                      filename = paste0("../results/VDJ_Cor_", VDJgene, "_", 
-                                        correl, "_per_cluster_PatientGroup_3.png"),
+                                        correl, "_per_cluster_PatientGroup_4.png"),
                      fontsize = 8, 
                      fontsize_row = 4, 
                      fontsize_col = 4,
@@ -565,6 +572,8 @@ VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usa
   
 }
 
+
+sort(unique(gex.meta$cluster_cellType_manual_fine))
 cor.s.v_call <- VDJ_cor(gex.meta, "spearman", "v_call")
 cor.p.v_call <- VDJ_cor(gex.meta, "pearson", "v_call")
 
@@ -2097,6 +2106,8 @@ ggsave2(paste0("../results/SFig12A.png"),
           bgcolor("white") + 
           border("white"),
           width = 30, height = 12, unit = "cm")
+
+
 ```
 
 
@@ -2289,12 +2300,80 @@ ggsave2("../results/Fig4A_2.png",
           border("white"), 
         width = 30, height = 14, unit = "cm")
 
+
+gex.meta$v_call_tmp <-  unlist(lapply(strsplit(gex.meta$v_call, 
+                                         split = "\\*"),
+                                function(x) {return(x[1])}))
+table(gex.meta$v_call_tmp, gex.meta$mu_load)
+
+```
+
+## plot SFig13A, IgH class per cellTypeMain per patient
+
+```{r}
+
+#gex.meta$c_gene_10x <- factor(gex.meta$c_gene_10x, levels = sort(unique(gex.meta$c_gene_10x)))
+
+tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
+                  patient_group = gex.meta$patient_group)
+tmp <- tmp[order(tmp$patient_group), ]
+tmp <- unique(tmp)
+gex.meta$orig.ident <- factor(gex.meta$orig.ident, 
+                              levels = tmp$orig.ident)
+
+p <- ggplot(gex.meta,
+            aes(x = orig.ident,
+                fill = c_gene_10x)) +
+      theme_classic() +
+      ggtitle("IGH constant") +
+      theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 0.5, 
+                                       vjust = 0.5), 
+            legend.position = "none") +
+      ylab("proportion of cells") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      #scale_fill_discrete(name = "patient group") +
+      facet_grid(cols = vars(cluster_cellType_manual_main)) +
+      geom_bar(position = "fill") +
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "c gene", drop = FALSE)
+
+## get legend
+p_legend <- ggplot(gex.meta, 
+             aes(x = orig.ident,
+                 fill = c_gene_10x)) +
+      geom_bar(position = "fill") +
+      theme_classic() + 
+      theme(legend.position = "bottom", legend.box = "horizontal") +
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "c gene", drop = FALSE)
+  
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+
+ggsave2(paste0("../results/SFig13A.png"), 
+          plot_grid(p, p_legend, 
+                    ncol = 1, labels = NULL, 
+                    align = "hv", rel_heights = c(1.5, 0.2)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 12, unit = "cm")
+
+
+
 ```
 
 
-## plot SFig13, IgH class per cellTypeFine per patient
+## plot SFig13B, IgH class per cellTypeFine per patient
 
 ```{r}
+
+#gex.meta$c_gene_10x <- factor(gex.meta$c_gene_10x, levels = sort(unique(gex.meta$c_gene_10x)))
+
+tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
+                  patient_group = gex.meta$patient_group)
+tmp <- tmp[order(tmp$patient_group), ]
+tmp <- unique(tmp)
+gex.meta$orig.ident <- factor(gex.meta$orig.ident, 
+                              levels = tmp$orig.ident)
 
 p <- list()
 for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
@@ -2309,7 +2388,7 @@ p[[i]] <-  ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ],
             axis.title.x = element_blank(),
             axis.title.y = element_blank(),
             legend.position = "none") +
-      scale_fill_brewer(palette="Set3", na.value="grey", name = "c gene",  drop = FALSE) 
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "c gene", drop = FALSE) 
 
 print(table(gex.meta$c_gene_10x[gex.meta$cluster_cellType_manual_fine == i]))
 
@@ -2323,7 +2402,7 @@ p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == unique(gex$
       theme(legend.position = "bottom", 
             legend.box = "horizontal", 
             panel.border = NULL) +
-      scale_fill_brewer(palette="Set3", na.value="grey", name = "c gene",  drop = FALSE)
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "c gene", drop = FALSE)
 
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot() 
 
@@ -2345,7 +2424,7 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/SFig13.png"), 
+ggsave2(paste0("../results/SFig13B_2.png"), 
           plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
           bgcolor("white") + 
           border("white"),
@@ -2545,7 +2624,7 @@ ggsave2(paste0("../results/SFig14.png"),
 
 ```{r}
 
-saveRDS(gex, file = "../results/GEX7_BVDJ.rds")
+#saveRDS(gex, file = "../results/GEX7_BVDJ.rds")
 #gex <- readRDS("../results/GEX7_BVDJ.rds")
 
 ```
