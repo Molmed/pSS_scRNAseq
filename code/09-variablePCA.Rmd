@@ -1,0 +1,561 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# PCA per sample variables {#PCA}
+
+## Load packages
+
+```{r}
+
+source("./00_dependencies.R")
+
+```
+
+
+## Load Seurat object
+
+```{r}
+
+gex <- readRDS("../results/GEX7_BVDJ.rds")
+
+```
+
+
+## Patient Meta Data
+
+```{r}
+
+pheno <- read_excel("/Users/gusarv/Documents/projekt/SjS/Info/pheno/24_clin_data_all_220411GN_forR.xlsx")
+colnames(pheno)
+
+pheno <- pheno[, c("Single cell_Sample_id_publ", 
+                   "Age symptom onset",
+                   "Age diagnosis",
+                   "First symptoms",
+                   "ANA",
+                   "SSA Ro52",
+                   "SSA Ro60",
+                   "SSA",
+                   "SSB",
+                   "SSA and SSB",
+                   "RNP",
+                   "Sm",
+                   "RF",
+                   "Focus score Greenspan",
+                   "Anemia Hb<120g/L",
+                   "Leucopenia <4.0x109/L",
+                   "Lymphopenia <1.0x109/L",
+                   "P-IgG >15g/L",
+                   "Raynaud",
+                   "Arthritis",
+                   "Purpura",
+                   "Major salivary gland swelling",
+                   "Lymphadenopathy",
+                   "Hypothyreoidism",
+                   "Treatment at B cell sampling, HCQ",
+                   "Prednisolone")]
+
+colnames(pheno)[1] <- "orig.ident"
+
+pheno <- pheno %>% add_row(orig.ident = c("C001", "C002", "C003", "C004")) %>% arrange(orig.ident)
+
+
+# pheno <- read.table("../suppl/pheno/pSS_pheno_211208.csv", sep = ",", header = TRUE)
+# colnames(pheno)[c(1, 3)] <- c("Sample_id", "orig.ident")
+# pheno$orig.ident <- gsub("P007[ab]", "P007", pheno$orig.ident)
+# pheno$orig.ident <- gsub("P008[ab]", "P008", pheno$orig.ident)
+# pheno <- unique(pheno[, c(1, 3, 5, 7:8, 11:12)])
+# head(pheno); dim(pheno)
+# 
+# pheno$patient_group <- paste0(ifelse(pheno$SSA == "YES", "SSA", ""), 
+#                             "_", 
+#                             ifelse(pheno$SSB == "YES", "SSB", ""))
+# pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
+# pheno$patient_group <- names(pat_annot)[match(pheno$patient_group, pat_annot)]
+# pheno$patient_group[grep("^C00", pheno$orig.ident) ] <- "CTRL"
+# pheno$patient_group <- factor(pheno$patient_group, levels = c("CTRL", "DNEG", "SSA", "SSAB"))
+
+
+```
+
+
+## extract meta data for relevant cell types
+
+```{r}
+# gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
+#                           gex$cluster_cellType_manual_fine == "DN2" |
+#                           gex$cluster_cellType_manual_fine == "DN2_CXCR3" |
+#                           gex$cluster_cellType_manual_fine == "DN2_ITGAX" |
+#                           gex$cluster_cellType_manual_fine == "DN4" |
+#                           gex$cluster_cellType_manual_fine == "Memory_Cl" |
+#                           gex$cluster_cellType_manual_fine == "Memory_IgM" |
+#                           gex$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
+#                           gex$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
+#                           gex$cluster_cellType_manual_fine == "Naive" |
+#                           gex$cluster_cellType_manual_fine == "Naive_IFN" |
+#                           gex$cluster_cellType_manual_fine == "Naive_Transitional"), ]
+
+gex.slim <- gex; rm(gex)
+gex.slim@assays$RNA@scale.data <- matrix()
+to_remove <- c("pca_1", "pca_2", "scpred", "scpred_projection", 
+               "harmony_1", "harmony_2", "umap_1", "umap_2_3d")
+gex.slim@reductions <- gex.slim@reductions[!(names(gex.slim@reductions) %in% to_remove)]
+
+gex.slim <- gex.slim[, (gex.slim$cluster_cellType_manual_fine == "DN1_ID3" |
+                              gex.slim$cluster_cellType_manual_fine == "DN2" |
+                              gex.slim$cluster_cellType_manual_fine == "DN2_CXCR3" |
+                              gex.slim$cluster_cellType_manual_fine == "DN2_ITGAX" |
+                              gex.slim$cluster_cellType_manual_fine == "DN4" |
+                              gex.slim$cluster_cellType_manual_fine == "Memory_Cl" |
+                              gex.slim$cluster_cellType_manual_fine == "Memory_IgM" |
+                              gex.slim$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
+                              gex.slim$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
+                              gex.slim$cluster_cellType_manual_fine == "Naive" |
+                              gex.slim$cluster_cellType_manual_fine == "Naive_IFN" |
+                              gex.slim$cluster_cellType_manual_fine == "Naive_Transitional")]
+
+
+```
+
+
+## Extract cell type frequencies per patient
+
+```{r}
+
+#cellType_manual_fine
+cells_fine <- dplyr::select(gex.slim@meta.data,
+                   orig.ident,
+                   cluster_cellType_manual_fine) %>%
+  add_count(orig.ident, 
+            cluster_cellType_manual_fine, 
+            .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, 
+                cluster_cellType_manual_fine, 
+                per) %>%
+  pivot_wider(names_from = cluster_cellType_manual_fine, 
+              values_from = per)
+
+colnames(cells_fine)[2:ncol(cells_fine)] <- paste0(colnames(cells_fine)[2:ncol(cells_fine)], "_fine_perc")
+
+#cellType_manual_main
+cells_main <- dplyr::select(gex.slim@meta.data, 
+                       orig.ident, 
+                       cluster_cellType_manual_main) %>% 
+  add_count(orig.ident, 
+            cluster_cellType_manual_main, 
+            .drop = FALSE) %>%
+  distinct() %>% 
+  group_by(orig.ident) %>% 
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>% 
+  dplyr::select(orig.ident, 
+                cluster_cellType_manual_main, 
+                per) %>% 
+  pivot_wider(names_from = cluster_cellType_manual_main, 
+              values_from = per) 
+
+colnames(cells_main)[2:ncol(cells_main)] <- paste0(colnames(cells_main)[2:ncol(cells_main)], "_main_perc")
+
+celltypes <- inner_join(cells_main, cells_fine) 
+
+
+```
+
+
+## VDJ percentages per celltype
+
+```{r}
+
+# IGHV gene per celltypeFine
+IGHV_fine <- dplyr::select(gex.slim@meta.data,
+                           orig.ident,
+                           cluster_cellType_manual_fine,
+                           IGHV) %>%
+  add_count(orig.ident,
+            cluster_cellType_manual_fine,
+            IGHV,
+            .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident,
+           cluster_cellType_manual_fine) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, cluster_cellType_manual_fine, IGHV, per) %>%
+  pivot_wider(
+    names_from = c(IGHV, cluster_cellType_manual_fine),
+    values_from = per,
+    values_fill = 0
+  )
+
+colnames(IGHV_fine)[2:ncol(IGHV_fine)] <-
+  paste0(colnames(IGHV_fine)[2:ncol(IGHV_fine)], "_fine")
+
+# IGHV gene per celltypeMine
+IGHV_main <- dplyr::select(gex.slim@meta.data,
+                           orig.ident,
+                           cluster_cellType_manual_main,
+                           IGHV) %>%
+  add_count(orig.ident, cluster_cellType_manual_main, IGHV, .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_main) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident,
+                cluster_cellType_manual_main,
+                IGHV,
+                per) %>%
+  pivot_wider(
+    names_from = c(IGHV, cluster_cellType_manual_main),
+    values_from = per,
+    values_fill = 0
+  )
+
+colnames(IGHV_main)[2:ncol(IGHV_main)] <-
+  paste0(colnames(IGHV_main)[2:ncol(IGHV_main)], "_main")
+
+# IGHD gene per celltypeFine
+IGHD_fine <- dplyr::select(gex.slim@meta.data,
+                           orig.ident,
+                           cluster_cellType_manual_fine,
+                           IGHD) %>%
+  add_count(orig.ident, cluster_cellType_manual_fine, IGHD, .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_fine) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, cluster_cellType_manual_fine, IGHD, per) %>%
+  pivot_wider(
+    names_from = c(IGHD, cluster_cellType_manual_fine),
+    values_from = per,
+    values_fill = 0
+  )
+
+colnames(IGHD_fine)[2:ncol(IGHD_fine)] <-
+  paste0(colnames(IGHD_fine)[2:ncol(IGHD_fine)], "_fine")
+
+# IGHD gene per celltypeMine
+IGHD_main <- dplyr::select(gex.slim@meta.data,
+                           orig.ident,
+                           cluster_cellType_manual_main,
+                           IGHD) %>%
+  add_count(orig.ident, cluster_cellType_manual_main, IGHD, .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_main) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, cluster_cellType_manual_main, IGHD, per) %>%
+  pivot_wider(
+    names_from = c(IGHD, cluster_cellType_manual_main),
+    values_from = per,
+    values_fill = 0
+  )
+
+colnames(IGHD_main)[2:ncol(IGHD_main)] <-
+  paste0(colnames(IGHD_main)[2:ncol(IGHD_main)], "_main")
+
+
+# IGHJ gene per celltypeFine
+IGHJ_fine <- dplyr::select(gex.slim@meta.data,
+                           orig.ident,
+                           cluster_cellType_manual_fine,
+                           IGHJ) %>%
+  add_count(orig.ident, cluster_cellType_manual_fine, IGHJ, .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_fine) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, cluster_cellType_manual_fine, IGHJ, per) %>%
+  pivot_wider(
+    names_from = c(IGHJ, cluster_cellType_manual_fine),
+    values_from = per,
+    values_fill = 0
+  )
+
+colnames(IGHJ_fine)[2:ncol(IGHJ_fine)] <-
+  paste0(colnames(IGHJ_fine)[2:ncol(IGHJ_fine)], "_fine")
+
+
+# IGHJ gene per celltypeMine
+IGHJ_main <- dplyr::select(gex.slim@meta.data,
+                           orig.ident,
+                           cluster_cellType_manual_main,
+                           IGHJ) %>%
+  add_count(orig.ident, cluster_cellType_manual_main, IGHJ, .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_main) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, cluster_cellType_manual_main, IGHJ, per) %>%
+  pivot_wider(
+    names_from = c(IGHJ, cluster_cellType_manual_main),
+    values_from = per,
+    values_fill = 0
+  )
+
+colnames(IGHJ_main)[2:ncol(IGHJ_main)] <-
+  paste0(colnames(IGHJ_main)[2:ncol(IGHJ_main)], "_main")
+
+
+# IGHC gene per celltypeFine
+c_gene_10x_fine <- dplyr::select(gex.slim@meta.data,
+                                 orig.ident,
+                                 cluster_cellType_manual_fine,
+                                 c_gene_10x) %>%
+  add_count(orig.ident,
+            cluster_cellType_manual_fine,
+            c_gene_10x, .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_fine) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, cluster_cellType_manual_fine, c_gene_10x, per) %>%
+  pivot_wider(
+    names_from = c(c_gene_10x, cluster_cellType_manual_fine),
+    values_from = per,
+    values_fill = 0
+  )
+
+colnames(c_gene_10x_fine)[2:ncol(c_gene_10x_fine)] <-
+  paste0(colnames(c_gene_10x_fine)[2:ncol(c_gene_10x_fine)], "_fine")
+
+# IGHC gene per celltypeMine
+c_gene_10x_main <- dplyr::select(gex.slim@meta.data,
+                                 orig.ident,
+                                 cluster_cellType_manual_main,
+                                 c_gene_10x) %>%
+  add_count(orig.ident,
+            cluster_cellType_manual_main,
+            c_gene_10x, .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_main) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, cluster_cellType_manual_main, c_gene_10x, per) %>%
+  pivot_wider(
+    names_from = c(c_gene_10x, cluster_cellType_manual_main),
+    values_from = per,
+    values_fill = 0
+  )
+
+colnames(c_gene_10x_main)[2:ncol(c_gene_10x_main)] <-
+  paste0(colnames(c_gene_10x_main)[2:ncol(c_gene_10x_main)], "_main")
+
+IGHVDJ_cell <-
+  inner_join(IGHV_fine, IGHV_main, by = "orig.ident") %>%
+  inner_join(IGHD_fine, by = "orig.ident") %>%
+  inner_join(IGHD_main, by = "orig.ident") %>%
+  inner_join(IGHJ_fine, by = "orig.ident") %>%
+  inner_join(IGHJ_main, by = "orig.ident") %>%
+  inner_join(c_gene_10x_fine, by = "orig.ident") %>%
+  inner_join(c_gene_10x_main, by = "orig.ident")
+
+
+```
+
+
+## IFN score
+
+```{r}
+
+# get hallmark gene sets
+HM <- getGenesets("/Users/gusarv/Downloads/MSigDB_Hallmark_2020.txt")
+
+IFN <- unique(c(HM$`Interferon Alpha Response`, 
+                HM$`Interferon Gamma Response`))
+#IFNA <- HM$`Interferon Alpha Response`
+#IFNG <- HM$`Interferon Gamma Response`
+
+#gex.slim[rownames(gex.slim) %in% IFN, ]
+#gex.slim@assays$RNA@data[rownames(gex.slim) %in% IFN, ]
+
+#cluster_cellType_manual_fine
+ALL_expr <- AggregateExpression(gex.slim, 
+                                slot = "counts",
+                                group.by = c("cluster_cellType_manual_fine", "orig.ident"))
+
+ALL_expr <- as.data.frame(ALL_expr$RNA)
+IFN_expr <- ALL_expr[IFN, ]
+ALL_expr <- ALL_expr[!(rownames(ALL_expr) %in% IFN), ]
+
+IFN_fine <- as.data.frame(colSums(IFN_expr, na.rm = TRUE) / colSums(ALL_expr, na.rm = TRUE))
+colnames(IFN_fine)[1] <- "IFN_score"
+IFN_fine$cluster_cellType_manual_fine <- substr(rownames(IFN_fine), 1, nchar(rownames(IFN_fine)) - 5)
+IFN_fine$orig.ident <- substr(rownames(IFN_fine), nchar(rownames(IFN_fine)) - 3, nchar(rownames(IFN_fine)))
+
+IFN_fine <- pivot_wider(IFN_fine, 
+                        names_from = cluster_cellType_manual_fine, 
+                        values_from = IFN_score) 
+
+colnames(IFN_fine)[2:ncol(IFN_fine)] <- paste0(colnames(IFN_fine)[2:ncol(IFN_fine)], "_fine_IFNscore")
+
+
+#cluster_cellType_manual_main
+ALL_expr <- AggregateExpression(gex.slim, 
+                                slot = "counts",
+                                group.by = c("cluster_cellType_manual_main", "orig.ident"))
+
+ALL_expr <- as.data.frame(ALL_expr$RNA)
+IFN_expr <- ALL_expr[IFN, ]
+ALL_expr <- ALL_expr[!(rownames(ALL_expr) %in% IFN), ]
+
+IFN_main <- as.data.frame(colSums(IFN_expr, na.rm = TRUE) / colSums(ALL_expr, na.rm = TRUE))
+colnames(IFN_main)[1] <- "IFN_score"
+IFN_main$cluster_cellType_manual_main <- substr(rownames(IFN_main), 1, nchar(rownames(IFN_main)) - 5)
+IFN_main$orig.ident <- substr(rownames(IFN_main), nchar(rownames(IFN_main)) - 3, nchar(rownames(IFN_main)))
+
+IFN_main <- pivot_wider(IFN_main, 
+                        names_from = cluster_cellType_manual_main, 
+                        values_from = IFN_score) 
+
+colnames(IFN_main)[2:ncol(IFN_main)] <- paste0(colnames(IFN_main)[2:ncol(IFN_main)], "_main_IFNscore")
+
+IFN_score <- inner_join(IFN_main, IFN_fine)
+
+
+
+
+```
+
+
+## avg mutated bp per celltype 
+
+```{r}
+
+mu_fine <- gex.slim@meta.data %>% 
+  select(orig.ident, cluster_cellType_manual_fine, mu_freq_total, c_gene_10x) %>%
+  drop_na() %>%
+  group_by(orig.ident, cluster_cellType_manual_fine) %>% 
+  summarise(mu_mean_fine = mean(mu_freq_total, )) %>% 
+  pivot_wider(names_from = cluster_cellType_manual_fine, 
+              values_from = mu_mean_fine,
+              values_fill = 0)
+
+colnames(mu_fine)[2:ncol(mu_fine)] <- paste0(colnames(mu_fine)[2:ncol(mu_fine)], "_fine_mu")
+
+
+mu_main <- gex.slim@meta.data %>% 
+  select(orig.ident, cluster_cellType_manual_main, mu_freq_total, c_gene_10x) %>%
+  drop_na() %>%
+  group_by(orig.ident, cluster_cellType_manual_main) %>% 
+  summarise(mu_mean_main = mean(mu_freq_total, )) %>% 
+  pivot_wider(names_from = cluster_cellType_manual_main, 
+              values_from = mu_mean_main,
+              values_fill = 0)
+
+colnames(mu_main)[2:ncol(mu_main)] <- paste0(colnames(mu_main)[2:ncol(mu_main)], "_main_mu")
+
+mu_freq <- inner_join(mu_main, mu_fine)
+
+
+```
+
+
+## clonotypes % 
+
+```{r}
+
+gex.slim@meta.data$cloneType_airr_short <- gex.slim@meta.data$cloneType_airr
+gex.slim@meta.data$cloneType_airr_short <- gsub(" \\((.*)\\).*", "", gex.slim@meta.data$cloneType_airr_short)
+  
+# clonotypes for cell type fine
+ctype_fine <- gex.slim@meta.data %>% 
+  select(orig.ident, cluster_cellType_manual_fine, cloneType_airr_short, c_gene_10x) %>%
+  drop_na() %>%
+  select(orig.ident, cluster_cellType_manual_fine, cloneType_airr_short)  %>%
+  add_count(orig.ident, 
+            cluster_cellType_manual_fine,
+            cloneType_airr_short,
+            .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_fine) %>%
+  mutate(per =  prop.table(n)) %>%
+  dplyr::select(orig.ident, 
+                cluster_cellType_manual_fine,
+                cloneType_airr_short,
+                per) %>%
+  pivot_wider(names_from = c(cluster_cellType_manual_fine, cloneType_airr_short), 
+              values_from = per,
+              values_fill = 0)
+  
+colnames(ctype_fine)[2:ncol(ctype_fine)] <- paste0(colnames(ctype_fine)[2:ncol(ctype_fine)], "_fine_clono")
+
+
+# clonotypes for cell type main
+ctype_main <- gex.slim@meta.data %>% 
+  select(orig.ident, cluster_cellType_manual_main, cloneType_airr_short, c_gene_10x) %>%
+  drop_na() %>%
+  select(orig.ident, cluster_cellType_manual_main, cloneType_airr_short)  %>%
+  add_count(orig.ident, 
+            cluster_cellType_manual_main,
+            cloneType_airr_short,
+            .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_main) %>%
+  mutate(per =  prop.table(n)) %>%
+  dplyr::select(orig.ident, 
+                cluster_cellType_manual_main,
+                cloneType_airr_short,
+                per) %>%
+  pivot_wider(names_from = c(cluster_cellType_manual_main, cloneType_airr_short), 
+              values_from = per,
+              values_fill = 0)
+  
+colnames(ctype_main)[2:ncol(ctype_main)] <- paste0(colnames(ctype_main)[2:ncol(ctype_main)], "_main_clono")
+
+
+ctype <- inner_join(ctype_main, ctype_fine)
+  
+  
+```
+
+
+## concatenate vars object
+
+```{r}
+
+var_df <- full_join(celltypes, IGHVDJ_cell) %>%
+  full_join(IFN_score) %>%
+  full_join(mu_freq) %>%
+  full_join(ctype)
+
+#saveRDS(var_df, "../results/variables_per_patient.rds")
+#var_df <- readRDS("../results/variables_per_patient.rds")
+  
+```
+
+
+## PCA
+
+```{r}
+
+
+
+```
+
+
+
+## Save rds GEX_xxx
+
+```{r}
+
+#saveRDS(gex, file = "../results/GEX_xxx.rds")
+
+```
+
+
+## Print sessionInfo()
+
+```{r}
+
+sessionInfo()
+
+```
+
+
+

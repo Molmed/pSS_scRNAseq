@@ -1212,6 +1212,7 @@ p2 <- VlnPlot(gex %>%
               slot = "data", 
               log = FALSE, 
               ncol = 4)
+
 ggsave2("../results/VlnPlot_markers_b_features_3.png", 
         p2, 
         width = 20, height = 10, unit = "cm")

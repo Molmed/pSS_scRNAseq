@@ -1,7 +1,6 @@
 #00_dependencies.R
 
 #install.packages('ggthemes', dependencies = TRUE)
-
 #reticulate::conda_export("../results/environment_R_pSSscRNAseq")
 
 ####----- system
@@ -20,6 +19,7 @@ suppressMessages(library(future.apply))
 suppressMessages(library(msa))
 suppressMessages(library(seqinr))
 suppressMessages(library(Matrix))
+suppressMessages(library(readxl))
 
 ####----- plot
 suppressMessages(library(plotly))
@@ -72,7 +72,8 @@ suppressMessages(library(scoper))
 #GSEA
 suppressMessages(library(enrichR))
 suppressMessages(library(fgsea))
-
+suppressMessages(library(EnrichmentBrowser))
+#BiocManager::install("EnrichmentBrowser")
 
 
 #save sessionInfo()

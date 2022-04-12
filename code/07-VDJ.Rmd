@@ -437,7 +437,7 @@ gex <- combineExpression(combined_B, gex)
 ```
 
 
-## add 10x IgH call to Seurat object
+## add IgH call and VDJ genes without allele info to Seurat object
 
 ```{r}
 
@@ -467,6 +467,18 @@ gex <- AddMetaData(gex, igh_10x)
 
 gex$c_gene_10x <- factor(gex$c_gene_10x, levels = sort(unique(gex$c_gene_10x)))
 gex$c_gene_10x <- as.character(gex$c_gene_10x)
+
+
+#get  IGH _call genes without allele info
+gex@meta.data$IGHV <- unlist(lapply(strsplit(gex@meta.data$v_call, 
+                                             split = "\\*"), function(x) {return(x[1])}))
+
+gex@meta.data$IGHD <- unlist(lapply(strsplit(gex@meta.data$d_call, 
+                                             split = "\\*"), function(x) {return(x[1])}))
+
+gex@meta.data$IGHJ <- unlist(lapply(strsplit(gex@meta.data$j_call, 
+                                             split = "\\*"), function(x) {return(x[1])}))
+
 
 ```
 
@@ -822,10 +834,6 @@ ggsave2(paste0("../results/VDJ_geneUsage_alleles_IGHV-69_perCelltypeMain.png"),
           plot_grid(p1, ncol = 1, labels = NULL, align = "h"),
           width = 15, height = 10, unit = "cm")
 
-
-#get v_call genes
-gex@meta.data$IGHV <- unlist(lapply(strsplit(gex@meta.data$v_call, 
-                                             split = "\\*"), function(x) {return(x[1])}))
 
 gex@meta.data$IGHV1_69_umi <- 0
 gex@meta.data$IGHV1_69_umi[which(gex@meta.data$IGHV == "IGHV1-69")] <- gex@meta.data$umi_count[which(gex@meta.data$IGHV == "IGHV1-69")]
@@ -2308,6 +2316,7 @@ table(gex.meta$v_call_tmp, gex.meta$mu_load)
 
 ```
 
+
 ## plot SFig13A, IgH class per cellTypeMain per patient
 
 ```{r}
@@ -2635,16 +2644,16 @@ ggsave2(paste0("../results/SFig14.png"),
 ```{r}
 gex.slim <- gex
 
-print(object.size(gex.slim), humanReadable = TRUE, units = "GB") #4.3 Gb
+print(object.size(gex.slim), humanReadable = TRUE, units = "GB") #7.2 Gb
 
-gex.slim@assays$RNA@counts <- matrix()
+#gex.slim@assays$RNA@counts <- matrix()
 gex.slim@assays$RNA@scale.data <- matrix()
 to_remove <- c("pca_1", "pca_2", 
                "scpred","scpred_projection", 
                "harmony_1", "harmony_2", 
                "umap_1", "umap_2_3d")
 gex.slim@reductions <- gex.slim@reductions[!(names(gex.slim@reductions) %in% to_remove)]
-gex.slim <- gex.slim[, gex.slim$orig.ident != "P024"]
+#gex.slim <- gex.slim[, gex.slim$orig.ident != "P024"]
 print(object.size(gex.slim), humanReadable = TRUE, units = "GB") #4.3 Gb
 #saveRDS(gex.slim, file = "../results/GEX7_BVDJ_slim.rds")
 
@@ -2662,7 +2671,10 @@ gex.slim.fine <- gex.slim[, (gex.slim$cluster_cellType_manual_fine == "DN1_ID3" 
                               gex.slim$cluster_cellType_manual_fine == "Naive_Transitional")]
 print(object.size(gex.slim.fine), humanReadable = TRUE, units = "GB") #3.1 Gb
 
+
 #saveRDS(gex.slim.fine, file = "../results/GEX7_BVDJ_slim_fine.rds")
+
+
 
 ```
 

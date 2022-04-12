@@ -1,0 +1,278 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# Visualization {#Viz}
+
+## Load packages
+
+```{r}
+
+source("./00_dependencies.R")
+
+```
+
+
+## Load Seurat object
+
+```{r}
+gex <- readRDS("../results/GEX7_BVDJ.rds"); gex
+
+gex.slim <- gex
+
+print(object.size(gex.slim), humanReadable = TRUE, units = "GB") #7.2 Gb
+
+gex.slim@assays$RNA@counts <- matrix()
+gex.slim@assays$RNA@scale.data <- matrix()
+to_remove <- c("pca_1", "pca_2", 
+               "scpred","scpred_projection", 
+               "harmony_1", "harmony_2", 
+               "umap_1", "umap_2_3d")
+gex.slim@reductions <- gex.slim@reductions[!(names(gex.slim@reductions) %in% to_remove)]
+print(object.size(gex.slim), humanReadable = TRUE, units = "GB") #3.5 Gb
+gex.slim <- gex.slim[, gex.slim$orig.ident != "P024" &
+                       gex.slim$cluster_cellType_manual_main != "Plasma_cell" &
+                       gex.slim$cluster_cellType_manual_main != "Memory_Platelet" &
+                       gex.slim$cluster_cellType_manual_main != "Memory_stressed"]
+
+print(object.size(gex.slim), humanReadable = TRUE, units = "GB") #3.1 Gb
+
+
+tmp <- data.frame(orig.ident = gex.slim$orig.ident, 
+                  patient_group = gex.slim$patient_group)
+tmp <- tmp[order(tmp$patient_group), ]
+tmp <- unique(tmp)
+gex.slim$orig.ident <- factor(gex.slim$orig.ident, 
+                              levels = tmp$orig.ident)
+
+gex.slim$p_group_main <-  paste(gex.slim$patient_group, gex.slim$cluster_cellType_manual_main, sep = "_")
+gex.slim$p_group_fine <-  paste(gex.slim$patient_group, gex.slim$cluster_cellType_manual_fine, sep = "_")
+
+```
+
+
+## plot IFN receptor gene expression
+
+```{r}
+ifnr <- c("IFNAR1", "IFNAR2", "IFNGR1", "IFNGR2")
+
+p <- DotPlot(gex.slim, 
+        features = ifnr,
+        cols = ,
+        group.by = "p_group_main",
+        dot.scale = 4) +
+  theme_classic() +
+  xlab("") + 
+  ylab("") + 
+  coord_flip() + 
+  theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 1, 
+                                       vjust = 0.5,
+                                       size = 8),
+        panel.grid.major = element_line(colour="grey", size = rel(0.5)))
+
+,
+        split.by = "patient_group"
+
+# ggsave2(paste0("../results/Fig1E_2.png"), 
+#         p, 
+#         width = 12, height = 14, unit = "cm") 
+
+
+p1 <- VlnPlot(gex.slim,
+              features = ifnr,
+              group.by = "cluster_cellType_manual_main",
+              split.by = "patient_group",
+              slot = "data",
+              log = TRUE, 
+              ncol = 4)
+
+ggsave2("../results/VlnPlot_ifnr_genes_2.png", 
+        p1, 
+        width = 20, height = 8, unit = "cm")
+
+
+
+counts <- data.frame(expr = gex.slim@assays$RNA@data[rownames(gex.slim@assays$RNA@data) == "CD40", ],
+                     orig.ident = gex.slim$orig.ident,
+                     patient_group = gex.slim$patient_group,
+                     cluster_cellType_manual_main = gex.slim$cluster_cellType_manual_main,
+                     cluster_cellType_manual_fine = gex.slim$cluster_cellType_manual_fine)
+
+perc <- 
+
+p <- ggplot(counts,
+            aes(x = orig.ident, 
+                y = expr,
+                fill = patient_group)) +
+      theme_classic() +
+      ggtitle("CD40") +
+      theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 0.5, 
+                                       vjust = 0.5), 
+            legend.position = "none") +
+      ylab("expression") +
+      xlab("") +
+      scale_y_continuous()  +
+      scale_fill_discrete(name = "patient group") +
+      facet_grid(cols = vars(cluster_cellType_manual_main)) +
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
+
+
+p <- list()
+for (i in sort(unique(counts$cluster_cellType_manual_fine))){
+p[[i]] <- ggplot(counts[counts$cluster_cellType_manual_fine == i, ], 
+             aes(x = orig.ident, 
+                 y = expr, 
+                 fill = patient_group)) +
+      theme_classic() +
+      ggtitle("") +
+      theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 0.5, 
+                                       vjust = 0.5),
+            axis.title.x = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "none") +
+      ggtitle(i) +
+      scale_y_continuous() +
+      scale_fill_discrete(name = "patient group") +
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)  
+}
+
+y_label <- ggdraw() + 
+  draw_label("mutated bp (%)", 
+             fontface = 'bold',
+             #x = 0.1,
+             hjust = 0.5, 
+             angle = 90,vjust = 0)
+
+p1 <- plot_grid(plotlist = p, ncol = 3, labels = NULL, align = "hv") + 
+          bgcolor("white") + 
+          border("white")
+
+scale_y_continuous(labels = scales::percent_format(accuracy = 1L),
+                         breaks = seq(0, 20, 5), 
+                         limits = c(0, 20))
+
+geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA)
+
+
+
+p2 <- VlnPlot(gex.slim,
+              features = "IFNAR1",
+              group.by = "cluster_cellType_manual_main",
+              split.by = "orig.ident",
+              #split.plot = TRUE,
+              slot = "data",
+              log = TRUE,
+              ncol = 1,
+              fill.by = "patient_group",)
+
+ggsave2("../results/VlnPlot_ifnr_genes_6.png", 
+        p2, 
+        width = 20, height = 8, unit = "cm")
+
+```
+
+
+## plot CD40 gene expression
+
+```{r}
+
+```
+
+
+## patients per cluster
+
+```{r}
+
+table(gex$orig.ident, gex$seurat_clusters)
+table(gex$patient_group, gex$seurat_clusters)
+
+
+mypal <- RColorBrewer::brewer.pal(4,"Set3")
+
+res <- table(list(gex$seurat_clusters, gex$patient_group))
+res <- t(res)
+res <- res[,order(colSums(res),decreasing = T)]
+res2 <- t( t(res) / colSums(res) )
+res3 <- res / rowSums(res)
+res4 <- t( t(res3) / colSums(res3) )
+
+pdf(file = paste0("../results/cluster_patient_abundance.pdf"),
+    width = 8,height = 5,useDingbats = F)
+
+mypar(4,1,mar=c(2,4,0,1))
+
+barplot(res,las=1,ylim=c(0,max(colSums(res))*1.3),col = mypal,ylab = "total cell numbers\n",xaxs="i",yaxs="i",space = 0)
+
+barplot(res3,las=1,ylim=c(0,max(colSums(res3))*1.3),col = mypal,ylab = "percentage\n",xaxs="i",yaxs="i",space = 0)
+
+barplot(res2*100,las=1,col=mypal,ylab="percentage\n",xaxs="i",yaxs="i",space = 0)
+
+barplot(res4*100,las=1,col=mypal,ylab="percentage\n",xaxs="i",yaxs="i",space = 0)
+
+legend("topright",legend = rownames(res), bty = "n",fill = mypal)
+
+dev.off()
+
+
+DimPlot(gex, split.by = "patient_group", reduction = "umap_2", ncol = 2)
+
+
+#Four non-overlapping groups
+#1. SSA+/SSB+
+#2. SSA+/SSB-
+#3. SSA-/SSB-
+#4. CTRL
+
+
+```
+
+
+## 
+
+```{r}
+
+
+
+```
+
+
+## 
+
+```{r}
+
+
+
+```
+
+
+
+
+## Save rds GEX_xxx
+
+```{r}
+
+saveRDS(gex, file = "../results/GEX_xxx.rds")
+
+```
+
+
+## Print sessionInfo()
+
+```{r}
+
+sessionInfo()
+
+```
+
+
+
