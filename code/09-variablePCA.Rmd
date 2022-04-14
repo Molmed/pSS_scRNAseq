@@ -52,7 +52,6 @@ pheno <- pheno[, c("Single cell_Sample_id_publ",
                    "Arthritis",
                    "Purpura",
                    "Major salivary gland swelling",
-                   "Lymphadenopathy",
                    "Hypothyreoidism",
                    "Treatment at B cell sampling, HCQ",
                    "Prednisolone")]
@@ -60,28 +59,68 @@ pheno <- pheno[, c("Single cell_Sample_id_publ",
 colnames(pheno)[1] <- "orig.ident"
 
 pheno <- pheno %>% add_row(orig.ident = c("C001", "C002", "C003", "C004")) %>% arrange(orig.ident)
+colnames(pheno) <- gsub(" ", "_", colnames(pheno))
 
 
-# pheno <- read.table("../suppl/pheno/pSS_pheno_211208.csv", sep = ",", header = TRUE)
-# colnames(pheno)[c(1, 3)] <- c("Sample_id", "orig.ident")
-# pheno$orig.ident <- gsub("P007[ab]", "P007", pheno$orig.ident)
-# pheno$orig.ident <- gsub("P008[ab]", "P008", pheno$orig.ident)
-# pheno <- unique(pheno[, c(1, 3, 5, 7:8, 11:12)])
-# head(pheno); dim(pheno)
-# 
-# pheno$patient_group <- paste0(ifelse(pheno$SSA == "YES", "SSA", ""), 
-#                             "_", 
-#                             ifelse(pheno$SSB == "YES", "SSB", ""))
-# pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
-# pheno$patient_group <- names(pat_annot)[match(pheno$patient_group, pat_annot)]
-# pheno$patient_group[grep("^C00", pheno$orig.ident) ] <- "CTRL"
-# pheno$patient_group <- factor(pheno$patient_group, levels = c("CTRL", "DNEG", "SSA", "SSAB"))
+## cleanup pheno data
+pheno <- pheno[, c(-2,-3,-14)]
+
+pheno$arthralgia <- ifelse(grepl("arthralgia", pheno$First_symptoms), "YES", "NO")
+pheno$arthritis <- ifelse(grepl("arthritis", pheno$First_symptoms), "YES", "NO")
+pheno$hemiparesis <- ifelse(grepl("hemiparesis", pheno$First_symptoms), "YES", "NO")
+pheno$myalgia <- ifelse(grepl("myalgia", pheno$First_symptoms), "YES", "NO")
+pheno$sicca <- ifelse(grepl("sicc", pheno$First_symptoms), "YES", "NO")
+pheno$erythema_nodosum <- ifelse(grepl("erythema", pheno$First_symptoms), "YES", "NO")
+pheno$major_salivary_gland_swelling <- ifelse(grepl("salivary", pheno$First_symptoms), "YES", "NO")
+pheno$Raynaud <- ifelse(grepl("Raynaud", pheno$First_symptoms), "YES", "NO")
+pheno$pleuritis_entesitis_tendinitis <- ifelse(grepl("pleuritis", pheno$First_symptoms), "YES", "NO")
+
+pheno <- pheno[, c(-2)]
+pheno[is.na(pheno)] <- "NO"
+
+pheno <- cbind(pheno, pheno2$patient_group)
+colnames(pheno)[30] <- "patient_group"
+
+pheno <- pheno[-28,] # remove P024
+#remove Lymphadenopathy
+
+
+pheno_tmp <- pheno
+pheno <- pheno_tmp
+
+pheno[pheno == "NO"] <- 0
+pheno[pheno == "YES"] <- 1
+pheno[pheno == "MD"] <- NA
+
+rownames(pheno) <- pheno$orig.ident
+pheno[, 2:29] <- sapply(pheno[, 2:29], as.numeric)
+str(pheno)
+colnames(pheno)
+
+
+pheno2 <- read.table("../suppl/pheno/pSS_pheno_211208.csv", sep = ",", header = TRUE)
+colnames(pheno2)[c(1, 3)] <- c("Sample_id", "orig.ident")
+pheno2$orig.ident <- gsub("P007[ab]", "P007", pheno2$orig.ident)
+pheno2$orig.ident <- gsub("P008[ab]", "P008", pheno2$orig.ident)
+pheno2 <- unique(pheno2[, c(1, 3, 5, 7:8, 11:12)])
+head(pheno2); dim(pheno2)
+
+pheno2$patient_group <- paste0(ifelse(pheno2$SSA == "YES", "SSA", ""),
+                            "_",
+                            ifelse(pheno2$SSB == "YES", "SSB", ""))
+pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
+pheno2$patient_group <- names(pat_annot)[match(pheno2$patient_group, pat_annot)]
+pheno2$patient_group[grep("^C00", pheno2$orig.ident) ] <- "CTRL"
+pheno2$patient_group <- factor(pheno2$patient_group, levels = c("CTRL", "DNEG", "SSA", "SSAB"))
+
+pheno2 <- pheno2[order(pheno2$orig.ident),]
+
 
 
 ```
 
 
-## extract meta data for relevant cell types
+## reduce gex size
 
 ```{r}
 # gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
@@ -120,7 +159,7 @@ gex.slim <- gex.slim[, (gex.slim$cluster_cellType_manual_fine == "DN1_ID3" |
 ```
 
 
-## Extract cell type frequencies per patient
+## celltype frequencies per patient
 
 ```{r}
 
@@ -218,7 +257,7 @@ IGHV_main <- dplyr::select(gex.slim@meta.data,
 
 colnames(IGHV_main)[2:ncol(IGHV_main)] <-
   paste0(colnames(IGHV_main)[2:ncol(IGHV_main)], "_main")
-
+ 
 # IGHD gene per celltypeFine
 IGHD_fine <- dplyr::select(gex.slim@meta.data,
                            orig.ident,
@@ -418,12 +457,10 @@ colnames(IFN_main)[2:ncol(IFN_main)] <- paste0(colnames(IFN_main)[2:ncol(IFN_mai
 IFN_score <- inner_join(IFN_main, IFN_fine)
 
 
-
-
 ```
 
 
-## avg mutated bp per celltype 
+## mutated VDJ bp per celltype 
 
 ```{r}
 
@@ -510,8 +547,8 @@ colnames(ctype_main)[2:ncol(ctype_main)] <- paste0(colnames(ctype_main)[2:ncol(c
 
 
 ctype <- inner_join(ctype_main, ctype_fine)
-  
-  
+
+
 ```
 
 
@@ -526,7 +563,56 @@ var_df <- full_join(celltypes, IGHVDJ_cell) %>%
 
 #saveRDS(var_df, "../results/variables_per_patient.rds")
 #var_df <- readRDS("../results/variables_per_patient.rds")
+
+var_main <- full_join(cells_main, IGHV_main) %>%
+  full_join(IGHD_main) %>%
+  full_join(IGHJ_main) %>%
+  full_join(c_gene_10x_main) %>%
+  full_join(mu_main) %>%
+  full_join(ctype_main)
   
+var_main <- var_main[-28, ]
+
+var_fine <- full_join(cells_fine, IGHV_fine) %>%
+  full_join(IGHD_fine) %>%
+  full_join(IGHJ_fine) %>%
+  full_join(c_gene_10x_fine) %>%
+  full_join(mu_fine) %>%
+  full_join(ctype_fine)
+
+
+```
+
+
+## test PCA package that can handle NAs (ade4)
+
+```{r}
+
+
+library(ade4)
+
+test_main <- full_join(pheno[, 1:29], var_main)
+rownames(test_main) <- test_main$orig.ident
+
+test <- nipals(test_main[,2:ncol(test_main)])
+
+par(mfrow = c(1, 2),mar = c(4, 4, 1, 1))
+
+#dev.off()
+plot(test$li)
+text(test$li[, 1:2], labels = rownames(test$li[, 1:2]), col = as.numeric(factor(pheno$patient_group)))
+
+test$co
+plot(test$c1)
+
+
+
+
+
+# library(missMDA)
+# install.packages("missMDA")
+# test2 <- imputePCA(pheno[, 2:30], method = "EM", ncp = 1)
+
 ```
 
 
@@ -534,6 +620,63 @@ var_df <- full_join(celltypes, IGHVDJ_cell) %>%
 
 ```{r}
 
+
+#pheno$patient_group
+#pheno <- pheno[-28,]
+
+
+var_df <- as.data.frame(var_df)
+rownames(var_df) <- var_df$orig.ident
+var_df <- var_df[,-1]
+var_df <- var_df[! rownames(var_df) == "P024", ]
+
+
+var_df[is.na(var_df)] <- 0
+
+m <- apply(var_df, 2, function(x){glm(x ~pheno$patient_group)} ) 
+n <- lapply(m, summary)
+o <- t(sapply(n, function(x){x$coefficients[2:4, 4]}))
+
+#selecting variables with significant differences
+sell1 <- rowMin(o)
+sell <- rownames(o)[sell1 < 0.05]
+
+
+# n[[1]]$coefficients[2:4, 4]
+# summary(m[[1]])
+
+head(var_df)
+sum(is.na(var_df))
+pc <- prcomp(as.matrix(var_df[, sell]), center = TRUE, scale. = TRUE)
+par(mfrow = c(1, 2),mar = c(4, 4, 1, 1))
+
+plot(pc$x[, 1:2])
+text(pc$x[, 1:2], labels = rownames(pc$x[, 1:2]), col = as.numeric(factor(pheno$patient_group)))
+
+plot(pc$x[, 3:4])
+text(pc$x[, 3:4], labels = rownames(pc$x[, 3:4]), col = as.numeric(factor(pheno$patient_group)))
+
+plot(pc$sdev)
+
+plot(pc$x[, 2:3])
+text(pc$x[, 2:3], labels = rownames(pc$x[, 2:3]), col = as.numeric(factor(pheno$patient_group)))
+
+
+#plot loadings
+par(mfrow = c(1, 2),mar = c(25, 4, 1, 1))
+barplot(sort(pc$rotation[,1])[1:20], las = 2)
+barplot(sort(pc$rotation[,1], T)[1:20], las = 2)
+
+par(mfrow = c(1, 2),mar = c(25, 4, 1, 1))
+barplot(sort(pc$rotation[,4])[1:20], las = 2)
+barplot(sort(pc$rotation[,4], T)[1:20], las = 2)
+
+
+
+
+
+
+head(pc$x[, 1:2])
 
 
 ```
