@@ -482,7 +482,7 @@ gex@meta.data$IGHJ <- unlist(lapply(strsplit(gex@meta.data$j_call,
 
 ```
 
-## create and subset data frame based on gex@metafor plotting
+## subset gex@meta for plotting
 
 ```{r}
 
@@ -507,7 +507,7 @@ table(gex.meta$orig.ident, gex.meta$cluster_cellType_manual_fine)
 
 
 
-## Analyse and visualize immcantation and scRepertoir output
+## immcantation and scRepertoir output visualization
 ### VDJ gene usage
 #### plot FiG3B VDJ correlation and Supplementary Figure S11A-C
 
@@ -1478,6 +1478,8 @@ tmp <- tmp[rowSums(tmp > 0) > 1, ]
  # outfile <- gex.meta[gex.meta$cluster_no_airr %in% rownames(tmp), c("barcode", "orig.ident", "cluster_cellType_manual_fine", "cluster_cellType_manual_main", "cluster_no_airr", "v_call", "d_call", "j_call", "c_call", "IGHV", "c_gene_10x", "junction", "junction_aa", "cdr3", "patient_group", "mu_load", "mu_freq_total")]
  # write.csv(outfile, "../results/1799_clonotypes.csv", sep = ",", col.names = TRUE, row.names = FALSE, quote = TRUE)
 
+#tmp <- read.csv("../results/1799_clonotypes.csv")
+
 #make the clonotype data frame per sample binary
 tmp <- (tmp > 0) * 1
 
@@ -1555,7 +1557,53 @@ sum(table(clr[p1$tree_row$order]))-sum(table(clr[p1$tree_row$order])[c(1,4,6,8,9
 #SSA/SSAB clusters
 sum(table(clr[p1$tree_row$order])[c(5)]) #[1] 457
 
-```
+
+
+
+#### ---- venn diagram
+tmp2 <- as.data.frame(t(rowsum(t(tmp), group = pheno$patient_group)))
+tmp2 <- as.data.frame((tmp2 > 0) * 1)
+tmp2$ident <- as.character(rownames(tmp2))
+
+venn.list <- list()[1:4]
+names(venn.list) <- colnames(tmp2)[1:4]
+for (i in colnames(tmp2)[1:4]){
+  for (j in 1:nrow(tmp2))
+  venn.list[[i]][j] <- ifelse(tmp2[j, i] == 1, tmp2$ident[j], NA)
+  #venn.list[[i]][venn.list[[i]] == "0"] <- NA
+}
+
+ann_cols <- list(patient_group = c(CTRL = "#F8766D", 
+                                     DNEG = "#7CAE00", 
+                                     SSA = "#00BFC4", 
+                                     SSAB = "#C77CFF"))
+venn.diagram(venn.list, 
+             filename = "../results/Fig5B_I.png", 
+             na = "none", 
+             print.mode = c("raw", "percent"), 
+             category.names = names(venn.list),
+             disable.logging = TRUE,
+             sigdigs = 1,
+             cat.fontfamily = "sans",
+             fontfamily ="sans",
+             fill = ann_cols$patient_group,
+             height = 15,
+             width = 15, 
+             resolution = 200,
+             units = "cm",
+             imagetype = "png",
+             main = paste0(nrow(tmp2), " unique clonotypes present in ≥ 2 samples"),
+             #sub = paste(""),
+             main.fontfamily = "sans",
+             main.cex = 1.5,
+             cex = 1,
+             cat.cex =1.2
+             #sub.fontfamily = "sans"
+             )
+
+
+
+
 
 
 ### clonotype hamming distance
@@ -2209,15 +2257,18 @@ p1 <- DimPlot(gex,
               reduction = "umap_2", pt.size = 0.6, ncol = 2, 
               raster = TRUE,
               order = TRUE,
-              cols = c(brewer.pal(9, "Set3"), "grey")) + 
-              theme(legend.position = "none") + ggtitle("IGH c gene") + 
+              cols = c(brewer.pal(9, "Set3")),
+              na.value = "white") + 
+  ggtitle("IGH constant gene") + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
     theme(axis.text = element_blank(),
-          axis.ticks = element_blank())
+          axis.ticks = element_blank(),
+          legend.position = "none")
 
-p2 <- ggplot(gex.meta, aes(x = cluster_cellType_manual_fine, 
-                           fill = c_gene_10x)) +
+p2 <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)), 
+             aes(x = cluster_cellType_manual_fine,
+                 fill = c_gene_10x)) +
       theme_classic() +
       geom_bar(position = "fill") + 
       ylab("proportion of cells") + 
@@ -2226,7 +2277,7 @@ p2 <- ggplot(gex.meta, aes(x = cluster_cellType_manual_fine,
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
       scale_fill_brewer(palette="Set3", na.value="grey", name = "c gene",  drop = FALSE)
 
-ggsave2("../results/Fig3A.png", 
+ggsave2("../results/Fig3A_2.png", 
         plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
           bgcolor("white") + 
           border("white"), 
@@ -2248,16 +2299,18 @@ p1 <- DimPlot(gex,
                         "Small (1 < X <= 5)",
                         "Medium (5 < X <= 20)",
                         "Large (20 < X <= 100)"), 
-              cols = c(brewer.pal(4, "Dark2"), "grey")) +
-              theme(legend.position = "none") +
+              cols = c(brewer.pal(4, "Dark2")),
+              na.value = "white") +
   ggtitle("clonotype") +  
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
   theme(axis.text = element_blank(),
-        axis.ticks = element_blank())
+        axis.ticks = element_blank(),
+        legend.position = "none")
 
-p2 <- ggplot(gex.meta, aes(x = cluster_cellType_manual_fine, 
-                                fill = cloneType_airr)) +
+p2 <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)), 
+             aes(x = cluster_cellType_manual_fine, 
+                 fill = cloneType_airr)) +
       theme_classic() +
       geom_bar(position = "fill") + 
       ylab("proportion of cells") + 
@@ -2266,11 +2319,13 @@ p2 <- ggplot(gex.meta, aes(x = cluster_cellType_manual_fine,
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
       scale_fill_brewer(palette="Dark2", na.value = "grey", name = "clonotype")
 
-ggsave2("../results/Fig3D.png", 
+ggsave2("../results/Fig3D_2.png", 
         plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
           bgcolor("white") + 
           border("white"), 
         width = 30, height = 14, unit = "cm")
+
+table(gex$orig.ident, gex$cloneType_airr)
 
 ```
 
@@ -2283,15 +2338,19 @@ p1 <- DimPlot(gex,
               group.by = "mu_load", 
               split.by = "patient_group", 
               reduction = "umap_2", pt.size = 0.6, ncol = 2, 
-              raster = TRUE, cols = c(brewer.pal(4, "Dark2"), "grey")) +
-              theme(legend.position = "none") +
-              ggtitle("Mutation load") +
+              raster = TRUE, 
+              cols = c(brewer.pal(4, "Dark2")),
+              order = c("unmutated", "low", "med", "high", NA),
+              na.value = "white") +
+  ggtitle("Mutation load") +
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
-    theme(axis.text = element_blank(),
-          axis.ticks = element_blank())
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "none")
 
-p2 <- ggplot(gex.meta, 
+
+p2 <- ggplot(gex.meta %>% filter(!is.na(mu_load)), 
              aes(x = cluster_cellType_manual_fine, 
                  fill = mu_load)) +
           theme_classic() +
@@ -2302,7 +2361,7 @@ p2 <- ggplot(gex.meta,
           theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
           scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "Mutation load")
 
-ggsave2("../results/Fig4A_2.png", 
+ggsave2("../results/Fig4A_4.png", 
         plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
           bgcolor("white") + 
           border("white"), 
@@ -2330,7 +2389,7 @@ tmp <- unique(tmp)
 gex.meta$orig.ident <- factor(gex.meta$orig.ident, 
                               levels = tmp$orig.ident)
 
-p <- ggplot(gex.meta,
+p <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)),
             aes(x = orig.ident,
                 fill = c_gene_10x)) +
       theme_classic() +
@@ -2386,7 +2445,8 @@ gex.meta$orig.ident <- factor(gex.meta$orig.ident,
 
 p <- list()
 for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
-p[[i]] <-  ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ], 
+p[[i]] <-  ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ] %>% 
+                    filter(!is.na(c_gene_10x)), 
                   aes(x = orig.ident,
                       fill = c_gene_10x)) +
       theme_classic() +

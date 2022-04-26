@@ -47,6 +47,9 @@ gex.slim$orig.ident <- factor(gex.slim$orig.ident,
                               levels = tmp$orig.ident)
 
 gex.slim$p_group_main <-  paste(gex.slim$patient_group, gex.slim$cluster_cellType_manual_main, sep = "_")
+
+gex.slim$p_group_main_inv <-  paste(gex.slim$cluster_cellType_manual_main, gex.slim$patient_group, sep = "_")
+
 gex.slim$p_group_fine <-  paste(gex.slim$patient_group, gex.slim$cluster_cellType_manual_fine, sep = "_")
 
 ```
@@ -60,8 +63,8 @@ ifnr <- c("IFNAR1", "IFNAR2", "IFNGR1", "IFNGR2")
 p <- DotPlot(gex.slim, 
         features = ifnr,
         cols = ,
-        group.by = "p_group_main",
-        dot.scale = 4) +
+        group.by = "p_group_main_inv",
+        dot.scale = 4, scale = FALSE) +
   theme_classic() +
   xlab("") + 
   ylab("") + 

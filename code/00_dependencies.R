@@ -20,6 +20,7 @@ suppressMessages(library(msa))
 suppressMessages(library(seqinr))
 suppressMessages(library(Matrix))
 suppressMessages(library(readxl))
+suppressMessages(library(nipals))
 
 ####----- plot
 suppressMessages(library(plotly))
@@ -29,6 +30,8 @@ suppressMessages(library(rafalib))
 suppressMessages(library(RColorBrewer))
 suppressMessages(library(ggthemes))
 suppressMessages(library(scales))
+library(VennDiagram)
+library(ggrepel)
 
 # remotes::install_github("czarnewski/niceRplots")
 library(niceRplots)
@@ -41,7 +44,6 @@ suppressMessages(library(ggpubr))
 suppressMessages(library(gridExtra))
 suppressMessages(library(scales)) #scales for plotting
 #suppressMessages(library(lessR))
-
 
 ####----- scRNAseq
 suppressMessages(library(Seurat)) #read and process scRNAseq data

@@ -23,6 +23,45 @@ gex <- readRDS("../results/GEX7_BVDJ.rds")
 ```
 
 
+## reduce gex size
+
+```{r}
+# gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
+#                           gex$cluster_cellType_manual_fine == "DN2" |
+#                           gex$cluster_cellType_manual_fine == "DN2_CXCR3" |
+#                           gex$cluster_cellType_manual_fine == "DN2_ITGAX" |
+#                           gex$cluster_cellType_manual_fine == "DN4" |
+#                           gex$cluster_cellType_manual_fine == "Memory_Cl" |
+#                           gex$cluster_cellType_manual_fine == "Memory_IgM" |
+#                           gex$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
+#                           gex$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
+#                           gex$cluster_cellType_manual_fine == "Naive" |
+#                           gex$cluster_cellType_manual_fine == "Naive_IFN" |
+#                           gex$cluster_cellType_manual_fine == "Naive_Transitional"), ]
+
+gex.slim <- gex; rm(gex)
+gex.slim@assays$RNA@scale.data <- matrix()
+to_remove <- c("pca_1", "pca_2", "scpred", "scpred_projection", 
+               "harmony_1", "harmony_2", "umap_1", "umap_2_3d")
+gex.slim@reductions <- gex.slim@reductions[!(names(gex.slim@reductions) %in% to_remove)]
+
+gex.slim <- gex.slim[, (gex.slim$cluster_cellType_manual_fine == "DN1_ID3" |
+                        gex.slim$cluster_cellType_manual_fine == "DN2" |
+                        gex.slim$cluster_cellType_manual_fine == "DN2_CXCR3" |
+                        gex.slim$cluster_cellType_manual_fine == "DN2_ITGAX" |
+                        gex.slim$cluster_cellType_manual_fine == "DN4" |
+                        gex.slim$cluster_cellType_manual_fine == "Memory_Cl" |
+                        gex.slim$cluster_cellType_manual_fine == "Memory_IgM" |
+                        gex.slim$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
+                        gex.slim$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
+                        gex.slim$cluster_cellType_manual_fine == "Naive" |
+                        gex.slim$cluster_cellType_manual_fine == "Naive_IFN" |
+                        gex.slim$cluster_cellType_manual_fine == "Naive_Transitional")]
+
+
+```
+
+
 ## Patient Meta Data
 
 ```{r}
@@ -78,26 +117,6 @@ pheno$pleuritis_entesitis_tendinitis <- ifelse(grepl("pleuritis", pheno$First_sy
 pheno <- pheno[, c(-2)]
 pheno[is.na(pheno)] <- "NO"
 
-pheno <- cbind(pheno, pheno2$patient_group)
-colnames(pheno)[30] <- "patient_group"
-
-pheno <- pheno[-28,] # remove P024
-#remove Lymphadenopathy
-
-
-pheno_tmp <- pheno
-pheno <- pheno_tmp
-
-pheno[pheno == "NO"] <- 0
-pheno[pheno == "YES"] <- 1
-pheno[pheno == "MD"] <- NA
-
-rownames(pheno) <- pheno$orig.ident
-pheno[, 2:29] <- sapply(pheno[, 2:29], as.numeric)
-str(pheno)
-colnames(pheno)
-
-
 pheno2 <- read.table("../suppl/pheno/pSS_pheno_211208.csv", sep = ",", header = TRUE)
 colnames(pheno2)[c(1, 3)] <- c("Sample_id", "orig.ident")
 pheno2$orig.ident <- gsub("P007[ab]", "P007", pheno2$orig.ident)
@@ -116,46 +135,28 @@ pheno2$patient_group <- factor(pheno2$patient_group, levels = c("CTRL", "DNEG", 
 pheno2 <- pheno2[order(pheno2$orig.ident),]
 
 
+pheno <- cbind(pheno, pheno2$patient_group)
+colnames(pheno)[30] <- "patient_group"
 
-```
-
-
-## reduce gex size
-
-```{r}
-# gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
-#                           gex$cluster_cellType_manual_fine == "DN2" |
-#                           gex$cluster_cellType_manual_fine == "DN2_CXCR3" |
-#                           gex$cluster_cellType_manual_fine == "DN2_ITGAX" |
-#                           gex$cluster_cellType_manual_fine == "DN4" |
-#                           gex$cluster_cellType_manual_fine == "Memory_Cl" |
-#                           gex$cluster_cellType_manual_fine == "Memory_IgM" |
-#                           gex$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
-#                           gex$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
-#                           gex$cluster_cellType_manual_fine == "Naive" |
-#                           gex$cluster_cellType_manual_fine == "Naive_IFN" |
-#                           gex$cluster_cellType_manual_fine == "Naive_Transitional"), ]
-
-gex.slim <- gex; rm(gex)
-gex.slim@assays$RNA@scale.data <- matrix()
-to_remove <- c("pca_1", "pca_2", "scpred", "scpred_projection", 
-               "harmony_1", "harmony_2", "umap_1", "umap_2_3d")
-gex.slim@reductions <- gex.slim@reductions[!(names(gex.slim@reductions) %in% to_remove)]
-
-gex.slim <- gex.slim[, (gex.slim$cluster_cellType_manual_fine == "DN1_ID3" |
-                              gex.slim$cluster_cellType_manual_fine == "DN2" |
-                              gex.slim$cluster_cellType_manual_fine == "DN2_CXCR3" |
-                              gex.slim$cluster_cellType_manual_fine == "DN2_ITGAX" |
-                              gex.slim$cluster_cellType_manual_fine == "DN4" |
-                              gex.slim$cluster_cellType_manual_fine == "Memory_Cl" |
-                              gex.slim$cluster_cellType_manual_fine == "Memory_IgM" |
-                              gex.slim$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
-                              gex.slim$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
-                              gex.slim$cluster_cellType_manual_fine == "Naive" |
-                              gex.slim$cluster_cellType_manual_fine == "Naive_IFN" |
-                              gex.slim$cluster_cellType_manual_fine == "Naive_Transitional")]
+pheno <- pheno[-28,] # remove P024
 
 
+#pheno_tmp <- pheno
+#pheno <- pheno_tmp
+
+pheno[pheno == "NO"] <- 0
+pheno[pheno == "YES"] <- 1
+pheno[pheno == "MD"] <- NA
+
+rownames(pheno) <- pheno$orig.ident
+pheno[, 2:29] <- sapply(pheno[, 2:29], as.numeric)
+#colnames(pheno); colSums(pheno[, 2:29], na.rm = T)
+head(pheno)
+
+#remove variables only present in one sample
+pheno <- pheno[, c(1, (1 + which(colSums(pheno[,2:29], na.rm = TRUE) > 2, )), 30)]
+
+str(pheno)
 ```
 
 
@@ -211,6 +212,24 @@ celltypes <- inner_join(cells_main, cells_fine)
 
 ```{r}
 
+# IGHV
+IGHV <- dplyr::select(gex.slim@meta.data,
+                           orig.ident,
+                           IGHV) %>%
+  add_count(orig.ident,
+            IGHV,
+            .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, IGHV, per) %>%
+  pivot_wider(
+    names_from = c(IGHV),
+    values_from = per,
+    values_fill = 0
+  )
+
 # IGHV gene per celltypeFine
 IGHV_fine <- dplyr::select(gex.slim@meta.data,
                            orig.ident,
@@ -258,6 +277,25 @@ IGHV_main <- dplyr::select(gex.slim@meta.data,
 colnames(IGHV_main)[2:ncol(IGHV_main)] <-
   paste0(colnames(IGHV_main)[2:ncol(IGHV_main)], "_main")
  
+
+# IGHD
+IGHD <- dplyr::select(gex.slim@meta.data,
+                           orig.ident,
+                           IGHD) %>%
+  add_count(orig.ident,
+            IGHD,
+            .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, IGHD, per) %>%
+  pivot_wider(
+    names_from = c(IGHD),
+    values_from = per,
+    values_fill = 0
+  )
+
 # IGHD gene per celltypeFine
 IGHD_fine <- dplyr::select(gex.slim@meta.data,
                            orig.ident,
@@ -298,6 +336,24 @@ IGHD_main <- dplyr::select(gex.slim@meta.data,
 colnames(IGHD_main)[2:ncol(IGHD_main)] <-
   paste0(colnames(IGHD_main)[2:ncol(IGHD_main)], "_main")
 
+# IGHJ
+IGHJ <- dplyr::select(gex.slim@meta.data,
+                           orig.ident,
+                           IGHJ) %>%
+  add_count(orig.ident,
+            IGHJ,
+            .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, IGHJ, per) %>%
+  pivot_wider(
+    names_from = c(IGHJ),
+    values_from = per,
+    values_fill = 0
+  )
+
 
 # IGHJ gene per celltypeFine
 IGHJ_fine <- dplyr::select(gex.slim@meta.data,
@@ -320,7 +376,7 @@ colnames(IGHJ_fine)[2:ncol(IGHJ_fine)] <-
   paste0(colnames(IGHJ_fine)[2:ncol(IGHJ_fine)], "_fine")
 
 
-# IGHJ gene per celltypeMine
+# IGHJ gene per celltypeMain
 IGHJ_main <- dplyr::select(gex.slim@meta.data,
                            orig.ident,
                            cluster_cellType_manual_main,
@@ -339,6 +395,24 @@ IGHJ_main <- dplyr::select(gex.slim@meta.data,
 
 colnames(IGHJ_main)[2:ncol(IGHJ_main)] <-
   paste0(colnames(IGHJ_main)[2:ncol(IGHJ_main)], "_main")
+
+# IGHC
+c_gene_10x <- dplyr::select(gex.slim@meta.data,
+                           orig.ident,
+                           c_gene_10x) %>%
+  add_count(orig.ident,
+            c_gene_10x,
+            .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  dplyr::select(orig.ident, c_gene_10x, per) %>%
+  pivot_wider(
+    names_from = c(c_gene_10x),
+    values_from = per,
+    values_fill = 0
+  )
 
 
 # IGHC gene per celltypeFine
@@ -500,6 +574,26 @@ mu_freq <- inner_join(mu_main, mu_fine)
 gex.slim@meta.data$cloneType_airr_short <- gex.slim@meta.data$cloneType_airr
 gex.slim@meta.data$cloneType_airr_short <- gsub(" \\((.*)\\).*", "", gex.slim@meta.data$cloneType_airr_short)
   
+
+# clonotypes for all cells per patients 
+ctype_all <- gex.slim@meta.data %>% 
+  select(orig.ident, cloneType_airr_short, c_gene_10x) %>%
+  drop_na() %>%
+  select(orig.ident, cloneType_airr_short)  %>%
+  add_count(orig.ident, 
+            cloneType_airr_short,
+            .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident) %>%
+  mutate(per =  prop.table(n)) %>%
+  dplyr::select(orig.ident,
+                cloneType_airr_short,
+                per) %>%
+  pivot_wider(names_from = c(cloneType_airr_short), 
+              values_from = per,
+              values_fill = 0)
+
+
 # clonotypes for cell type fine
 ctype_fine <- gex.slim@meta.data %>% 
   select(orig.ident, cluster_cellType_manual_fine, cloneType_airr_short, c_gene_10x) %>%
@@ -556,127 +650,272 @@ ctype <- inner_join(ctype_main, ctype_fine)
 
 ```{r}
 
-var_df <- full_join(celltypes, IGHVDJ_cell) %>%
-  full_join(IFN_score) %>%
-  full_join(mu_freq) %>%
-  full_join(ctype)
+var_df <- 
+  full_join(cells_fine, IGHV) %>%
+  full_join(IGHD) %>%
+  full_join(IGHJ) %>%
+  full_join(IFN_main) %>%
+  full_join(c_gene_10x_fine) %>%
+  full_join(mu_fine) %>%
+  full_join(ctype_all)
+
+var_df <- var_df[-28, ]
+var_df[is.na(var_df)] <- 0
 
 #saveRDS(var_df, "../results/variables_per_patient.rds")
 #var_df <- readRDS("../results/variables_per_patient.rds")
 
-var_main <- full_join(cells_main, IGHV_main) %>%
-  full_join(IGHD_main) %>%
-  full_join(IGHJ_main) %>%
-  full_join(c_gene_10x_main) %>%
-  full_join(mu_main) %>%
-  full_join(ctype_main)
+colnames(var_df)
+
+#### !!!! Check column naming !!!!
+
+
+```
+
+
+## PCA (nipals)
+
+```{r}
+
+
+# main
+
+#selecting variables with significant differences between patient groups
+m <- apply(var_df[, 2:ncol(var_df)], 2, function(x){glm(x ~pheno$patient_group)} ) 
+m <- lapply(m, summary)
+m <- t(sapply(m, function(x){x$coefficients[2:4, 4]}))
+
+sell1 <- rowMin(m)
+sell <- rownames(m)[sell1 < 0.05]
+colnames(pheno)
+pc_df <- full_join(pheno[, c(1:2, 8:(ncol(pheno)-1))], var_df[, c("orig.ident", sell)])
+
+rownames(pc_df) <- pc_df$orig.ident
+
+# nipals package
+pc_out <- nipals::nipals(pc_df[, 2:ncol(pc_df)], 
+                       ncomp = 4, 
+                       center = TRUE, 
+                       scale = TRUE, 
+                       fitted = FALSE, 
+                       maxiter = 500, 
+                       tol = 1e-9, 
+                       gramschmidt = FALSE)
+
+saveRDS(pc_out, "../results/pc_out_var_df.rds")
+
+
+```
+
+
+## plot PCA
+
+```{r}
+
+pc_out_sc <- as.data.frame(pc_out$scores)
+pc_out_sc$orig.ident <- rownames(pc_out_sc)
+pc_out_sc$patient_group <- pheno$patient_group
+
+pc_out_ld <- as.data.frame(pc_out$loadings)
+pc_out_ld$var <- rownames(pc_out_ld)
+
+  #plot scores    
+  p1.1 <- ggplot(pc_out_sc) + 
+    geom_text_repel(size = 2.5,
+                     aes(x = PC1, 
+                         y = PC2, 
+                         label = orig.ident, 
+                         color = patient_group)) +
+    xlab(paste0("PC1", " (", round(pc_out$eig[1], digits = 1), "%)")) +
+    ylab(paste0("PC2", " (", round(pc_out$eig[2], digits = 1), "%)")) +
+    geom_point(aes(x = PC1, y = PC2, color = patient_group)) +
+    theme_classic() +
+    geom_hline(yintercept = 0, linetype = 2, alpha = 0.4, size = 0.5) + 
+    geom_vline(xintercept = 0, linetype = 2, alpha = 0.4, size = 0.5) +
+    theme(legend.position = "none")
   
-var_main <- var_main[-28, ]
+  p1.2 <- ggplot(pc_out_sc) + 
+    geom_text_repel(size = 2.5,
+                     aes(x = PC3, 
+                         y = PC4, 
+                         label = orig.ident, 
+                         color = patient_group)) +
+    xlab(paste0("PC3", " (", round(pc_out$eig[3], digits = 1), "%)")) +
+    ylab(paste0("PC4", " (", round(pc_out$eig[4], digits = 1), "%)")) +
+    geom_point(aes(x = PC3, y = PC4, color = patient_group)) +
+    geom_hline(yintercept = 0, linetype = 2, alpha = 0.4, size = 0.5) + 
+    geom_vline(xintercept = 0, linetype = 2, alpha = 0.4, size = 0.5) +
+    theme_classic() +
+    theme(legend.position = "none")
+  
+      # geom_segment(data = pc_out$loadings, 
+      #            aes(x = 0, y = 0, xend = PC1, yend = PC2), 
+      #            arrow = arrow(length = unit(0.2, "cm")), alpha = 0.25)
 
-var_fine <- full_join(cells_fine, IGHV_fine) %>%
-  full_join(IGHD_fine) %>%
-  full_join(IGHJ_fine) %>%
-  full_join(c_gene_10x_fine) %>%
-  full_join(mu_fine) %>%
-  full_join(ctype_fine)
-
-
-```
-
-
-## test PCA package that can handle NAs (ade4)
-
-```{r}
-
-
-library(ade4)
-
-test_main <- full_join(pheno[, 1:29], var_main)
-rownames(test_main) <- test_main$orig.ident
-
-test <- nipals(test_main[,2:ncol(test_main)])
-
-par(mfrow = c(1, 2),mar = c(4, 4, 1, 1))
-
-#dev.off()
-plot(test$li)
-text(test$li[, 1:2], labels = rownames(test$li[, 1:2]), col = as.numeric(factor(pheno$patient_group)))
-
-test$co
-plot(test$c1)
-
-
-
-
-
-# library(missMDA)
-# install.packages("missMDA")
-# test2 <- imputePCA(pheno[, 2:30], method = "EM", ncp = 1)
-
-```
-
-
-## PCA
-
-```{r}
-
-
-#pheno$patient_group
-#pheno <- pheno[-28,]
-
-
-var_df <- as.data.frame(var_df)
-rownames(var_df) <- var_df$orig.ident
-var_df <- var_df[,-1]
-var_df <- var_df[! rownames(var_df) == "P024", ]
+  #number of variables to display in barplot
+  nvar <- 15
+  
+  #plot loadings PC1
+  p2 <- pc_out_ld %>% 
+    arrange(desc(PC1)) %>% 
+    slice(c(1:nvar, (nrow(pc_out_ld)-nvar+1):nrow(pc_out_ld))) %>% 
+    arrange(desc(PC1)) %>%
+  ggplot(aes(x = PC1, 
+             y = reorder(var, +PC1))) +
+    ylab("") +
+    geom_bar(stat = "identity") +
+    theme_classic()
+  
+  
+  #plot loadings PC2
+  p3 <- pc_out_ld %>% 
+    arrange(desc(PC2)) %>% 
+    slice(c(1:nvar, (nrow(pc_out_ld)-nvar+1):nrow(pc_out_ld))) %>% 
+    arrange(desc(PC2)) %>%
+  ggplot(aes(x = PC2, 
+             y = reorder(var, +PC2))) +
+    ylab("") +
+    geom_bar(stat = "identity")+
+    theme_classic()
+  
+  
+ggsave2(paste0("../results/Fig6_A-C.png"),
+          plot_grid(p1.1, p2, p3, 
+                    nrow = 1, 
+                    ncol = 3, 
+                    labels = NULL, 
+                    align = "h", 
+                    rel_widths = c(1.5, 1, 1)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 12, unit = "cm")
 
 
-var_df[is.na(var_df)] <- 0
+# merge PCA output with input for plotting
+pc_out_sc <- full_join(pc_out_sc, pc_df)
 
-m <- apply(var_df, 2, function(x){glm(x ~pheno$patient_group)} ) 
-n <- lapply(m, summary)
-o <- t(sapply(n, function(x){x$coefficients[2:4, 4]}))
+# PC1
+p_list_PC1 <- list()
+for (i in 6:18){
 
-#selecting variables with significant differences
-sell1 <- rowMin(o)
-sell <- rownames(o)[sell1 < 0.05]
+  tmp <- select(pc_out_sc,
+                colnames(pc_out_sc)[i], 
+                PC1) %>% 
+    drop_na()
+  
+  p_list_PC1[[colnames(pc_out_sc)[i]]] <- ggplot(tmp, 
+                        aes_string(x = as.factor(tmp[, colnames(pc_out_sc)[i]]), 
+                                   y = "PC1")) +
+    geom_boxplot(na.rm = TRUE) +
+    xlab(colnames(pc_out_sc)[i]) +
+    theme_classic() 
+  
+}
+
+for (i in 19:ncol(pc_out_sc)){
+  
+  tmp <- select(pc_out_sc, 
+                colnames(pc_out_sc)[i], 
+                PC1, 
+                patient_group) %>%
+    drop_na()
+  
+  p_list_PC1[[colnames(pc_out_sc)[i]]] <- ggplot(tmp, 
+                                             aes_string(x = tmp[, colnames(pc_out_sc)[i]], 
+                                                        y = "PC1",
+                                                        color = "patient_group"
+                                                        )) +
+    geom_point(na.rm = TRUE) +
+    #geom_smooth(method = lm, se = FALSE ) +
+    #stat_cor(method="pearson") +
+    xlab(colnames(pc_out_sc)[i]) +
+    theme_classic() +
+    theme(legend.position = "none")
+  
+}
+
+var_PC1 <- pc_out_ld %>% 
+    arrange(desc(PC1)) %>% 
+    slice(c(1:nvar, (nrow(pc_out_ld)-nvar+1):nrow(pc_out_ld))) %>% 
+    arrange(desc(PC1))
+var_PC1$var
 
 
-# n[[1]]$coefficients[2:4, 4]
-# summary(m[[1]])
 
-head(var_df)
-sum(is.na(var_df))
-pc <- prcomp(as.matrix(var_df[, sell]), center = TRUE, scale. = TRUE)
-par(mfrow = c(1, 2),mar = c(4, 4, 1, 1))
+# PC2
+p_list_PC2 <- list()
+for (i in 6:18){
 
-plot(pc$x[, 1:2])
-text(pc$x[, 1:2], labels = rownames(pc$x[, 1:2]), col = as.numeric(factor(pheno$patient_group)))
+  tmp <- select(pc_out_sc,
+                colnames(pc_out_sc)[i], 
+                PC2) %>% 
+    drop_na()
+  
+  p_list_PC2[[colnames(pc_out_sc)[i]]] <- ggplot(tmp, 
+                        aes_string(x = as.factor(tmp[, colnames(pc_out_sc)[i]]), 
+                                   y = "PC2")) +
+    geom_boxplot(na.rm = TRUE) +
+    xlab(colnames(pc_out_sc)[i]) +
+    theme_classic() 
+  
+}
 
-plot(pc$x[, 3:4])
-text(pc$x[, 3:4], labels = rownames(pc$x[, 3:4]), col = as.numeric(factor(pheno$patient_group)))
+for (i in 19:ncol(pc_out_sc)){
+  
+  tmp <- select(pc_out_sc, 
+                colnames(pc_out_sc)[i], 
+                PC2, 
+                patient_group) %>%
+    drop_na()
+  
+  p_list_PC2[[colnames(pc_out_sc)[i]]] <- ggplot(tmp, 
+                                             aes_string(x = tmp[, colnames(pc_out_sc)[i]], 
+                                                        y = "PC2",
+                                                        color = "patient_group"
+                                                        )) +
+    geom_point(na.rm = TRUE) +
+    #geom_smooth(method = lm, se = FALSE ) +
+    #stat_cor(method="pearson") +
+    xlab(colnames(pc_out_sc)[i]) +
+    theme_classic() +
+    theme(legend.position = "none")
+  
+}
 
-plot(pc$sdev)
-
-plot(pc$x[, 2:3])
-text(pc$x[, 2:3], labels = rownames(pc$x[, 2:3]), col = as.numeric(factor(pheno$patient_group)))
-
-
-#plot loadings
-par(mfrow = c(1, 2),mar = c(25, 4, 1, 1))
-barplot(sort(pc$rotation[,1])[1:20], las = 2)
-barplot(sort(pc$rotation[,1], T)[1:20], las = 2)
-
-par(mfrow = c(1, 2),mar = c(25, 4, 1, 1))
-barplot(sort(pc$rotation[,4])[1:20], las = 2)
-barplot(sort(pc$rotation[,4], T)[1:20], las = 2)
+var_PC2 <- pc_out_ld %>% 
+    arrange(desc(PC2)) %>% 
+    slice(c(1:nvar, (nrow(pc_out_ld)-nvar+1):nrow(pc_out_ld))) %>% 
+    arrange(desc(PC2))
+var_PC2$var
 
 
+ggsave2(paste0("../results/SFig15_PC1.png"),
+          plot_grid(plotlist = p_list_PC1[var_PC1$var], 
+                    nrow = 5, 
+                    ncol = 5, 
+                    labels = NULL, 
+                    align = "hv") + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 25, unit = "cm")
+
+ggsave2(paste0("../results/SFig15_PC2.png"),
+          plot_grid(plotlist = p_list_PC2[var_PC2$var], 
+                    nrow = 5, 
+                    ncol = 5, 
+                    labels = NULL, 
+                    align = "hv") + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 25, unit = "cm")
 
 
 
 
-head(pc$x[, 1:2])
+plot_grid(plotlist = p_list[c(2:13, 1)], nrow = 4, ncol = 4)
+plot_grid(plotlist = p_list[c(14:22)], nrow = 3, ncol = 3)
+plot_grid(plotlist = p_list[c(23:40)], nrow = 4, ncol = 4)
+plot_grid(plotlist = p_list[c(41:44)], nrow = 2, ncol = 2)
 
 
 ```
