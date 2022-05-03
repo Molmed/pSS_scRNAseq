@@ -434,6 +434,14 @@ saveRDS(combined_B, paste0("../results/combined_BCR_scRepertoire.rds"))
 
 gex <- combineExpression(combined_B, gex)
 
+# tail(colnames(gex.slim@meta.data), n=25)
+# 
+# gex.slim@meta.data$CTgene
+# gex.slim@meta.data$Frequency
+# gex.slim@meta.data$CTnt
+# gex.slim@meta.data$CTaa
+# gex.slim@meta.data$CTstrict
+
 ```
 
 
@@ -499,8 +507,6 @@ gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
                           gex$cluster_cellType_manual_fine == "Naive_IFN" |
                           gex$cluster_cellType_manual_fine == "Naive_Transitional") &
                           gex$orig.ident !="P024", ]
-
-table(gex.meta$orig.ident, gex.meta$cluster_cellType_manual_fine)
 
 
 ```
@@ -754,9 +760,9 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
 
 
 #### allele usage for differentially used IGHV genes
+##### IGHV1-69
 
 ```{r}
-
 vdj_allele <- countGenes(gex@meta.data, 
                        gene = "v_call", 
                        groups = c("patient_group"), 
@@ -775,27 +781,27 @@ p1 <- ggplot(tmp1, aes(x = reorder(gene, -seq_freq),
                                        hjust = 1, 
                                        vjust = 0.5,
                                        size = 8), 
-            strip.background = element_blank(), 
-            strip.text.y = element_blank(),
-            legend.position = "none",
-            plot.margin = unit(c(0.2, 0, 0, 0.2), "cm")) +
+            #strip.background = element_blank(), 
+            #strip.text.y = element_blank(),
+            legend.position = "none"#,
+            #plot.margin = unit(c(0.2, 0, 0, 0.2), "cm")
+            ) +
       ylab("Percent of allele repertoire") +
       xlab("") +
       ggtitle("IGHV1-69 alleles") +
-      #scale_y_continuous(labels = percent) +
-      scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1L), name = "Patient Group") +
       geom_col(position = "dodge") + 
       facet_grid(rows = vars(patient_group))
 
-ggsave2(paste0("../results/VDJ_geneUsage_alleles_IGHV-69_perPatientGroup.png"), 
+ggsave2(paste0("../results/SFig9.png"), 
           plot_grid(p1, ncol = 1, labels = NULL, align = "h"),
           width = 15, height = 10, unit = "cm")
+
+
 
 vdj_allele1 <- vdj_allele[grepl("^IGHV1-69*", vdj_allele$gene),] %>% arrange(desc(seq_count))
 tmp1 <- vdj_allele1[which(vdj_allele1$gene %in% unique(vdj_allele1$gene)[1:10]), ]
 
-
-#
 vdj_allele <- countGenes(gex@meta.data, 
                        gene = "v_call", 
                        groups = c("patient_group", "cluster_cellType_manual_main"),
@@ -971,9 +977,6 @@ p[[i]] <- select(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ],
 
 
 
-
-
-
 ## get legend
 p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == unique(gex$cluster_cellType_manual_fine)[1], ], 
              aes(x = orig.ident, 
@@ -1053,9 +1056,13 @@ ggplot(p, aes(x=1,y = perc, fill = cluster_cellType_manual_main)) +
   scale_fill_discrete(name = "Cell type main") +
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5))
+```
 
- 
-#IGHV1-18
+
+##### IGHV1-18
+
+```{r}
+
 vdj_allele2 <- vdj_allele[grepl("^IGHV1-18*", vdj_allele$gene), ] %>% arrange(desc(seq_count))
 tmp2 <- vdj_allele2[which(vdj_allele2$gene %in% unique(vdj_allele2$gene)[1:10]), ]
 
@@ -1556,11 +1563,12 @@ sum(table(clr[p1$tree_row$order]))-sum(table(clr[p1$tree_row$order])[c(1,4,6,8,9
 
 #SSA/SSAB clusters
 sum(table(clr[p1$tree_row$order])[c(5)]) #[1] 457
+```
 
 
+### venn diagram of clonotypes (1799)
 
-
-#### ---- venn diagram
+```{R}
 tmp2 <- as.data.frame(t(rowsum(t(tmp), group = pheno$patient_group)))
 tmp2 <- as.data.frame((tmp2 > 0) * 1)
 tmp2$ident <- as.character(rownames(tmp2))
@@ -1597,13 +1605,27 @@ venn.diagram(venn.list,
              main.fontfamily = "sans",
              main.cex = 1.5,
              cex = 1,
-             cat.cex =1.2
+             cat.cex = 1.2
              #sub.fontfamily = "sans"
              )
 
+```
 
 
+### UpSetR of clonotypes (1799)
 
+```{R}
+
+devtools::install_github("hms-dbmi/UpSetR")
+install.packages("UpSetR")
+library(UpSetR)
+
+png("../results/Fig5B_II.png", width = 15, height = 15, units = "cm", res = 200)
+upset(fromList(venn.list), order.by = "freq",)
+dev.off()
+
+
+```
 
 
 ### clonotype hamming distance
@@ -2317,7 +2339,7 @@ p2 <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)),
       xlab("") + 
       facet_grid(rows = vars(patient_group)) + 
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
-      scale_fill_brewer(palette="Dark2", na.value = "grey", name = "clonotype")
+      scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "clonotype")
 
 ggsave2("../results/Fig3D_2.png", 
         plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
@@ -2389,6 +2411,17 @@ tmp <- unique(tmp)
 gex.meta$orig.ident <- factor(gex.meta$orig.ident, 
                               levels = tmp$orig.ident)
 
+ann_cols <- list(patient_group = c(CTRL = "#F8766D", 
+                                   DNEG = "#7CAE00", 
+                                   SSA = "#00BFC4", 
+                                   SSAB = "#C77CFF"))
+
+colors_samples <- c(rep(ann_cols$patient_group[1], times = 4),
+                    rep(ann_cols$patient_group[2], times = 6,),
+                    rep(ann_cols$patient_group[3], times = 8),
+                    rep(ann_cols$patient_group[4], times = 9))
+
+
 p <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)),
             aes(x = orig.ident,
                 fill = c_gene_10x)) +
@@ -2396,7 +2429,8 @@ p <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)),
       ggtitle("IGH constant") +
       theme(axis.text.x = element_text(angle = 90, 
                                        hjust = 0.5, 
-                                       vjust = 0.5), 
+                                       vjust = 0.5,
+                                       color = colors_samples), 
             legend.position = "none") +
       ylab("proportion of cells") +
       xlab("") +
@@ -2404,16 +2438,16 @@ p <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)),
       #scale_fill_discrete(name = "patient group") +
       facet_grid(cols = vars(cluster_cellType_manual_main)) +
       geom_bar(position = "fill") +
-      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "c gene", drop = FALSE)
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "", drop = FALSE)
 
 ## get legend
-p_legend <- ggplot(gex.meta, 
+p_legend <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)), 
              aes(x = orig.ident,
                  fill = c_gene_10x)) +
       geom_bar(position = "fill") +
       theme_classic() + 
       theme(legend.position = "bottom", legend.box = "horizontal") +
-      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "c gene", drop = FALSE)
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "", drop = FALSE)
   
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
@@ -2453,17 +2487,17 @@ p[[i]] <-  ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ] %>%
       geom_bar(position = "fill") + 
       ggtitle(i) +
       scale_x_discrete(drop = FALSE) +
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, color = colors_samples),
             axis.title.x = element_blank(),
             axis.title.y = element_blank(),
             legend.position = "none") +
-      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "c gene", drop = FALSE) 
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "", drop = FALSE) 
 
 print(table(gex.meta$c_gene_10x[gex.meta$cluster_cellType_manual_fine == i]))
 
 }
 
-p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == unique(gex$cluster_cellType_manual_fine)[1], ], 
+p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == unique(gex$cluster_cellType_manual_fine)[1], ] %>% filter(!is.na(c_gene_10x)), 
              aes(x = orig.ident,
                  fill = c_gene_10x)) +
       geom_bar(position = "fill") +
@@ -2471,7 +2505,7 @@ p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == unique(gex$
       theme(legend.position = "bottom", 
             legend.box = "horizontal", 
             panel.border = NULL) +
-      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "c gene", drop = FALSE)
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "", drop = FALSE)
 
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot() 
 
@@ -2493,7 +2527,7 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/SFig13B_2.png"), 
+ggsave2(paste0("../results/SFig13B.png"), 
           plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
           bgcolor("white") + 
           border("white"),
@@ -2517,26 +2551,11 @@ ggsave2(paste0("../results/SFig13B_2.png"),
 # "cdr3_aa_acidic"
 # "cdr3_aa_aromatic"
 
-#### ----- subeset gex to only include relevant cell types
-gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
-                          gex$cluster_cellType_manual_fine == "DN2" |
-                          gex$cluster_cellType_manual_fine == "DN2_CXCR3" |
-                          gex$cluster_cellType_manual_fine == "DN2_ITGAX" |
-                          gex$cluster_cellType_manual_fine == "DN4" |
-                          gex$cluster_cellType_manual_fine == "Memory_Cl" |
-                          gex$cluster_cellType_manual_fine == "Memory_IgM" |
-                          gex$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
-                          gex$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
-                          gex$cluster_cellType_manual_fine == "Naive" |
-                          gex$cluster_cellType_manual_fine == "Naive_IFN" |
-                          gex$cluster_cellType_manual_fine == "Naive_Transitional") &
-                          gex$orig.ident !="P024", ]
-
 #CDR3 aa length
 p1 <- ggplot(gex.meta,
               aes(x = cluster_cellType_manual_fine, 
                   y = cdr3_aa_length,
-                  color = patient_group)) +
+                  fill = patient_group)) +
       theme_classic() +
       ggtitle("CDR3 aa length") +
       theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -2544,14 +2563,15 @@ p1 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("length (bp)") +
       xlab("") +
-      geom_boxplot(size = 0.3, alpha = 0.8)
+      scale_y_continuous(limits = c(5, 28)) +
+      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
 
 
 #grand average of hydrophobicity
 p2 <- ggplot(gex.meta,
               aes(x = cluster_cellType_manual_fine, 
                   y = cdr3_aa_gravy,
-                  color = patient_group)) +
+                  fill = patient_group)) +
       theme_classic() +
       ggtitle("CDR3 aa grand average of hydrophobicity") +
       theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -2559,14 +2579,15 @@ p2 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("hydrophobicity score") +
       xlab("") +
-      geom_boxplot(size = 0.3, alpha = 0.8)
+      scale_y_continuous(limits = c(-2.5, 1.5)) +
+      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
 
 
 #average bulkiness of amino acids
 p3 <- ggplot(gex.meta,
               aes(x = cluster_cellType_manual_fine, 
                   y = cdr3_aa_bulk, #average bulkiness of amino acids
-                  color = patient_group)) +
+                  fill = patient_group)) +
       theme_classic() +
       ggtitle("CDR3 aa bulkiness") +
       theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -2574,14 +2595,15 @@ p3 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("average bulkiness of amino acids") +
       xlab("") +
-      geom_boxplot(size = 0.3, alpha = 0.8)
+      scale_y_continuous(limits = c(10, 18)) +
+      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
 
 
 #cdr3_aa_aliphatic
 p4 <- ggplot(gex.meta,
               aes(x = cluster_cellType_manual_fine, 
                   y = cdr3_aa_aliphatic, #aliphatic index
-                  color = patient_group)) +
+                  fill = patient_group)) +
       theme_classic() +
       ggtitle("CDR3 aa aliphatic") +
       theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -2589,14 +2611,15 @@ p4 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("aliphatic index") +
       xlab("") +
-      geom_boxplot(size = 0.3, alpha = 0.8)
+      scale_y_continuous(limits = c(0, 1.5)) +
+      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
 
 
 #cdr3_aa_polarity
 p5 <- ggplot(gex.meta,
               aes(x = cluster_cellType_manual_fine, 
                   y = cdr3_aa_polarity, #average polarity of amino acids
-                  color = patient_group)) +
+                  fill = patient_group)) +
       theme_classic() +
       ggtitle("CDR3 aa polarity") +
       theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -2604,14 +2627,15 @@ p5 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("average polarity") +
       xlab("") +
-      geom_boxplot(size = 0.3, alpha = 0.8)
+      scale_y_continuous(limits = c(7, 9)) +
+      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
 
 
 #cdr3_aa_charge
 p6 <- ggplot(gex.meta,
               aes(x = cluster_cellType_manual_fine, 
                   y = cdr3_aa_charge, #net charge
-                  color = patient_group)) +
+                  fill = patient_group)) +
       theme_classic() +
       ggtitle("CDR3 aa charge") +
       theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -2619,13 +2643,14 @@ p6 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("net charge") +
       xlab("") +
-      geom_boxplot(size = 0.3, alpha = 0.8)
+      scale_y_continuous(limits = c(-3, 3)) +
+      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
 
 #cdr3_aa_basic
 p7 <- ggplot(gex.meta,
               aes(x = cluster_cellType_manual_fine, 
                   y = cdr3_aa_basic, #fract. of informative positions that are Arg, His or Lys
-                  color = patient_group)) +
+                  fill = patient_group)) +
       theme_classic() +
       ggtitle("CDR3 aa basic") +
       theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -2633,14 +2658,15 @@ p7 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("% of pos that are Arg, His or Lys") +
       xlab("") +
-      geom_boxplot(size = 0.3, alpha = 0.8)
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1L), limits = c(0, 0.5)) +
+      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
 
 
 #cdr3_aa_acidic
 p8 <- ggplot(gex.meta,
               aes(x = cluster_cellType_manual_fine, 
                   y = cdr3_aa_acidic, #fraction of informative positions that are Asp or Glu
-                  color = patient_group)) +
+                  fill = patient_group)) +
       theme_classic() +
       ggtitle("CDR3 aa acidic") +
       theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -2648,14 +2674,15 @@ p8 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("% of pos. that are Asp or Glu") +
       xlab("") +
-      geom_boxplot(size = 0.3, alpha = 0.8)
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1L), limits = c(0, 0.5)) +
+      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
 
 
 #cdr3_aa_aromatic
 p9 <- ggplot(gex.meta,
               aes(x = cluster_cellType_manual_fine, 
                   y = cdr3_aa_aromatic, #fract. of informative pos. that are His, Phe, Trp or Tyr
-                  color = patient_group)) +
+                  fill = patient_group)) +
       theme_classic() +
       ggtitle("CDR3 aa aromatic") +
       theme(axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5),
@@ -2663,16 +2690,17 @@ p9 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("% of pos. that are His, Phe, Trp or Tyr") +
       xlab("") +
-      geom_boxplot(size = 0.3, alpha = 0.8)
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1L), limits = c(0, 0.5)) +
+      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
 
 #get legend
 p_legend <- ggplot(gex.meta,
               aes(x = cluster_cellType_manual_fine, 
                   y = cdr3_aa_aromatic,
-                  color = patient_group)) +
+                  fill = patient_group)) +
       theme_classic() +
       geom_boxplot() +
-      theme(legend.position="bottom")
+      theme(legend.position = "bottom")
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
 
@@ -2684,6 +2712,127 @@ ggsave2(paste0("../results/SFig14.png"),
           bgcolor("white") + 
           border("white") ,
           width = 35, height = 30, unit = "cm")
+
+
+```
+
+
+## plot SFig15A, clonotypes per patient per cellTypeMain
+
+```{r}
+tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
+                  patient_group = gex.meta$patient_group)
+tmp <- tmp[order(tmp$patient_group), ]
+tmp <- unique(tmp)
+gex.meta$orig.ident <- factor(gex.meta$orig.ident, 
+                              levels = tmp$orig.ident)
+
+p <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)),
+            aes(x = orig.ident,
+                fill = cloneType_airr)) +
+      theme_classic() +
+      ggtitle("IGH constant") +
+      theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 0.5, 
+                                       vjust = 0.5,
+                                       color = colors_samples), 
+            legend.position = "none") +
+      ylab("proportion of cells") +
+      xlab("") +
+      scale_y_continuous(labels = percent)  +
+      #scale_fill_discrete(name = "patient group") +
+      facet_grid(cols = vars(cluster_cellType_manual_main)) +
+      geom_bar(position = "fill") +
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "c gene", drop = FALSE)
+
+## get legend
+p_legend <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)), 
+             aes(x = orig.ident,
+                 fill = cloneType_airr)) +
+      geom_bar(position = "fill") +
+      theme_classic() + 
+      theme(legend.position = "bottom", legend.box = "horizontal") +
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "", drop = FALSE)
+  
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+
+ggsave2(paste0("../results/SFig15A.png"), 
+          plot_grid(p, p_legend, 
+                    ncol = 1, labels = NULL, 
+                    align = "hv", rel_heights = c(1.5, 0.2)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 12, unit = "cm")
+
+
+```
+
+
+## plot SFig15B, clonotypes per patient per cellTypeFine
+
+```{r}
+tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
+                  patient_group = gex.meta$patient_group)
+tmp <- tmp[order(tmp$patient_group), ]
+tmp <- unique(tmp)
+gex.meta$orig.ident <- factor(gex.meta$orig.ident, 
+                              levels = tmp$orig.ident)
+
+p <- list()
+for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
+p[[i]] <-  ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ] %>% 
+                    filter(!is.na(cloneType_airr)), 
+                  aes(x = orig.ident,
+                      fill = cloneType_airr)) +
+      theme_classic() +
+      geom_bar(position = "fill") + 
+      ggtitle(i) +
+      scale_x_discrete(drop = FALSE) +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, color = colors_samples),
+            axis.title.x = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "none") +
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "", drop = FALSE) 
+
+print(table(gex.meta$c_gene_10x[gex.meta$cluster_cellType_manual_fine == i]))
+
+}
+
+p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == unique(gex$cluster_cellType_manual_fine)[1], ] %>% filter(!is.na(cloneType_airr)), 
+             aes(x = orig.ident,
+                 fill = cloneType_airr)) +
+      geom_bar(position = "fill") +
+      theme_classic() + 
+      theme(legend.position = "bottom", 
+            legend.box = "horizontal", 
+            panel.border = NULL) +
+      scale_fill_brewer(palette = "Set3", na.value = "grey", name = "", drop = FALSE)
+
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot() 
+
+y_label <- ggdraw() + 
+  draw_label("proportion of cells", 
+             fontface = 'bold',
+             #x = 0.1,
+             hjust = 0.5, 
+             angle = 90,vjust = 0)
+
+p1 <- plot_grid(plotlist = p, ncol = 3, labels = NULL, align = "hv")  + 
+  bgcolor("white") + 
+  border("white")
+
+p2 <- plot_grid(y_label, p1, 
+          ncol = 2, labels = NULL, 
+          align = "hv", 
+          rel_widths = c(0.03, 1)) + 
+  bgcolor("white") + 
+  border("white")
+
+ggsave2(paste0("../results/SFig15B.png"), 
+          plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 25, unit = "cm")
 
 
 ```

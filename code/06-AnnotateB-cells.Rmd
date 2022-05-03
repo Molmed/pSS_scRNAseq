@@ -23,6 +23,62 @@ gex <- readRDS("../results/GEX5_DIMRED2.rds")
 
 ```
 
+## cellType colors
+
+```{r}
+
+#create named color vector
+colors_cellType <- c(naive= rev(brewer.pal(7, "Greens")),
+                     dn = brewer.pal(5, "Blues"),
+                     memory = brewer.pal(6, "YlOrRd"),
+                     memory_stressed = c("gray80", "gray60", "gray40"),
+                     memory_platelet = brewer.pal(3, "RdPu")[2],
+                     plasma_cells = brewer.pal(3, "Purples")[3])
+#show_col(colors_cellType)
+
+# all 23 cell clusters:
+# Naive 7 - green
+# DN 5 - blue
+# Memory - 6
+# Memory_Stressed 3 - gray
+# Memory_Platelet 1 - pink
+# Plasma_cells 1 - purple
+
+#names(table(gex$cluster_cluster_cellType_manual_fine))
+colors_clusters <- colors_cellType[c("naive1", "naive2", "naive3", 
+                                   "memory1", "naive4", "memory2",
+                                   "naive4", "dn1", "memory_stressed1", 
+                                   "dn2", "naive5", "dn3", 
+                                   "memory3", "dn4", "memory4",
+                                   "dn5", "memory5", "memory6", 
+                                   "memory_stressed2", "memory_platelet", "naive6",
+                                   "memory_stressed3", "plasma_cells")] 
+
+# cellTypeFine (16)
+#table(gex$cluster_cellType_manual_fine)
+colors_cellTypeFine <- colors_cellType[c("dn1", "dn2", "dn3", "dn4", "dn5",
+                         "memory1", "memory_stressed1", "memory_stressed2",
+                         "memory3", "memory4", "memory5", "memory_platelet", 
+                         "naive2", "naive4", "naive6", "plasma_cells")]
+
+# cellTypeMain (7)
+#table(gex$cluster_cellType_manual_main)
+colors_cellTypeMain <- colors_cellType[c("dn3", "memory3", "plasma_cells", 
+                                         "memory_stressed1", "naive4",
+                                         "memory_platelet", "naive6")]
+
+# cellType scpred
+colors_scpred1 <- colors_cellType[c("memory5", "dn3", "memory3", 
+                                    "naive2", "naive4", "memory_stressed1")] #6
+
+colors_scpred2 <- colors_cellType[c("memory5", "memory4", 
+                                    "dn2", "dn3", "dn4", "dn5", 
+                                    "memory2", "memory1",
+                                    "naive2", "naive4", "memory_stressed1")] #11
+
+
+```
+
 
 ## get B-cell cluster marker genes
 
@@ -138,9 +194,7 @@ names(gex@meta.data)[names(gex@meta.data) == scPredcols[2]] <- paste0(scPredcols
 names(gex@meta.data)[names(gex@meta.data) == scPredcols[3]] <- paste0(scPredcols[3], "_ref1")
 names(gex@meta.data)[names(gex@meta.data) == "scpred_Naive"] <- "scpred_Naive_"
 
-rm(ref1)
-rm(stewart.lid.300)
-
+rm(ref1); rm(stewart.lid.300)
 
 ####------------- per stewart cluster
 #subset seurat object
@@ -178,22 +232,41 @@ names(gex@meta.data)[names(gex@meta.data) == scPredcols[1]] <- paste0(scPredcols
 names(gex@meta.data)[names(gex@meta.data) == scPredcols[2]] <- paste0(scPredcols[2], "_ref2")
 names(gex@meta.data)[names(gex@meta.data) == scPredcols[3]] <- paste0(scPredcols[3], "_ref2")
 
-#plot
+
+
+```
+
+
+## plot SFig3
+
+```{r}
+
 p1 <- DimPlot(gex, 
               group.by = "scpred_prediction_ref1", 
-              reduction = "umap_2") + 
+              reduction = "umap_2",
+              cols = unname(colors_scpred1)) + 
         xlab("UMAP 1") + 
         ylab("UMAP 2") +
-        ggtitle("predicted cell type, Stewart et al. 2021", 
-                subtitle = "by sorted cell type")
+        labs(title = "predicted cell type", 
+             subtitle = "by sorted cell type (Stewart et al. 2021)") +
+        theme(axis.text = element_blank(),
+              axis.ticks = element_blank(),
+              plot.title = element_text(hjust = 0.5),
+              plot.subtitle = element_text(hjust = 0.5))
 
 p2 <- DimPlot(gex, 
               group.by = "scpred_prediction_ref2", 
-              reduction = "umap_2") + 
+              reduction = "umap_2",
+              cols = unname(colors_scpred2)) + 
         xlab("UMAP 1") + 
         ylab("UMAP 2") +
-        ggtitle("predicted cell type, Stewart et al. 2021", 
-                subtitle = "by clustered sorted celltype")
+        labs(title = "predicted cell type", 
+             subtitle = "by sorted cell type (Stewart et al. 2021)") +
+        theme(axis.text = element_blank(),
+              axis.ticks = element_blank(),
+              plot.title = element_text(hjust = 0.5),
+              plot.subtitle = element_text(hjust = 0.5))
+
 
 ####---- check cluster overlap with cell types
 #per sorted cell type
@@ -205,10 +278,11 @@ hm1 <- round(sweep(as.data.frame.matrix(table(gex$seurat_clusters,
 phm1 <- pheatmap(hm1, 
          cluster_rows = FALSE,
          cluster_cols = FALSE,
-         main = "Sorted Cell Type, % of seurat cluster", 
+         main = "sorted cell type, % of seurat cluster", 
          display_numbers = TRUE,
-         filename = "../results/cellType_B-cells_Stewart_et_al_1.png", 
-         number_format = "%.1f")
+         filename = "../results/cellType_B-cells_Stewart_et_al_1_1.png", 
+         number_format = "%.1f",
+         legend = FALSE)
 
 #per sorted cell type cluster
 hm2 <- round(sweep(as.data.frame.matrix(table(gex$seurat_clusters, 
@@ -219,29 +293,41 @@ hm2 <- round(sweep(as.data.frame.matrix(table(gex$seurat_clusters,
 phm2 <- pheatmap(hm2, 
          cluster_rows = FALSE, 
          cluster_cols = FALSE,
-         main = "Clustered Sorted Cell Type, % of seurat cluster", 
+         main = "clustered sorted cell type, % of seurat cluster", 
          display_numbers = TRUE,
-         filename = "../results/cellType_B-cells_Stewart_et_al_2.png",
-         number_format = "%.1f") 
+         filename = "../results/cellType_B-cells_Stewart_et_al_2_2.png",
+         number_format = "%.1f", 
+         legend = FALSE) 
 
 p3 <- tableGrob(table(gex$scpred_prediction_ref1, gex$scpred_prediction_ref2))
-p4 <- plot_grid(p1, p2, phm1[[4]], phm2[[4]], ncol = 2, labels = NULL) + bgcolor("white")
 
-ggsave2(paste0("../results/cellType_Stewart_perCell.png"), 
-        plot_grid(p4, p3, ncol = 1, labels = NULL, rel_heights = c(4, 1)) + bgcolor("white"), 
+p4 <- plot_grid(p1, p2, phm1[[4]], phm2[[4]], ncol = 2, labels = NULL, align = "hv") + 
+          bgcolor("white") + 
+          border("white")
+
+ggsave2(paste0("../results/SFig3.png"), 
+        plot_grid(p4, p3, ncol = 1, labels = NULL, rel_heights = c(4, 1)) + 
+          bgcolor("white") + 
+          border("white"), 
         width = 30, height = 30, unit = "cm")
 
 
+```
+
+
+## add cellType predictions to seurat object
+
+```{r}
 ####---- add cluster cell type classification based on majority fraction of predicted cell type in cluster
 annot.df <- data.frame(cluster = rownames(hm1), 
                        annot_sort = colnames(hm1)[apply(hm1, 1, which.max)], 
                        annot_clust = colnames(hm2)[apply(hm2, 1, which.max)])
   
 gex@meta.data["cluster_stewart_sort"] <- annot.df$annot_sort[match(gex$seurat_clusters,
-                                                           annot.df$cluster)]
+                                                                   annot.df$cluster)]
 
 gex@meta.data["cluster_stewart_cl"] <- annot.df$annot_clust[match(gex$seurat_clusters,
-                                                           annot.df$cluster)]
+                                                                  annot.df$cluster)]
 
 table(gex@meta.data$cluster_stewart_sort, gex@meta.data$cluster_stewart_cl)
 
@@ -366,40 +452,25 @@ ggsave2(paste0("../results/UMAP_cellType_main.png"),
 ```
 
 
-## plot Figure 1C, Main cell types and IGH constant region expression (Fig1C)
+## plot Figure 1B-C, Main cell types and IGH constant region expression (Fig1B-C)
 
 ```{r}
-
-colors_cellTypeFine <- c(brewer.pal(5, "Blues"), 
-  brewer.pal(4, "YlOrRd")[1],
-  c("gray70", "gray50"),
-  brewer.pal(4, "YlOrRd")[2:4],
-  brewer.pal(3, "RdPu")[2],
-  brewer.pal(3, "Greens")[c(3,2,1)],
-  brewer.pal(3, "Purples")[3])
-#show_col(colors_cellTypeFine)
-
-colors_cellTypeMain <- colors_cellTypeFine[c(3, 9, 16, 7, 14, 12, 15)]
-
-# display.brewer.pal(5, "Blues")  # DN - blue
-# display.brewer.pal(4, "YlOrRd") # Memory - orange/red
-# c("gray70", "gray50")           # Mem_str - gray
-# display.brewer.pal(3, "Greens")[c(3,2,1)] # Naive - green
-# display.brewer.pal(3, "Purples")[3]       # Memory_platelets - purple
-# display.brewer.pal(3, "RdPu")[3]# Plasma cells - pink
-
+colors_clusters
+colors_cellTypeFine 
+colors_cellTypeMain
 
 p1 <- DimPlot(gex, 
               reduction = "umap_2", 
-              group.by = "cluster_cellType_manual_main",
+              group.by = "cluster_cellType_manual_fine",
               pt.size = 0.1, 
-              cols = colors_cellTypeMain) + 
+              cols = unname(colors_cellTypeFine)) + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
-  ggtitle("celltypes main") + 
+  ggtitle("") + 
     theme(axis.text = element_blank(),
           axis.ticks = element_blank(),
-          legend.position = "bottom")
+          legend.position = "bottom",
+          legend.text = element_text(size = 8))
 
 ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
 
@@ -422,62 +493,17 @@ for (i in ig.features) {
 
 p2 <- plot_grid(plotlist = p, ncol = 3, align = "hv", scale = 1.1) 
 
-ggsave2(paste0("../results/Fig1C_4.png"), 
+ggsave2(paste0("../results/Fig1B-C.png"), 
         plot_grid(p1, p2, ncol = 2, rel_widths = c(1.1, 1)) + 
           bgcolor("white")+ 
           border("white"), 
-        width = 30, height = 15, unit = "cm")
-
-#labeled plot celltypeMain
-p1 <- DimPlot(gex, 
-              reduction = "umap_2", 
-              group.by = "cluster_cellType_manual_main",
-              pt.size = 0.1,
-              label = TRUE, 
-              repel = TRUE, 
-              label.box = TRUE, 
-              label.size = 3.5,
-              cols = colors_cellTypeMain) + 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") + 
-  ggtitle("celltypes main") + 
-    theme(axis.text = element_blank(),
-          axis.ticks = element_blank(),
-          legend.position = "none")
-
-ggsave2(paste0("../results/celltypesMain_withLabel.png"), 
-        p1, 
-        width = 15, height = 15, unit = "cm")
-
+        width = 29, height = 15, unit = "cm")
 
 
 ```
 
 
-## plot Figure 1D, UMAP for cellTypeFine (Fig1D)
-
-```{r}
-
-p <- DimPlot(gex, 
-             reduction = "umap_2", 
-             group.by = "cluster_cellType_manual_fine", 
-             pt.size = 0.1, 
-             cols = colors_cellTypeFine
-             ) + 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") + 
-  ggtitle("celltypes fine") + 
-  theme(axis.text = element_blank(),
-        axis.ticks = element_blank())
-
-ggsave2(paste0("../results/Fig1D_4.png"), 
-        p, 
-        width = 20, height = 15, unit = "cm") 
-
-```
-
-
-## plot Figure 1E, dotplot for cluster marker genes Fig1E 
+## plot Figure 1D, dotplot for cluster marker genes Fig1D 
 
 ```{r}
 
@@ -502,7 +528,7 @@ p <- DotPlot(gex,
                                        size = 8),
         panel.grid.major = element_line(colour="grey", size = rel(0.5)))
 
-ggsave2(paste0("../results/Fig1E_2.png"), 
+ggsave2(paste0("../results/Fig1D_2.png"), 
         p, 
         width = 12, height = 14, unit = "cm") 
 
@@ -510,9 +536,12 @@ ggsave2(paste0("../results/Fig1E_2.png"),
 ```
 
 
-##  plot Figure 1F, patient subtypes per cell type (Fig1F)
+##  plot Figure 1E, patient subtypes per cell type (Fig1E)
 
 ```{r}
+
+#### !!!! FIX THIS , swap parts with SFig4D
+
 p1 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
                                         -table(cluster_cellType_manual_fine)[cluster_cellType_manual_fine]), 
                                             fill = patient_group)) +
@@ -637,22 +666,7 @@ gex$cluster_cluster_cellType_manual_fine <- paste(gex$seurat_clusters,
 
 gex$cluster_cluster_cellType_manual_fine <- factor(gex$cluster_cluster_cellType_manual_fine, 
                                                    levels = str_sort(unique(gex$cluster_cluster_cellType_manual_fine), numeric = TRUE))
-
-
-colors_cellTypeFineClusters <- c(brewer.pal(5, "Blues"), 
-  brewer.pal(4, "YlOrRd")[1],
-  c("gray70", "gray50"),
-  brewer.pal(4, "YlOrRd")[2:4],
-  brewer.pal(3, "RdPu")[2],
-  brewer.pal(3, "Greens")[c(3,2,1)],
-  brewer.pal(3, "Purples")[3])
-#show_col(colors_cellTypeFine)
-
-### !!! fix colors !!!!
-
-c(brewer.pal(7, "Greens")[c()],
-  brewer.pal(4, "YlOrRd"))
-
+names(table(gex$cluster_cluster_cellType_manual_fine))
 
 
 p <- DimPlot(gex, 
@@ -662,20 +676,20 @@ p <- DimPlot(gex,
              label = TRUE, 
              repel = TRUE, 
              label.box = TRUE, 
-             label.size = 1.5,
-             cols = colors_cellTypeFine,
+             label.size = 3,
+             cols = unname(colors_clusters),
              raster = FALSE) + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
-  ggtitle("cluster celltypes") + 
+  ggtitle("") + 
     theme(axis.text = element_blank(),
           axis.ticks = element_blank(),
           legend.position = "none")
 
 
-ggsave2(paste0("../results/SFig4B_3.png"), 
+ggsave2(paste0("../results/SFig4B.png"), 
         p, 
-        width = 18, height = 15, unit = "cm")
+        width = 18, height = 17, unit = "cm")
 
 
 gex$cluster_cluster_cellType_manual_fine <- NULL
@@ -702,6 +716,7 @@ p <- ggplot(gex@meta.data,
 ggsave2("../results/SFig4C_3.png", 
         p, 
         width = 20, height = 14, unit = "cm")
+
 
 ```
 
