@@ -9,7 +9,7 @@ editor_options:
 
 ```{r}
 
-source("./00_dependencies.R")
+source("./00a_dependencies.R")
 
 ```
 
@@ -593,10 +593,10 @@ for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(3, 4, 6)]){
                      cluster_cellType_manual_main == i,
                      )
 
-  p_list[[i]] <- DotPlot(DGE_DATA, 
-        features = p_features, 
-        group.by = "patient_group",
-        dot.scale = 4) +
+  p_list[[i]] <- DotPlot(DGE_DATA,
+                         features = p_features,
+                         group.by = "patient_group",
+                         dot.scale = 4) +
   theme_classic() +
   xlab("") + 
   ylab("") + 

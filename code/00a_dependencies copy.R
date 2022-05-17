@@ -3,9 +3,19 @@
 #install.packages('ggthemes', dependencies = TRUE)
 #reticulate::conda_export("../results/environment_R_pSSscRNAseq")
 
+# if (!require("BiocManager", quietly = TRUE))
+#   install.packages("BiocManager")
+# BiocManager::install()
+
+
 ####----- system
+#install.packages('future')
 suppressMessages(library(future)) #for planning multiprocessess
+
+#BiocManager::install('BiocParallel')
 suppressMessages(library(BiocParallel))
+
+#install.packages('pryr')
 suppressMessages(library(pryr)) #check memory usage
 
 
@@ -32,6 +42,7 @@ suppressMessages(library(ggthemes))
 suppressMessages(library(scales))
 library(VennDiagram)
 library(ggrepel)
+library(UpSetR)
 
 # remotes::install_github("czarnewski/niceRplots")
 library(niceRplots)
@@ -59,11 +70,13 @@ suppressMessages(library(edgeR))
 suppressMessages(library(glmGamPoi))
 
 ####----- VDJ
-suppressMessages(library(scRepertoire))#; packageVersion("scRepertoire") #local :[1] ‘1.3.4’; bianca:[1] ‘1.0.0’
+suppressMessages(library(scRepertoire))#; packageVersion("scRepertoire") #local :[1] ???1.3.4???; bianca:[1] ???1.0.0???
 #suppressMessages(library(dowser))
 #install.packages("dowser")
-#install.packages("ggtree") #package ‘ggtree’ is not available for this version of R
-#install.packages("phangorn") #package ‘phangorn’ is not available for this version of R
+#install.packages("ggtree") #package ???ggtree??? is not available for this version of R
+#install.packages("phangorn") #package ???phangorn??? is not available for this version of R
+#install.packages('stringdist')
+suppressMessages(library(stringdist))
 
 # Immcantation
 suppressMessages(library(alakazam))
