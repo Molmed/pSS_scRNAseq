@@ -864,11 +864,11 @@ p5.1 <- ggplot(p_pheno[1:18, ], aes(x = -log10(PC1),
 ```
 
 
-## plot Fig6A-C
+## plot Fig5A-C
 
 ```{r}
 
-ggsave2(paste0("../results/Fig6_A-D_8.png"),
+ggsave2(paste0("../results/Fig5_A-D.png"),
           plot_grid(p1.1, p3.1, p5.1, 
                     nrow = 1, 
                     ncol = 3, 
@@ -883,7 +883,7 @@ ggsave2(paste0("../results/Fig6_A-D_8.png"),
 ```
 
 
-## plot Fig6D-E and SFig16-19 PCA 
+## plot Fig5D-E and SFig17-20 PCA 
 
 ```{r}
 
@@ -973,7 +973,7 @@ for (i in pheno_var){
 }
 
 # plot all patient variables for PC1 and PC2
-ggsave2(paste0("../results/SFig16_PC1.png"),
+ggsave2(paste0("../results/SFig17_PC1.png"),
           plot_grid(plotlist = p_list_PC1[pheno_var[1:18]], 
                     nrow = 6, 
                     ncol = 3, 
@@ -983,7 +983,7 @@ ggsave2(paste0("../results/SFig16_PC1.png"),
           border("white"),
           width = 20, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig17_PC2.png"),
+ggsave2(paste0("../results/SFig18_PC2.png"),
           plot_grid(plotlist = p_list_PC2[pheno_var[1:18]], 
                     nrow = 6, 
                     ncol = 3, 
@@ -996,7 +996,7 @@ ggsave2(paste0("../results/SFig17_PC2.png"),
 
 # plot GEX and VDJ variables for PC1 and PC2
 #length(pheno_var[19:length(pheno_var)]) #[1] 33
-ggsave2(paste0("../results/SFig18_PC1.png"),
+ggsave2(paste0("../results/SFig19_PC1.png"),
           plot_grid(plotlist = p_list_PC1[pheno_var[19:length(pheno_var)]], 
                     nrow = 7, 
                     ncol = 5, 
@@ -1006,7 +1006,7 @@ ggsave2(paste0("../results/SFig18_PC1.png"),
           border("white"),
           width = 30, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig19_PC2.png"),
+ggsave2(paste0("../results/SFig20_PC2.png"),
           plot_grid(plotlist = p_list_PC2[pheno_var[19:length(pheno_var)]], 
                     nrow = 7, 
                     ncol = 5, 
@@ -1022,7 +1022,7 @@ p_pat_var <- c("SSA", "SSB", "ANA", "RF",
   "Age_symptom_onset", "Age_diagnosis",
   "Focus_score_Greenspan", "P-IgG", "Leucopenia")
 
-ggsave2(paste0("../results/Fig6D.png"),
+ggsave2(paste0("../results/Fig5D.png"),
           plot_grid(plotlist = p_list_PC1[p_pat_var], 
                     nrow = 3, 
                     ncol = 3, 
@@ -1039,7 +1039,7 @@ p_gex_var <- c("Memory_%", "DN_%", "Naive_%", "Transitional_%",
   "Memory_VDJmutation", "Transitional_VDJmutation",
   "IGHV1-69_%", "IGHV3-66_%")
 
-ggsave2(paste0("../results/Fig6E.png"),
+ggsave2(paste0("../results/Fig5E.png"),
           plot_grid(plotlist = p_list_PC1[p_gex_var], 
                     nrow = 3, 
                     ncol = 4, 

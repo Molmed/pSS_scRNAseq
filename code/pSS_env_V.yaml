@@ -1,6 +1,0 @@
-name: pSS_env
-channels:
-  - bioconda
-  - conda-forge
-  - defaults
-prefix: /Users/gusarv/opt/miniconda3/envs/pSS_env

@@ -41,7 +41,7 @@ suppressMessages(library(tidyr))
 #install.packages("future.apply", dependencies = TRUE)
 suppressMessages(library(future.apply))
 
-### !!!! BiocManager::install('msa', dependencies = TRUE)
+#BiocManager::install('msa', dependencies = TRUE)
 suppressMessages(library(msa))
 
 #install.packages("seqinr", dependencies = TRUE)
@@ -137,7 +137,7 @@ suppressMessages(library(scDblFinder))
 #install.packages("harmony", dependencies = TRUE)
 suppressMessages(library(harmony))
 
-devtools::install_github("powellgenomicslab/scPred")
+#devtools::install_github("powellgenomicslab/scPred")
 suppressMessages(library(scPred))
 
 #install.packages("tidyseurat")
@@ -150,15 +150,15 @@ suppressMessages(library(glmGamPoi))
 ####------------------------------------------------------------------------------
 ####----- VDJ
 ####------------------------------------------------------------------------------
+#BiocManager::install("ggtree", dependencies = TRUE)
+suppressMessages(library(ggtree))
+
 #BiocManager::install("scRepertoire", dependencies = TRUE)
-#devtools::install_github("ncborcherding/scRepertoire@dev")
+##devtools::install_github("ncborcherding/scRepertoire@dev")
 suppressMessages(library(scRepertoire))#; packageVersion("scRepertoire") #local :[1] ???1.3.4???; bianca:[1] ???1.0.0???
 
 #install.packages("dowser")
 #suppressMessages(library(dowser))
-
-#BiocManager::install("ggtree", dependencies = TRUE)
-#suppressMessages(library(ggtree))
 
 #install.packages("phangorn", dependencies = TRUE)
 #suppressMessages(library(phangorn))
@@ -186,10 +186,10 @@ suppressMessages(library(scoper))
 ####------------------------------------------------------------------------------
 ####GSEA
 ####------------------------------------------------------------------------------
-install.packages('enrichR', dependencies = TRUE)
+#install.packages('enrichR', dependencies = TRUE)
 suppressMessages(library(enrichR))
 
-BiocManager::install("fgsea", dependencies = TRUE)
+#BiocManager::install("fgsea", dependencies = TRUE)
 suppressMessages(library(fgsea))
 
 #BiocManager::install("EnrichmentBrowser")
@@ -199,5 +199,7 @@ suppressMessages(library(EnrichmentBrowser))
 ####------------------------------------------------------------------------------
 #### save sessionInfo()
 ####------------------------------------------------------------------------------
+getwd()
+setwd("/Users/gusarv/Documents/projekt/SjS/data/pss_bcells_scRNAseq/code")
 thesession <- sessionInfo()
 saveRDS(thesession, paste0("../results/sessionInfo", Sys.Date(), ".rds"))

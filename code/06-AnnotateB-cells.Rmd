@@ -631,6 +631,77 @@ ggsave2("../results/Fig1F_2.png",
 ```
 
 
+## plot Fig1F, Supplementary Figure SFig4D, violins split by cell type
+
+```{r}
+
+p_out <- list()
+for (i in levels(cell_summary$cluster_cellType_manual_fine)){
+p_out[[i]] <- ggplot(cell_summary[cell_summary$cluster_cellType_manual_fine == i, ], 
+                     aes(x = patient_group,
+                         y = per,
+                         fill = patient_group)) +
+                     theme_classic() +
+                     geom_violin(scale = "width", 
+                                 draw_quantiles = c(0.25, 0.5, 0.75),
+                                 trim = TRUE) + 
+                     ylab("") + 
+                     xlab("") +
+                     ggtitle(i) + 
+                     theme(axis.text.x = element_text(angle = 90, 
+                                                      vjust = 0.5, 
+                                                      hjust = 1),
+                     legend.position = "none") +
+                     scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
+                     scale_fill_manual(values = scales::hue_pal()(4)) +
+                     stat_compare_means(method = "t.test", 
+                                        comparisons = list(c("CTRL","DNEG"), 
+                                                           c("CTRL","SSA"), 
+                                                           c("CTRL","SSAB")), 
+                                        label = "p.format")
+
+}
+
+
+y_label <- ggdraw() + 
+  draw_label("proportion of cells in sample", 
+             fontface = 'bold',
+             #x = 0.1,
+             hjust = 0.5, 
+             angle = 90,vjust = 0)
+
+p_legend <- ggplot(cell_summary,
+                   aes(x = i,
+                       y = per,
+                       fill = patient_group)) +
+  theme_classic() +
+  geom_violin(scale = "width", 
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE) + 
+  scale_fill_discrete(name = "patient group")
+
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+
+p1 <- plot_grid(plotlist = p_out, 
+                ncol = 4, 
+                labels = NULL, 
+                align = "hv") + 
+          bgcolor("white") + 
+          border("white")
+
+ggsave2("../results/SFig4D_2.png", 
+        plot_grid(y_label, p1, 
+                  ncol = 2, 
+                  labels = NULL, 
+                  align = "hv", 
+                  rel_widths = c(0.03, 1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 30, height = 40, unit = "cm")
+
+```
+
+
 ## plot SFig4A, cellTypesMain by patient group, Supplementary Figure 4A
 
 ```{r}
@@ -717,77 +788,6 @@ ggsave2("../results/SFig4C_3.png",
         p, 
         width = 20, height = 14, unit = "cm")
 
-
-```
-
-
-## plot SFig4D, Supplementary Figure SFig4D, violins split by cell type
-
-```{r}
-
-p_out <- list()
-for (i in levels(cell_summary$cluster_cellType_manual_fine)){
-p_out[[i]] <- ggplot(cell_summary[cell_summary$cluster_cellType_manual_fine == i, ], 
-                     aes(x = patient_group,
-                         y = per,
-                         fill = patient_group)) +
-                     theme_classic() +
-                     geom_violin(scale = "width", 
-                                 draw_quantiles = c(0.25, 0.5, 0.75),
-                                 trim = TRUE) + 
-                     ylab("") + 
-                     xlab("") +
-                     ggtitle(i) + 
-                     theme(axis.text.x = element_text(angle = 90, 
-                                                      vjust = 0.5, 
-                                                      hjust = 1),
-                     legend.position = "none") +
-                     scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
-                     scale_fill_manual(values = scales::hue_pal()(4)) +
-                     stat_compare_means(method = "t.test", 
-                                        comparisons = list(c("CTRL","DNEG"), 
-                                                           c("CTRL","SSA"), 
-                                                           c("CTRL","SSAB")), 
-                                        label = "p.format")
-
-}
-
-
-y_label <- ggdraw() + 
-  draw_label("proportion of cells in sample", 
-             fontface = 'bold',
-             #x = 0.1,
-             hjust = 0.5, 
-             angle = 90,vjust = 0)
-
-p_legend <- ggplot(cell_summary,
-                   aes(x = i,
-                       y = per,
-                       fill = patient_group)) +
-  theme_classic() +
-  geom_violin(scale = "width", 
-              draw_quantiles = c(0.25, 0.5, 0.75),
-              trim = TRUE) + 
-  scale_fill_discrete(name = "patient group")
-
-p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
-
-p1 <- plot_grid(plotlist = p_out, 
-                ncol = 4, 
-                labels = NULL, 
-                align = "hv") + 
-          bgcolor("white") + 
-          border("white")
-
-ggsave2("../results/SFig4D_2.png", 
-        plot_grid(y_label, p1, 
-                  ncol = 2, 
-                  labels = NULL, 
-                  align = "hv", 
-                  rel_widths = c(0.03, 1)) + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 30, height = 40, unit = "cm")
 
 ```
 
