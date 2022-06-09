@@ -66,7 +66,7 @@ gex.slim <- gex.slim[, (gex.slim$cluster_cellType_manual_fine == "DN1_ID3" |
 
 ```{r}
 
-source("../results/00b_pheno.R")
+source("./00b_pheno.R")
 
 pheno <- pheno[-28,] # remove P024
 
@@ -75,9 +75,10 @@ pheno[pheno == "NO"] <- 0
 pheno[pheno == "YES"] <- 1
 pheno[pheno == "MD"] <- NA
 pheno[, 2:(ncol(pheno)-1)] <- sapply(pheno[, 2:(ncol(pheno)-1)], as.numeric)
+colnames(pheno)
 
 #remove variables only present in one sample
-pheno <- pheno[, c(1, (1 + which(colSums(pheno[,2:29], na.rm = TRUE) > 2, )), 34)]
+pheno <- pheno[, c(1, (1 + which(colSums(pheno[,2:29], na.rm = TRUE) > 2, )), 35)]
 
 
 ```
@@ -640,6 +641,7 @@ var_df[is.na(var_df)] <- 0
 #saveRDS(var_df, "../results/variables_per_patient.rds")
 #var_df <- readRDS("../results/variables_per_patient.rds")
 
+ncol(var_df)
 
 colors_df <- data.frame(names = colnames(var_df),
                         category = NA,
@@ -883,7 +885,8 @@ ggsave2(paste0("../results/Fig5_A-D.png"),
 ```
 
 
-## plot Fig5D-E and SFig17-20 PCA 
+## plot Fig5D-E
+## plot SFig19-22 PCA 
 
 ```{r}
 
@@ -973,7 +976,7 @@ for (i in pheno_var){
 }
 
 # plot all patient variables for PC1 and PC2
-ggsave2(paste0("../results/SFig17_PC1.png"),
+ggsave2(paste0("../results/SFig19_PC1.png"),
           plot_grid(plotlist = p_list_PC1[pheno_var[1:18]], 
                     nrow = 6, 
                     ncol = 3, 
@@ -983,7 +986,7 @@ ggsave2(paste0("../results/SFig17_PC1.png"),
           border("white"),
           width = 20, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig18_PC2.png"),
+ggsave2(paste0("../results/SFig20_PC2.png"),
           plot_grid(plotlist = p_list_PC2[pheno_var[1:18]], 
                     nrow = 6, 
                     ncol = 3, 
@@ -996,7 +999,7 @@ ggsave2(paste0("../results/SFig18_PC2.png"),
 
 # plot GEX and VDJ variables for PC1 and PC2
 #length(pheno_var[19:length(pheno_var)]) #[1] 33
-ggsave2(paste0("../results/SFig19_PC1.png"),
+ggsave2(paste0("../results/SFig21_PC1.png"),
           plot_grid(plotlist = p_list_PC1[pheno_var[19:length(pheno_var)]], 
                     nrow = 7, 
                     ncol = 5, 
@@ -1006,7 +1009,7 @@ ggsave2(paste0("../results/SFig19_PC1.png"),
           border("white"),
           width = 30, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig20_PC2.png"),
+ggsave2(paste0("../results/SFig22_PC2.png"),
           plot_grid(plotlist = p_list_PC2[pheno_var[19:length(pheno_var)]], 
                     nrow = 7, 
                     ncol = 5, 

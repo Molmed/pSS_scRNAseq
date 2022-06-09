@@ -20,6 +20,13 @@ source("./00a_dependencies.R")
 
 gex <- readRDS("../results/GEX7_BVDJ.rds")
 
+#add patient group
+colnames(gex@meta.data)[colnames(gex@meta.data) == "patient_group"] <- "patient_group1"
+pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB` = "SSAB")
+gex$patient_group <- names(pat_annot)[match(gex$patient_group1, pat_annot)]
+gex$patient_group <- factor(gex$patient_group, levels = names(pat_annot))
+
+
 ```
 
 
@@ -33,6 +40,380 @@ table(gex$patient_group, useNA = "always")
 #2. SSA  - SSA+/SSB-
 #3. DNEG - SSA-/SSB-
 #4. CTRL - CTRL
+
+
+```
+
+
+# celltypesMain DE tests 
+## pseudo bulk DE test between patient subgroups for celltypesMain
+
+```{r }
+
+#https://jef.works/blog/2020/04/06/quickly-creating-pseudobulks/
+
+DGE_list <- list()
+for (j in sort(unique(gex$cluster_cellType_manual_main))){
+
+  message(j)
+  
+  #subset gex to only contain subtype j
+  gex.tmp <- gex %>% 
+    DietSeurat(dimreducs = "umap_2") %>% 
+    tidyseurat::filter(orig.ident != "P024", 
+                       cluster_cellType_manual_main == j)
+
+  #create a model matrix for pseudo bulk generation
+  mm <- model.matrix(~ 0 + orig.ident, 
+                     data = gex.tmp@meta.data); head(mm); colnames(mm)
+  
+  #sample x number of cells per condition
+  gex.tmp$subgroups <- factor(as.character(gex.tmp$orig.ident))
+  sample_size <- table(gex.tmp$subgroups)
+  sample_size[sample_size > 100] <- 100
+  
+  DGE_cells <- lapply(names(sample_size), function(x){ 
+    set.seed(1)
+    sample(colnames(gex.tmp) [gex.tmp$subgroups == x] , 
+           size = sample_size[x], 
+           replace = FALSE)
+    })
+  
+  DGE_cells <- unlist(DGE_cells)
+  mm <- mm[DGE_cells, ]
+  
+  #clean up colnames
+  colnames(mm) <- gsub("orig.ident", "", colnames(mm))
+  
+  # create pseudo bulk count matrix
+  gex.mm <- gex.tmp@assays$RNA@counts[, DGE_cells] %*% mm; dim(gex.mm)
+  gex.mm <- gex.mm[rowSums(gex.mm) != 0, ]; dim(gex.mm)
+  
+  cellcounts <- colSums(mm); length(cellcounts)
+  
+  y <- DGEList(gex.mm, 
+               sample = gsub("_.*", "", colnames(gex.mm)), 
+               group = gsub(".*_", "", colnames(gex.mm)),
+               remove.zeros = TRUE); y
+  
+  y$samples$patient_group <- as.factor(unique(gex.tmp@meta.data[, c("orig.ident", "patient_group")])$patient_group[match(y$samples$samples, unique(gex.tmp@meta.data[, c("orig.ident", "patient_group")])$orig.ident)])
+  
+  keep <- apply(y$counts, 1, function(x){sum(x >= 5) >= 3}); table(keep)
+  y <- y[keep, ]
+  y <- calcNormFactors(y)
+  
+  design <- model.matrix(~ patient_group, data = y$samples); colnames(design)
+  colnames(design) <- gsub("patient_group", "", colnames(design))
+  
+  y_glm <- estimateDisp(y, design)
+  fit <- glmQLFit(y_glm, design); colnames(fit$coefficients)
+  
+  #conserved differences across patient subgroups
+  qlm <- glmQLFTest(fit, coef = 2:4)
+  de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
+  
+  de_g$celltypeMain <- j
+  de_g$gene <- rownames(de_g)
+  
+  DGE_list[[j]] <- de_g
+  
+  saveRDS(fit, paste0("../results/DGEfit_patientGroups_celltypeMain_", j,".rds"))
+  write.csv(de_g, paste0("../results/DGE_patientGroups_celltypeMain_", j,".csv"), row.names = TRUE)
+
+}
+
+saveRDS(DGE_list, "../results/DGE_B-cells_celltypeMain_patientGroups_listAll.rds")
+#DGE_list <- readRDS("../results/DGE_B-cells_celltypeMain_patientGroups_listAll.rds")
+names(DGE_list)
+
+DGE_list <- DGE_list[c("DN", "Memory", "Naive", "Transitional")]
+
+```
+
+
+### filter rbind and export csv for all celltypesMain DE tests
+
+```{r}
+
+FDR_cutoff <- 0.25
+DGE_list_out <- lapply(DGE_list, function(x){
+
+  
+  cat(unique(x$celltypeMain), "\n")
+  
+  #filter on FDR
+  x <- x[x$FDR <= FDR_cutoff, ]
+  
+  cat(nrow(x), "\n")
+  
+  #subset GEX to only include cell type
+  gex_tmp <- gex %>% 
+    DietSeurat(dimreducs = "umap_2") %>% 
+    tidyseurat::filter(cluster_cellType_manual_main == unique(x$celltypeMain))
+  
+  
+  #get "pct.exp" and "avg.exp" for filtering
+  p <- DotPlot(gex_tmp, features = rownames(x), group.by = "patient_group")
+  p <- p$data %>%  pivot_wider(names_from = "id", 
+                          values_from = c("pct.exp", "avg.exp"), 
+                          id_cols = "features.plot")
+  x <- cbind(x, p)
+  
+  return(x)
+  
+})
+
+DGE_list_out <- as.data.frame(do.call(rbind, DGE_list_out))
+
+write.csv(DGE_list_out, paste0("../results/DGE_B-cells_celltypeMain_all_FDR", FDR_cutoff, ".csv"), row.names = FALSE)
+
+```
+
+
+### plot Fig2A, filter and plot dotplots for top expressed genes for celltypesMain
+
+```{r}
+
+#filter DE genes
+FDR_cutoff <- 0.2
+FC_cutoff <- 2
+PCTexpr_cutoff <- 20
+
+
+####---- subset and make plots
+DGE_list_p <- lapply(DGE_list, function(a) {
+
+  print(unique(a$celltypeMain))
+  
+  #filter on FDR
+  a <- a[a$FDR <= FDR_cutoff, ]
+  
+  cat("after FDR: ",nrow(a), "\n")
+  
+  #subset GEX to only include cell type
+  gex_tmp <- gex[a$gene, ] %>% 
+    DietSeurat(dimreducs = NULL, graphs = NULL) %>% 
+    tidyseurat::filter(cluster_cellType_manual_main == unique(a$celltypeMain))
+  
+  cat("nrow GEX: ", nrow(gex_tmp@meta.data), "\n")
+  
+  #get "pct.exp" and "avg.exp" for filtering
+  exp <- FetchData(gex_tmp,
+                   paste0("rna_", rownames(a)),
+                   slot = "counts")
+  colnames(exp) <- gsub("rna_", "", colnames(exp))
+  exp$patient_group <- gex_tmp$patient_group
+
+  y <- data.frame(matrix(ncol = ncol(exp[, 1:(ncol(exp) - 1)]), nrow = 4))
+  colnames(y) <- colnames(exp[, 1:(ncol(exp) - 1)])
+  rownames(y) <- levels(gex_tmp$patient_group)
+  
+  for (i in levels(gex_tmp$patient_group)){
+    x <- exp[exp$patient_group == i, 1:(ncol(exp) - 1)]
+    y[i, ] <- colSums(x != 0) / nrow(x) * 100
+  }
+   
+  p <- t(y)
+  
+  a <- cbind(a, p)
+  head( a)
+  #filter on fold change
+  a <- a[apply(a[, 1:3], 1, max) > log2(FC_cutoff) |
+         apply(a[, 1:3], 1, min) < log2(1/FC_cutoff), ]
+  
+  cat("after FC: ",nrow(a), "\n")
+  
+  #filter on percent expressed
+  a <- a[apply(a[, 11:13], 1, max) > PCTexpr_cutoff, ]
+  
+  cat("after %e: ",nrow(a), "\n")
+
+  return(a)
+  
+  rm(gex_tmp)
+  rm(p)
+  rm(x)
+  rm(y)
+  rm(exp)
+  rm(a)
+  
+   }
+  )
+
+
+####---- plot dotplots to list
+ngenes <- 25
+
+p_list <- list()
+for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(3, 4, 6)]){
+
+  cat(i,"\n")
+  
+  a <- as_tibble(DGE_list_p[[i]]) %>% arrange(logFC.SSAB, PValue) %>% pull(gene)
+  
+  cat(length(a),"\n")
+  cat(a,"\n")
+  
+  if(length(a) < ngenes) {
+    p_features <- a
+  } else {
+    p_features <- a[1:ngenes]
+  }
+  
+  cat(length(p_features),"\n")
+  
+  #subset gex
+  DGE_DATA <- gex[a,] %>% 
+  DietSeurat(dimreducs = NULL, graphs = NULL) %>% 
+  tidyseurat::filter(orig.ident != "P024", 
+                     cluster_cellType_manual_main == i)
+
+  tmp <-  DotPlot(DGE_DATA,
+                         features = p_features,
+                         group.by = "patient_group",
+                         dot.scale = 5) +
+  theme_classic() +
+  xlab("") + 
+  ylab("") + 
+  ggtitle(i) +
+  coord_flip() + 
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, 
+                                   vjust = 0.5,
+                                   size = 8),
+        legend.position ="bottom", 
+        legend.box = "horizontal",
+        plot.title = element_text(hjust = 0.5,
+                                  size = 10),
+        panel.grid.major = element_line(colour = "grey", size = rel(0.5)))
+  
+  p_legend <- get_legend(tmp) %>% ggpubr::as_ggplot()
+  
+  p_list[[i]] <- tmp + theme(legend.position = "none")
+  
+  rm(DGE_DATA)
+
+}
+
+p1 <- plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h") + 
+           bgcolor("white") + 
+           border("white")
+  
+
+
+ggsave2("../results/Fig2A_2.png", 
+        plot_grid(p1, p_legend, ncol = 1, rel_heights = c(8, 1), labels = NULL, align = "h") + 
+           bgcolor("white") + 
+           border("white"), 
+        width = 25, height = 10, unit = "cm")
+
+
+```
+
+
+### plot FIG2B and SFig7, GSEA celltypesMain (GO_Biological_Process_2021 and MSigDB_Hallmark_2020)
+
+```{r}
+
+p_listH <- list()
+p_listBP <- list()
+gse_listH <- list()
+gse_listBP <- list()
+
+for (i in sort(names(DGE_list))[-c(3, 4, 6)]){
+  
+  go_cluster <- enrichr(genes = DGE_list[[i]]$gene[1:50], 
+                        databases = c("GO_Biological_Process_2021", 
+                                      "MSigDB_Hallmark_2020"))
+  
+  go_clusterBP <- go_cluster$GO_Biological_Process_2021
+  go_clusterBP <- go_clusterBP[order(go_clusterBP$P.value), ]
+  go_clusterBP$logP <- -log10(go_clusterBP$P.value)
+  go_clusterBP$logPadj <- -log10(go_clusterBP$Adjusted.P.value)
+  gse_listBP[[i]] <- go_clusterBP
+  
+  go_clusterH <- go_cluster$MSigDB_Hallmark_2020
+  go_clusterH <- go_clusterH[order(go_clusterH$P.value), ]
+  go_clusterH$logP <- -log10(go_clusterH$P.value)
+  go_clusterH$logPadj <- -log10(go_clusterH$Adjusted.P.value)
+  gse_listH[[i]] <- go_clusterH
+  
+  p_listH[[i]] <- ggplot(go_clusterH[1:6,], 
+                         aes(x = reorder(Term, logP), 
+                             y = logPadj)) +
+    geom_col(position = "dodge") +
+    theme_classic() + 
+    coord_flip() +
+    theme(axis.text.x = element_text(angle = 0, 
+                                     hjust = 0.5, 
+                                     vjust = 0.5,
+                                     size = 12,
+                                     color = "black"),
+          axis.text.y = element_text(angle = 0, 
+                                     hjust = 1, 
+                                     vjust = 0.5,
+                                     size = 12,
+                                     color = "black"),
+          #scale_y_continuous(breaks = seq(0, 25, 5), limits = c(0, 25)) +
+          strip.background = element_blank(), 
+          strip.text.y = element_blank(),
+          legend.position = "none",
+          plot.margin = unit(c(0.2,0.2,0.2,0.2), "cm")) +
+      ylab(expression('-log10('~italic(P)~' adj)')) +
+      xlab("") +
+      #scale_x_continuous(breaks = seq(0, 15, 5), limits = c(0, 15)) +
+      ggtitle(paste0(i)) +
+      geom_hline(aes(yintercept = 2), color = "black", linetype = "dashed")
+  
+  p_listBP[[i]] <- ggplot(go_clusterBP[1:20,], 
+                          aes(x = reorder(Term, logP), 
+                              y = logPadj)) +
+    geom_col(position = "dodge") +
+    theme_classic() + 
+    coord_flip() +
+    theme(axis.text.x = element_text(angle = 0, 
+                                     hjust = 0.5, 
+                                     vjust = 0.5,
+                                     size = 12,
+                                     color = "black"),
+          axis.text.y = element_text(angle = 0, 
+                                     hjust = 1, 
+                                     vjust = 0.5,
+                                     size = 12,
+                                     color = "black"),
+          scale_y_continuous(breaks = seq(0, 20, 5), limits = c(0, 20)) +
+          strip.background = element_blank(), 
+          strip.text.y = element_blank(),
+          legend.position = "none",
+          plot.margin = unit(c(0.2,0.2,0.2,0.2), "cm")) +
+      ylab(expression('-log10('~italic(P)~' adj)')) +
+      xlab("") +
+      ggtitle(paste0(i)) +
+      geom_hline(aes(yintercept = 2), color = "black", linetype = "dashed")
+  
+}
+
+write.csv(do.call(rbind.data.frame, gse_listH),
+          "../results/DGE_B-cells_GSE_celltypeMain_hallmarks.csv", 
+          row.names = FALSE)
+
+write.csv(do.call(rbind.data.frame, gse_listBP),
+          "../results/DGE_B-cells_GSE_celltypeMain_GOBP.csv", 
+          row.names = FALSE)
+
+ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeMain_hallmarks.png"),
+          plot_grid(plotlist = p_listH, 
+                    ncol = 4, 
+                    labels = NULL, 
+                    align = "vh" ) + bgcolor("white"),
+          width = 40, height = 8, unit = "cm")
+
+ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeMain_GOBP.png"),
+          plot_grid(plotlist = p_listBP, 
+                    ncol = 4, 
+                    labels = NULL, 
+                    align = "vh" ) + bgcolor("white"),
+          width = 90, height = 8, unit = "cm")
 
 
 ```
@@ -162,6 +543,7 @@ DGE_list_out <- as.data.frame(do.call(rbind, DGE_list_out))
 
 write.csv(DGE_list_out, paste0("../results/DGE_B-cells_celltypeFine_all_FDR", FDR_cutoff, ".csv"), row.names = FALSE)
 
+
 ```
 
 
@@ -174,10 +556,14 @@ FDR_cutoff <- 0.2
 FC_cutoff <- 2
 PCTexpr_cutoff <- 20
 
+plotlist <- c("DN1_ID3", "DN2", "DN2_CXCR3", "DN2_ITGAX", "DN4", "Memory_Cl", "Memory_IgM",
+              "Memory_IgM_ALOX5", "Memory_IgM_CD1C", "Naive", "Naive_IFN", "Naive_Transitional")
+DGE_list <- DGE_list[match(plotlist, names(DGE_list))]
+
+
 ####---- subset and make plots
-DGE_list_p <- lapply(DGE_list, function(x) {
+DGE_list_p <- lapply(DGE_list, function(a) {
   
-  a <- x
   
   print(unique(a$celltypeFine))
   
@@ -186,15 +572,29 @@ DGE_list_p <- lapply(DGE_list, function(x) {
   
   cat("after FDR: ",nrow(a), "\n")
   
-  gex_tmp <- gex %>% 
-    DietSeurat(dimreducs = "umap_2") %>% 
+  gex_tmp <- gex[a$gene, ] %>% 
+    DietSeurat(dimreducs = NULL, graphs = NULL) %>% 
     tidyseurat::filter(cluster_cellType_manual_fine == unique(a$celltypeFine))
   
-  #get "pct.exp" and "avg.exp" for filtering
-  p <- DotPlot(gex_tmp, features = rownames(a), group.by = "patient_group")
-  p <- p$data %>%  pivot_wider(names_from = "id", 
-                          values_from = c("pct.exp", "avg.exp"), 
-                          id_cols = "features.plot")
+ #----- get "pct.exp" and "avg.exp" for filtering
+  exp <- FetchData(gex_tmp,
+                   rownames(a),
+                   slot = "counts")
+                   
+  exp$patient_group <- gex_tmp$patient_group
+
+  y <- data.frame(matrix(ncol = ncol(exp[, 1:(ncol(exp) - 1)]), nrow = 4))
+  colnames(y) <- colnames(exp[, 1:(ncol(exp) - 1)])
+  rownames(y) <- levels(gex_tmp$patient_group)
+  
+  for (i in levels(gex_tmp$patient_group)){
+    x <- exp[exp$patient_group == i, 1:(ncol(exp) - 1)]
+    y[i, ] <- colSums(x != 0) / nrow(x) * 100
+  }
+   
+  p <- t(y)
+  #-----
+  
   a <- cbind(a, p)
   
   #filter on fold change
@@ -210,6 +610,12 @@ DGE_list_p <- lapply(DGE_list, function(x) {
 
   return(a)
   
+  rm(gex_tmp)
+  rm(p)
+  rm(y)
+  rm(exp)
+  rm(a)
+  
    }
   )
 
@@ -217,15 +623,12 @@ DGE_list_p <- lapply(DGE_list, function(x) {
 ####---- plot dotplots to list
 ngenes <- 20
 
-plotlist <- c("DN1_ID3", "DN2", "DN2_CXCR3", "DN2_ITGAX", "DN4", "Memory_Cl", "Memory_IgM",
-              "Memory_IgM_ALOX5", "Memory_IgM_CD1C", "Naive", "Naive_IFN", "Naive_Transitional")
-
 p_list <- list()
 for (i in sort(unique(plotlist))){
 
   cat(i,"\n")
   
-  a <- as_tibble(DGE_list_p[[i]]) %>% arrange(DGE_list_p[[i]]) %>% pull(gene)
+  a <- as_tibble(DGE_list_p[[i]]) %>% arrange(logFC.SSAB, PValue) %>% pull(gene)
   
   cat(length(a),"\n")
   cat(a,"\n")
@@ -239,12 +642,12 @@ for (i in sort(unique(plotlist))){
   cat(length(p_features),"\n")
   
   #subset gex
-  DGE_DATA <- gex %>% 
-  DietSeurat(dimreducs = "umap_2") %>% 
+  DGE_DATA <- gex[a,] %>% 
+  DietSeurat(dimreducs = NULL, graphs = NULL) %>% 
   tidyseurat::filter(orig.ident != "P024", 
-                       cluster_cellType_manual_fine == i)
+                     cluster_cellType_manual_fine == i)
 
-  p_list[[i]] <- DotPlot(DGE_DATA, 
+  tmp <- DotPlot(DGE_DATA, 
         features = p_features, 
         group.by = "patient_group",
         dot.scale = 4) +
@@ -257,18 +660,29 @@ for (i in sort(unique(plotlist))){
                                    hjust = 1, 
                                    vjust = 0.5,
                                    size = 8),
-        legend.position = "none",
+        legend.position ="bottom", 
+        legend.box = "horizontal",
         plot.title = element_text(hjust = 0.5),
         panel.grid.major = element_line(colour = "grey", size = rel(0.5)))
 
+  #extract legend
+  p_legend <- get_legend(tmp) %>% ggpubr::as_ggplot()
+  
+  #remove legend
+  p_list[[i]] <- tmp + theme(legend.position = "none")
+  
+  rm(DGE_DATA)
+  
 }
 
-# ggsave2("../results/DGE_B-cells_celltypeFine_dotplots.png", 
-#         plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h"), 
-#         width = 28, height = 20, unit = "cm")
+p1 <- plot_grid(plotlist = p_list, ncol = 3, labels = NULL, align = "h") + 
+           bgcolor("white") + 
+           border("white")
 
 ggsave2("../results/SFig5.png", 
-        plot_grid(plotlist = p_list, ncol = 3, labels = NULL, align = "hv"), 
+        plot_grid(p1, p_legend, ncol = 1, labels = NULL, rel_heights = c(20, 1), align = "hv") + 
+           bgcolor("white") + 
+           border("white"), 
         width = 26, height = 30, unit = "cm")
 
 
@@ -386,349 +800,6 @@ ggsave2(paste0("../results/SFig8.png"),
           bgcolor("white") + 
           border("white"),
           width = 58, height = 32, unit = "cm")
-
-```
-
-
-# celltypesMain DE tests 
-## pseudo bulk DE test between patient subgroups for celltypesMain
-
-```{r }
-
-#https://jef.works/blog/2020/04/06/quickly-creating-pseudobulks/
-
-DGE_list <- list()
-for (j in sort(unique(gex$cluster_cellType_manual_main))){
-
-  message(j)
-  
-  #subset gex to only contain subtype j
-  gex.tmp <- gex %>% 
-    DietSeurat(dimreducs = "umap_2") %>% 
-    tidyseurat::filter(orig.ident != "P024", 
-                       cluster_cellType_manual_main == j)
-
-  #create a model matrix for pseudo bulk generation
-  mm <- model.matrix(~ 0 + orig.ident, 
-                     data = gex.tmp@meta.data); head(mm); colnames(mm)
-  
-  #sample x number of cells per condition
-  gex.tmp$subgroups <- factor(as.character(gex.tmp$orig.ident))
-  sample_size <- table(gex.tmp$subgroups)
-  sample_size[sample_size > 100] <- 100
-  
-  DGE_cells <- lapply(names(sample_size), function(x){ 
-    set.seed(1)
-    sample(colnames(gex.tmp) [gex.tmp$subgroups == x] , 
-           size = sample_size[x], 
-           replace = FALSE)
-    })
-  
-  DGE_cells <- unlist(DGE_cells)
-  mm <- mm[DGE_cells, ]
-  
-  #clean up colnames
-  colnames(mm) <- gsub("orig.ident", "", colnames(mm))
-  
-  # create pseudo bulk count matrix
-  gex.mm <- gex.tmp@assays$RNA@counts[, DGE_cells] %*% mm; dim(gex.mm)
-  gex.mm <- gex.mm[rowSums(gex.mm) != 0, ]; dim(gex.mm)
-  
-  cellcounts <- colSums(mm); length(cellcounts)
-  
-  y <- DGEList(gex.mm, 
-               sample = gsub("_.*", "", colnames(gex.mm)), 
-               group = gsub(".*_", "", colnames(gex.mm)),
-               remove.zeros = TRUE); y
-  
-  y$samples$patient_group <- as.factor(unique(gex.tmp@meta.data[, c("orig.ident", "patient_group")])$patient_group[match(y$samples$samples, unique(gex.tmp@meta.data[, c("orig.ident", "patient_group")])$orig.ident)])
-  
-  keep <- apply(y$counts, 1, function(x){sum(x >= 5) >= 3}); table(keep)
-  y <- y[keep, ]
-  y <- calcNormFactors(y)
-  
-  design <- model.matrix(~ patient_group, data = y$samples); colnames(design)
-  colnames(design) <- gsub("patient_group", "", colnames(design))
-  
-  y_glm <- estimateDisp(y, design)
-  fit <- glmQLFit(y_glm, design); colnames(fit$coefficients)
-  
-  #conserved differences across patient subgroups
-  qlm <- glmQLFTest(fit, coef = 2:4)
-  de_g <- topTags(qlm, n = nrow(y_glm$counts))$table; head(de_g, 25)
-  
-  de_g$celltypeMain <- j
-  de_g$gene <- rownames(de_g)
-  
-  DGE_list[[j]] <- de_g
-  
-  saveRDS(fit, paste0("../results/DGEfit_patientGroups_celltypeMain_", j,".rds"))
-  write.csv(de_g, paste0("../results/DGE_patientGroups_celltypeMain_", j,".csv"), row.names = TRUE)
-
-}
-
-saveRDS(DGE_list, "../results/DGE_B-cells_celltypeMain_patientGroups_listAll.rds")
-#DGE_list <- readRDS("../results/DGE_B-cells_celltypeMain_patientGroups_listAll.rds")
-
-
-```
-
-
-### filter rbind and export csv for all celltypesMain DE tests
-
-```{r}
-
-FDR_cutoff <- 0.25
-DGE_list_out <- lapply(DGE_list, function(x){
-
-  
-  cat(unique(x$celltypeMain), "\n")
-  
-  #filter on FDR
-  x <- x[x$FDR <= FDR_cutoff, ]
-  
-  cat(nrow(x), "\n")
-  
-  #subset GEX to only include cell type
-  gex_tmp <- gex %>% 
-    DietSeurat(dimreducs = "umap_2") %>% 
-    tidyseurat::filter(cluster_cellType_manual_main == unique(x$celltypeMain))
-  
-  
-  #get "pct.exp" and "avg.exp" for filtering
-  p <- DotPlot(gex_tmp, features = rownames(x), group.by = "patient_group")
-  p <- p$data %>%  pivot_wider(names_from = "id", 
-                          values_from = c("pct.exp", "avg.exp"), 
-                          id_cols = "features.plot")
-  x <- cbind(x, p)
-  
-  return(x)
-  
-})
-
-DGE_list_out <- as.data.frame(do.call(rbind, DGE_list_out))
-
-write.csv(DGE_list_out, paste0("../results/DGE_B-cells_celltypeMain_all_FDR", FDR_cutoff, ".csv"), row.names = FALSE)
-
-```
-
-
-### plot Fig2A, filter and plot dotplots for top expressed genes for celltypesMain
-
-```{r}
-
-#filter DE genes
-FDR_cutoff <- 0.2
-FC_cutoff <- 2
-PCTexpr_cutoff <- 20
-
-####---- subset and make plots
-DGE_list_p <- lapply(DGE_list, function(x) {
-  
-  a <- x
-  
-  print(unique(a$celltypeMain))
-  
-  #filter on FDR
-  a <- a[a$FDR <= FDR_cutoff, ]
-  
-  cat("after FDR: ",nrow(a), "\n")
-  
-  #subset GEX to only include cell type
-  gex_tmp <- gex %>% 
-    DietSeurat(dimreducs = "umap_2") %>% 
-    tidyseurat::filter(cluster_cellType_manual_main == unique(a$celltypeMain))
-  
-  cat("nrow GEX: ", nrow(gex_tmp@meta.data), "\n")
-  
-  #get "pct.exp" and "avg.exp" for filtering
-  p <- DotPlot(gex_tmp, features = rownames(a), group.by = "patient_group")
-  p <- p$data %>%  pivot_wider(names_from = "id", 
-                               values_from = c("pct.exp", "avg.exp"), 
-                               id_cols = "features.plot")
-  a <- cbind(a, p)
-  
-  #filter on fold change
-  a <- a[apply(a[, 1:3], 1, max) > log2(FC_cutoff) |
-         apply(a[, 1:3], 1, min) < log2(1/FC_cutoff), ]
-  
-  cat("after FC: ",nrow(a), "\n")
-  
-  #filter on percent expressed
-  a <- a[apply(a[, 11:13], 1, max) > PCTexpr_cutoff, ]
-  
-  cat("after %e: ",nrow(a), "\n")
-
-  return(a)
-  
-   }
-  )
-
-
-####---- plot dotplots to list
-ngenes <- 25
-
-p_list <- list()
-for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(3, 4, 6)]){
-
-  cat(i,"\n")
-  
-  a <- as_tibble(DGE_list_p[[i]]) %>% arrange(PValue) %>% pull(gene)
-  
-  cat(length(a),"\n")
-  cat(a,"\n")
-  
-  if(length(a) < ngenes) {
-    p_features <- a
-  } else {
-    p_features <- a[1:ngenes]
-  }
-  
-  cat(length(p_features),"\n")
-  
-  #subset gex
-  DGE_DATA <- gex %>% 
-  DietSeurat(dimreducs = "umap_2") %>% 
-  tidyseurat::filter(orig.ident != "P024", 
-                     cluster_cellType_manual_main == i,
-                     )
-
-  p_list[[i]] <- DotPlot(DGE_DATA,
-                         features = p_features,
-                         group.by = "patient_group",
-                         dot.scale = 4) +
-  theme_classic() +
-  xlab("") + 
-  ylab("") + 
-  ggtitle(i) +
-  coord_flip() + 
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, 
-                                   vjust = 0.5,
-                                   size = 8),
-        legend.position = "none",
-        plot.title = element_text(hjust = 0.5,
-                                  size = 10),
-        panel.grid.major = element_line(colour = "grey", size = rel(0.5)))
-
-}
-
-ggsave2("../results/DGE_B-cells_celltypeMain_dotplots_2.png", 
-        plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h"), 
-        width = 25, height = 10, unit = "cm")
-
-ggsave2("../results/DGE_B-cells_celltypeMain_mutstat_dotplots_2.png", 
-        plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h"), 
-        width = 25, height = 10, unit = "cm")
-
-
-```
-
-
-### plot FIG2B and SFig7, GSEA celltypesMain (GO_Biological_Process_2021 and MSigDB_Hallmark_2020)
-
-```{r}
-
-p_listH <- list()
-p_listBP <- list()
-gse_listH <- list()
-gse_listBP <- list()
-
-for (i in sort(names(DGE_list))[-c(3, 4, 6)]){
-  
-  go_cluster <- enrichr(genes = DGE_list[[i]]$gene[1:50], 
-                        databases = c("GO_Biological_Process_2021", 
-                                      "MSigDB_Hallmark_2020"))
-  
-  go_clusterBP <- go_cluster$GO_Biological_Process_2021
-  go_clusterBP <- go_clusterBP[order(go_clusterBP$P.value), ]
-  go_clusterBP$logP <- -log10(go_clusterBP$P.value)
-  go_clusterBP$logPadj <- -log10(go_clusterBP$Adjusted.P.value)
-  gse_listBP[[i]] <- go_clusterBP
-  
-  go_clusterH <- go_cluster$MSigDB_Hallmark_2020
-  go_clusterH <- go_clusterH[order(go_clusterH$P.value), ]
-  go_clusterH$logP <- -log10(go_clusterH$P.value)
-  go_clusterH$logPadj <- -log10(go_clusterH$Adjusted.P.value)
-  gse_listH[[i]] <- go_clusterH
-  
-  p_listH[[i]] <- ggplot(go_clusterH[1:6,], 
-                         aes(x = reorder(Term, logP), 
-                             y = logPadj)) +
-    geom_col(position = "dodge") +
-    theme_classic() + 
-    coord_flip() +
-    theme(axis.text.x = element_text(angle = 0, 
-                                     hjust = 0.5, 
-                                     vjust = 0.5,
-                                     size = 12,
-                                     color = "black"),
-          axis.text.y = element_text(angle = 0, 
-                                     hjust = 1, 
-                                     vjust = 0.5,
-                                     size = 12,
-                                     color = "black"),
-          #scale_y_continuous(breaks = seq(0, 25, 5), limits = c(0, 25)) +
-          strip.background = element_blank(), 
-          strip.text.y = element_blank(),
-          legend.position = "none",
-          plot.margin = unit(c(0.2,0.2,0.2,0.2), "cm")) +
-      ylab(expression('-log10('~italic(P)~' adj)')) +
-      xlab("") +
-      #scale_x_continuous(breaks = seq(0, 15, 5), limits = c(0, 15)) +
-      ggtitle(paste0(i)) +
-      geom_hline(aes(yintercept = 2), color = "black", linetype = "dashed")
-  
-  p_listBP[[i]] <- ggplot(go_clusterBP[1:20,], 
-                          aes(x = reorder(Term, logP), 
-                              y = logPadj)) +
-    geom_col(position = "dodge") +
-    theme_classic() + 
-    coord_flip() +
-    theme(axis.text.x = element_text(angle = 0, 
-                                     hjust = 0.5, 
-                                     vjust = 0.5,
-                                     size = 12,
-                                     color = "black"),
-          axis.text.y = element_text(angle = 0, 
-                                     hjust = 1, 
-                                     vjust = 0.5,
-                                     size = 12,
-                                     color = "black"),
-          scale_y_continuous(breaks = seq(0, 20, 5), limits = c(0, 20)) +
-          strip.background = element_blank(), 
-          strip.text.y = element_blank(),
-          legend.position = "none",
-          plot.margin = unit(c(0.2,0.2,0.2,0.2), "cm")) +
-      ylab(expression('-log10('~italic(P)~' adj)')) +
-      xlab("") +
-      ggtitle(paste0(i)) +
-      geom_hline(aes(yintercept = 2), color = "black", linetype = "dashed")
-  
-}
-
-write.csv(do.call(rbind.data.frame, gse_listH),
-          "../results/DGE_B-cells_GSE_celltypeMain_hallmarks.csv", 
-          row.names = FALSE)
-
-write.csv(do.call(rbind.data.frame, gse_listBP),
-          "../results/DGE_B-cells_GSE_celltypeMain_GOBP.csv", 
-          row.names = FALSE)
-
-ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeMain_hallmarks.png"),
-          plot_grid(plotlist = p_listH, 
-                    ncol = 4, 
-                    labels = NULL, 
-                    align = "vh" ) + bgcolor("white"),
-          width = 40, height = 8, unit = "cm")
-
-ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeMain_GOBP.png"),
-          plot_grid(plotlist = p_listBP, 
-                    ncol = 4, 
-                    labels = NULL, 
-                    align = "vh" ) + bgcolor("white"),
-          width = 90, height = 8, unit = "cm")
-
 
 ```
 
@@ -1355,6 +1426,23 @@ table(DGE$celltypeMain)
 /Users/gusarv/Documents/projekt/SjS/data/pss_bcells_scRNAseq/results/DGE_B-cells_celltypeMain_all_FDR0.25.csv
 
 ```
+
+
+## plot select genes
+```{r}
+
+gex@assays$RNA@data
+violin()
+colnames(gex@meta.data)
+
+gex@meta.data$cellMain_patient_group <- paste(gex$cluster_cellType_manual_main, gex$patient_group, sep="_")
+Seurat::VlnPlot(gex, "BCL6", group.by = "cellMain_patient_group")
+Seurat::VlnPlot(gex, "IGHM", group.by = "cellMain_patient_group")
+Seurat::DotPlot(gex, ,features = c("BCL6", "AICDA", "FASLG"), group.by = "cellMain_patient_group")
+
+
+```
+
 
 
 ## Save rds 

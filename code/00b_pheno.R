@@ -55,13 +55,18 @@ pheno$pleuritis_entesitis_tendinitis_firstSymptom <- ifelse(grepl("pleuritis", p
 pheno[, 4:ncol(pheno)][is.na(pheno[, 4:ncol(pheno)])] <- "NO"
 
 #add patient group
-pheno$patient_group <- paste0(ifelse(pheno$SSA == "YES", "SSA", ""),
+pheno$patient_group1 <- paste0(ifelse(pheno$SSA == "YES", "SSA", ""),
                               "_",
                               ifelse(pheno$SSB == "YES", "SSB", ""))
-pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
-pheno$patient_group <- names(pat_annot)[match(pheno$patient_group, pat_annot)]
-pheno$patient_group[grep("^C00", pheno$orig.ident) ] <- "CTRL"
-pheno$patient_group <- factor(pheno$patient_group, levels = c("CTRL", "DNEG", "SSA", "SSAB"))
+pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG = "NA_NA", DNEG = "_")
+pheno$patient_group1 <- names(pat_annot)[match(pheno$patient_group1, pat_annot)]
+pheno$patient_group1[grep("^C00", pheno$orig.ident) ] <- "CTRL"
+pheno$patient_group1 <- factor(pheno$patient_group1, levels = c("CTRL", "DNEG", "SSA", "SSAB"))
+
+pat_annot <- c(`SSAB+` = "SSAB", `SSA+` = "SSA", `SSA-` = "DNEG", CTRL = "CTRL")
+pheno$patient_group <- names(pat_annot)[match(pheno$patient_group1, pat_annot)]
+pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB+` = "SSAB")
+pheno$patient_group <- factor(pheno$patient_group, levels = names(pat_annot))
 
 rownames(pheno) <- pheno$orig.ident
 

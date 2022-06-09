@@ -21,6 +21,13 @@ source("./00a_dependencies.R")
 
 gex <- readRDS("../results/GEX5_DIMRED2.rds")
 
+#add patient group
+colnames(gex@meta.data)[colnames(gex@meta.data) == "patient_group"] <- "patient_group1"
+pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB` = "SSAB")
+gex$patient_group <- names(pat_annot)[match(gex$patient_group1, pat_annot)]
+gex$patient_group <- factor(gex$patient_group, levels = names(pat_annot))
+
+
 ```
 
 ## cellType colors
@@ -117,8 +124,6 @@ ord <- factor(sapply(unique(as.character(top5$gene)),
 
 genes_to_plot <- unique(as.character(top5$gene))[order(as.numeric( as.character(ord) ))]
 
-genes_to_plot <- c("",)
-
 pdf(paste0("../results/DGE_B-cells_seurat_clusters_dotplot.pdf"), 
     width = 10, height = length(genes_to_plot) / 4 + 3 )
 rafalib::mypar(1, 1, mar = c(6, 6, 1, 5))
@@ -141,7 +146,7 @@ dev.off()
 #https://pubmed.ncbi.nlm.nih.gov/33815362/
 
 #Transitional (CD19+IgD+CD27-CD10+)
-#Naïve (CD19+IgD+CD27-CD10-)
+#Na??ve (CD19+IgD+CD27-CD10-)
 #IgM Memory (CD19+IgD+CD27+)
 #Classical Memory (CD19+IgD-CD27+)
 #Double Negative (CD19+IgD-CD27-)
@@ -434,30 +439,28 @@ p5 <- plot_grid(p1, p2, p3, p4, ncol = 2) + bgcolor("white") + border("white")
 #p6 <- plot_grid(phm1[[4]], phm2[[4]], ncol = 2) + bgcolor("white")
 p7 <- tableGrob(table(gex@meta.data$cluster_stewart_sort, gex@meta.data$cluster_stewart_cl))
 
-ggsave2(paste0("../results/cellType_Stewart_perCluster.png"), 
-        plot_grid(p5, p7, ncol = 1, rel_heights = c(4, 1)) + 
+ggsave2(paste0("../results/SFig3.png"), 
+        plot_grid(p5, p7, 
+                  ncol = 1, rel_heights = c(4, 1)) + 
           bgcolor("white") + 
           border("white"), 
         width = 40, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/UMAP_cellType_fine.png"), 
-        p3, 
-        width = 25, height = 20, unit = "cm")
-
-ggsave2(paste0("../results/UMAP_cellType_main.png"), 
-        p4, 
-        width = 20, height = 20, unit = "cm")
+# ggsave2(paste0("../results/UMAP_cellType_fine.png"), 
+#         p3, 
+#         width = 25, height = 20, unit = "cm")
+# 
+# ggsave2(paste0("../results/UMAP_cellType_main.png"), 
+#         p4, 
+#         width = 20, height = 20, unit = "cm")
 
 
 ```
 
 
-## plot Figure 1B-C, Main cell types and IGH constant region expression (Fig1B-C)
+## plot Fig1B-C, Main cell types and IGH constant region expression (Fig1B-C)
 
 ```{r}
-colors_clusters
-colors_cellTypeFine 
-colors_cellTypeMain
 
 p1 <- DimPlot(gex, 
               reduction = "umap_2", 
@@ -466,11 +469,11 @@ p1 <- DimPlot(gex,
               cols = unname(colors_cellTypeFine)) + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
-  ggtitle("") + 
-    theme(axis.text = element_blank(),
+    theme(plot.title = element_blank(),
+          axis.text = element_blank(),
           axis.ticks = element_blank(),
           legend.position = "bottom",
-          legend.text = element_text(size = 8))
+          legend.text = element_text(size = 6.5, face = "bold" ))
 
 ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
 
@@ -493,17 +496,19 @@ for (i in ig.features) {
 
 p2 <- plot_grid(plotlist = p, ncol = 3, align = "hv", scale = 1.1) 
 
-ggsave2(paste0("../results/Fig1B-C.png"), 
-        plot_grid(p1, p2, ncol = 2, rel_widths = c(1.1, 1)) + 
-          bgcolor("white")+ 
+ggsave2(paste0("../results/Fig1B-C_2.png"), 
+        plot_grid(p1, p2, 
+                  ncol = 2, 
+                  rel_widths = c(1, 1)) + 
+          bgcolor("white") + 
           border("white"), 
-        width = 29, height = 15, unit = "cm")
+        width = 28.2, height = 15, unit = "cm")
 
 
 ```
 
 
-## plot Figure 1D, dotplot for cluster marker genes Fig1D 
+## plot Fig1D, dotplot for cluster marker genes Fig1D 
 
 ```{r}
 
@@ -536,14 +541,12 @@ ggsave2(paste0("../results/Fig1D_2.png"),
 ```
 
 
-##  plot Figure 1E, patient subtypes per cell type (Fig1E)
+##  plot Fig1E, patient subtypes per cell type
 
 ```{r}
 
-#### !!!! FIX THIS , swap parts with SFig4D
-
 p1 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
-                                        -table(cluster_cellType_manual_fine)[cluster_cellType_manual_fine]), 
+                                        -table(cluster_cellType_manual_fine)[cluster_cellType_manual_fine]),
                                             fill = patient_group)) +
         theme_classic() +
         geom_bar(position = position_stack(reverse = FALSE)) + 
@@ -562,9 +565,9 @@ p2 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
         geom_bar(position = "fill") + 
         ylab("proportion of cells") + 
         xlab("") + 
-        theme(legend.position = "none",
-              axis.text.x = element_blank(),
-              axis.ticks.x = element_blank()) +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+              axis.ticks.x = element_blank(),
+              legend.position = "none") +
         scale_fill_manual(name = "Patient group", values = scales::hue_pal()(4))
 
 #get legend
@@ -573,70 +576,50 @@ p_legend <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_fine,
                                             fill = patient_group)) +
         theme_classic() +
         geom_bar(position = "fill") + 
-        scale_fill_manual(name = "Patient group", values = scales::hue_pal()(4))
+        scale_fill_manual(name = "", values = scales::hue_pal()(4))
 
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
-
-# add violin plot for Fig1F per celltype fine per orig.ident/patient_group
-cell_summary <- as_tibble(gex@meta.data) %>% 
-  select(orig.ident, cluster_cellType_manual_fine, patient_group) %>% 
-  add_count(orig.ident, cluster_cellType_manual_fine, .drop = FALSE) %>%
-  distinct() %>% 
-  group_by(orig.ident) %>% 
-  mutate(per =  prop.table(n)) %>%
-  drop_na()
-
-#p$patient_group <- factor(p$patient_group, levels = sort(unique(p$patient_group)))
-
-#reorder factor for celltypeFine to match the other two plots
-theorder <- unique(names(sort(table(gex@meta.data$cluster_cellType_manual_fine)[gex@meta.data$cluster_cellType_manual_fine], decreasing = TRUE)))
-cell_summary$cluster_cellType_manual_fine <- factor(cell_summary$cluster_cellType_manual_fine, 
-                                         levels = theorder)
-
-p4 <- ggplot(cell_summary, 
-            aes(x = cluster_cellType_manual_fine,
-                y = per,
-                fill = patient_group
-           )) +
-            theme_classic() +
-            geom_violin(scale = "width", 
-                        draw_quantiles = c(0.25, 0.5, 0.75),
-                        trim = TRUE) + 
-            ylab("proportion of cells in sample") + 
-            xlab("") + 
-            theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
-                  legend.position = "none") +
-            scale_y_continuous(labels = percent) +
-            scale_fill_manual(name = "Patient group", values = scales::hue_pal()(4)) +
-            stat_compare_means(method = "anova", hide.ns = TRUE, label = "p.signif")
-
-p3 <- plot_grid(p1, p2, p4, 
-                ncol = 1, labels = NULL, rel_heights = c(1, 1, 3.5) , align = "v") + 
+p3 <- plot_grid(p1, p2, 
+                ncol = 1, labels = NULL, rel_heights = c(0.8, 1) , align = "v") + 
           bgcolor("white") + 
           border("white")
 
-ggsave2("../results/Fig1F_2.png", 
-        plot_grid(p3, 
-                  p_legend, 
+ggsave2("../results/Fig1E_4.png", 
+        plot_grid(p3, p_legend, 
                   ncol = 2, 
                   rel_widths = c(5, 1), 
                   labels = NULL, 
                   align = "h") + 
           bgcolor("white") + 
           border("white"), 
-        width = 25, height = 18, unit = "cm")
+        width = 25, height = 10, unit = "cm")
 
 
 ```
 
 
-## plot Fig1F, Supplementary Figure SFig4D, violins split by cell type
+## plot Fig1F, violins split by cell type
 
 ```{r}
 
+# add violin plot for Fig1F per celltype fine per orig.ident/patient_group
+cell_summary <- as_tibble(gex@meta.data) %>%
+  select(orig.ident, cluster_cellType_manual_fine, patient_group) %>%
+  add_count(orig.ident, cluster_cellType_manual_fine, .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na()
+
+# reorder factor for celltypeFine to match the Fig1E
+theorder <- unique(names(sort(table(gex@meta.data$cluster_cellType_manual_fine)[gex@meta.data$cluster_cellType_manual_fine], decreasing = TRUE)))
+cell_summary$cluster_cellType_manual_fine <- factor(cell_summary$cluster_cellType_manual_fine,
+                                         levels = theorder)
+
 p_out <- list()
 for (i in levels(cell_summary$cluster_cellType_manual_fine)){
+maxval  <- max(cell_summary$per[cell_summary$cluster_cellType_manual_fine == i])
 p_out[[i]] <- ggplot(cell_summary[cell_summary$cluster_cellType_manual_fine == i, ], 
                      aes(x = patient_group,
                          y = per,
@@ -644,52 +627,48 @@ p_out[[i]] <- ggplot(cell_summary[cell_summary$cluster_cellType_manual_fine == i
                      theme_classic() +
                      geom_violin(scale = "width", 
                                  draw_quantiles = c(0.25, 0.5, 0.75),
-                                 trim = TRUE) + 
+                                 trim = TRUE,
+                                 alpha = 0.8) + 
+                     geom_jitter(size = 0.3) +
                      ylab("") + 
                      xlab("") +
                      ggtitle(i) + 
-                     theme(axis.text.x = element_text(angle = 90, 
-                                                      vjust = 0.5, 
-                                                      hjust = 1),
-                     legend.position = "none") +
-                     scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
                      scale_fill_manual(values = scales::hue_pal()(4)) +
                      stat_compare_means(method = "t.test", 
-                                        comparisons = list(c("CTRL","DNEG"), 
-                                                           c("CTRL","SSA"), 
-                                                           c("CTRL","SSAB")), 
-                                        label = "p.format")
-
+                                        comparisons = list(c("CTRL", "SSA-"), 
+                                                           c("CTRL", "SSA+"), 
+                                                           c("CTRL", "SSAB")), 
+                                        label = "p.format",
+                                        size = 3.5 
+                                        #vjust = 0.5
+                                        ) +
+                     theme(axis.text.x = element_text(angle = 90, 
+                                                      vjust = 0.5, 
+                                                      hjust = 1,
+                                                      face = "bold"),
+                           plot.title = element_text(size = 9,
+                                                     face = "bold"),
+                     legend.position = "none") +
+                     scale_y_continuous(labels = scales::percent_format(accuracy = 1L), 
+                                        limits = c(0, (maxval * 1.4)))
 }
 
-
+#draw y label
 y_label <- ggdraw() + 
   draw_label("proportion of cells in sample", 
              fontface = 'bold',
-             #x = 0.1,
              hjust = 0.5, 
-             angle = 90,vjust = 0)
-
-p_legend <- ggplot(cell_summary,
-                   aes(x = i,
-                       y = per,
-                       fill = patient_group)) +
-  theme_classic() +
-  geom_violin(scale = "width", 
-              draw_quantiles = c(0.25, 0.5, 0.75),
-              trim = TRUE) + 
-  scale_fill_discrete(name = "patient group")
-
-p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+             angle = 90, 
+             vjust = 0)
 
 p1 <- plot_grid(plotlist = p_out, 
-                ncol = 4, 
+                ncol = 8, 
                 labels = NULL, 
                 align = "hv") + 
           bgcolor("white") + 
           border("white")
 
-ggsave2("../results/SFig4D_2.png", 
+ggsave2("../results/Fig1F.png", 
         plot_grid(y_label, p1, 
                   ncol = 2, 
                   labels = NULL, 
@@ -697,7 +676,8 @@ ggsave2("../results/SFig4D_2.png",
                   rel_widths = c(0.03, 1)) + 
           bgcolor("white") + 
           border("white"), 
-        width = 30, height = 40, unit = "cm")
+        width = 40, height = 15, unit = "cm")
+
 
 ```
 
@@ -710,16 +690,17 @@ p <- DimPlot(gex,
              reduction = "umap_2", 
              group.by = "cluster_cellType_manual_main",
              split.by = "patient_group", 
-             cols = colors_cellTypeMain,
+             cols = unname(colors_cellTypeMain),
              ncol = 2) + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
-  ggtitle("celltypes main") + 
+  #ggtitle("celltypes main") + 
     theme(axis.text = element_blank(),
-          axis.ticks = element_blank())
+          axis.ticks = element_blank(),
+          plot.title = element_blank())
 
 
-ggsave2(paste0("../results/SFig4A_4.png"), 
+ggsave2(paste0("../results/SFig4A.png"), 
         p, 
         width = 20, height = 15, unit = "cm")
 
@@ -769,22 +750,23 @@ gex$cluster_cluster_cellType_manual_fine <- NULL
 ```
 
 
-## plot SFig4C, Supplementary Figure SFig4C
+## plot SFig4C
 
 ```{r}
 
 p <- ggplot(gex@meta.data, 
             aes(x = patient_group, 
                 fill =  cluster_cellType_manual_fine)) +
-  scale_fill_manual(values = colors_cellTypeFine) +
+        scale_fill_manual(values = unname(colors_cellTypeFine)) +
         theme_classic() +
         geom_bar(position = "fill") + 
         ylab("proportion of cells") + 
         xlab("") +
         ggtitle("celltype fine per patient subgroup") +
-        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+              legend.title = element_blank())
 
-ggsave2("../results/SFig4C_3.png", 
+ggsave2("../results/SFig4C.png", 
         p, 
         width = 20, height = 14, unit = "cm")
 

@@ -20,6 +20,12 @@ source("./00a_dependencies.R")
 
 gex <- readRDS("../results/GEX6_BANNOT.rds")
 
+#add patient group
+colnames(gex@meta.data)[colnames(gex@meta.data) == "patient_group"] <- "patient_group1"
+pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB` = "SSAB")
+gex$patient_group <- names(pat_annot)[match(gex$patient_group1, pat_annot)]
+gex$patient_group <- factor(gex$patient_group, levels = names(pat_annot))
+
 ```
 
 
@@ -28,7 +34,7 @@ gex <- readRDS("../results/GEX6_BANNOT.rds")
 ```{r}
 
 
-source("../results/00b_pheno.R")
+source("./00b_pheno.R")
 
 #Four non-overlapping groups
 #1. SSAB - SSA+/SSB+
@@ -482,22 +488,23 @@ gex$c_gene_10x <- as.character(gex$c_gene_10x)
 
 
 #get  IGH _call genes without allele info
-gex$IGHV <- unlist(lapply(strsplit(gex$v_call,
+gex$IGHV_gene <- unlist(lapply(strsplit(gex$v_call,
                                    split = "\\*"), function(x) {return(x[1])}))
 
-gex$IGHD <- unlist(lapply(strsplit(gex$d_call,
+gex$IGHD_gene <- unlist(lapply(strsplit(gex$d_call,
                                    split = "\\*"), function(x) {return(x[1])}))
 
-gex$IGHJ <- unlist(lapply(strsplit(gex$j_call,
+gex$IGHJ_gene <- unlist(lapply(strsplit(gex$j_call,
                                    split = "\\*"), function(x) {return(x[1])}))
 
-gex$VDJ_genes <- paste(gex$IGHV, gex$IGHD, gex$IGHJ, sep = "_")
+gex$VDJ_genes <- paste(gex$IGHV_gene, gex$IGHD_gene, gex$IGHJ_gene, sep = "_")
 gex$VDJ_genes[gex$VDJ_genes == "NA_NA_NA"] <- NA
 
 
 ```
 
-## subset gex@meta for plotting
+
+## subset gex@meta.data for plotting
 
 ```{r}
 
@@ -522,7 +529,8 @@ gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
 
 ## immcantation and scRepertoir output visualization
 ### VDJ gene usage
-#### plot FiG3B VDJ correlation and Supplementary Figure S11A-C
+#### plot FiG3B VDJ correlation 
+#### plot SFig S9A-C
 
 ```{r}
 
@@ -781,7 +789,7 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
 ```
 
 
-#### plot SFig10A-C top VDJ genes per patient subgroup, Supplementary Figure S10
+#### plot SFig12A-C top VDJ genes per patient subgroup
 
 ```{r}
 
@@ -841,18 +849,18 @@ pd <- get_topVDJ(gex, "d_call")
 pj <- get_topVDJ(gex, "j_call")
 pc <- get_topVDJ(gex, "c_gene_10x")
 
-ggsave2(paste0("../results/SFig10.png"), 
-          plot_grid(pc, pd, pj, align = "hv", labels = "AUTO", ncol = 1) +
+ggsave2(paste0("../results/SFig12.png"), 
+          plot_grid(pd, pj, align = "hv", labels = "AUTO", ncol = 1) +
           bgcolor("white") + 
           border("white"),
-          width = 15, height = 25, unit = "cm", dpi = 300)
+          width = 15, height = 18, unit = "cm", dpi = 300)
 
 
 ```
 
 
 #### allele usage for differentially used IGHV genes
-##### plot SFig9 IGHV1-69
+#### plot SFig11 IGHV1-69
 
 ```{r}
 vdj_allele <- countGenes(gex@meta.data, 
@@ -885,7 +893,7 @@ p1 <- ggplot(tmp1, aes(x = reorder(gene, -seq_freq),
       geom_col(position = "dodge") + 
       facet_grid(rows = vars(patient_group))
 
-ggsave2(paste0("../results/SFig9.png"), 
+ggsave2(paste0("../results/SFig11.png"), 
           plot_grid(p1, ncol = 1, labels = NULL, align = "h")+ 
           bgcolor("white") + 
           border("white"),
@@ -938,7 +946,7 @@ ggsave2(paste0("../results/VDJ_geneUsage_alleles_IGHV-69_perCelltypeMain.png"),
 
 
 gex@meta.data$IGHV1_69_umi <- 0
-gex@meta.data$IGHV1_69_umi[which(gex@meta.data$IGHV == "IGHV1-69")] <- gex@meta.data$umi_count[which(gex@meta.data$IGHV == "IGHV1-69")]
+gex@meta.data$IGHV1_69_umi[which(gex@meta.data$IGHV_gene == "IGHV1-69")] <- gex@meta.data$umi_count[which(gex@meta.data$IGHV_gene == "IGHV1-69")]
 
 # featureplots for IGHV1_69 UMIs
 p <- list()
@@ -967,12 +975,12 @@ ggsave2(paste0("../results/VDJ_geneUsage_alleles_IGHV-69_perPatientGroup_feature
 
 
 #percent of IGHV-69 cells per patient group per celltype fine
-tmp <- as.data.frame.matrix(table(gex@meta.data$IGHV, gex@meta.data$cluster_cellType_manual_fine))
+tmp <- as.data.frame.matrix(table(gex@meta.data$IGHV_gene, gex@meta.data$cluster_cellType_manual_fine))
 gex@meta.data$cluster_cellType_manual_fine <- as.factor(gex@meta.data$cluster_cellType_manual_fine)
 
 p <- as_tibble(gex@meta.data) %>% 
-  select(orig.ident, cluster_cellType_manual_fine, IGHV, patient_group) %>% 
-  filter(IGHV == "IGHV1-69")  %>%  
+  select(orig.ident, cluster_cellType_manual_fine, IGHV_gene, patient_group) %>% 
+  filter(IGHV_gene == "IGHV1-69")  %>%  
   add_count(orig.ident, cluster_cellType_manual_fine, .drop = FALSE) %>% 
   distinct() %>%
   group_by(orig.ident) %>%
@@ -1008,14 +1016,14 @@ gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
                           gex$cluster_cellType_manual_fine == "Naive_Transitional") &
                           gex$orig.ident !="P024", ]
 gex.meta$cluster_cellType_manual_fine <- as.factor(gex.meta$cluster_cellType_manual_fine)
-gex.meta$IGHV <- as.factor(gex.meta$IGHV)
+gex.meta$IGHV_gene <- as.factor(gex.meta$IGHV_gene)
 gex.meta$orig.ident <- as.factor(gex.meta$orig.ident)
 
-p <- select(gex.meta, orig.ident, cluster_cellType_manual_fine, IGHV) %>% 
-  group_by(orig.ident, cluster_cellType_manual_fine, IGHV, .drop = FALSE) %>%
+p <- select(gex.meta, orig.ident, cluster_cellType_manual_fine, IGHV_gene) %>% 
+  group_by(orig.ident, cluster_cellType_manual_fine, IGHV_gene, .drop = FALSE) %>%
   summarise(n = n()) %>%
   mutate(percent = n/sum(n)) %>%
-  filter(IGHV == "IGHV1-69")  %>% 
+  filter(IGHV_gene == "IGHV1-69")  %>% 
   left_join(select(gex.meta, orig.ident, patient_group) %>% distinct()) %>%
   ggplot(aes(x = cluster_cellType_manual_fine,
              y = percent,
@@ -1049,13 +1057,13 @@ p <- list()
 for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
 p[[i]] <- select(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ], 
                  orig.ident, 
-                 IGHV) %>% 
+                 IGHV_gene) %>% 
   group_by(orig.ident,
-           IGHV, 
+           IGHV_gene, 
            .drop = FALSE) %>%
   summarise(n = n()) %>%
   mutate(percent = n/sum(n)) %>%
-  filter(IGHV == "IGHV1-69")  %>% 
+  filter(IGHV_gene == "IGHV1-69")  %>% 
   left_join(select(gex.meta[gex.meta$cluster_cellType_manual_fine == i, ], 
                    orig.ident, 
                    patient_group) %>% 
@@ -1108,8 +1116,8 @@ ggsave2(paste0("../results/VDJ_geneUsage_alleles_IGHV-69_perPatientGroup_perCell
 
 
 p <- as_tibble(gex@meta.data) %>% 
-  select(orig.ident, cluster_cellType_manual_main, IGHV, patient_group) %>% 
-  filter(IGHV == "IGHV1-69")  %>%  
+  select(orig.ident, cluster_cellType_manual_main, IGHV_gene, patient_group) %>% 
+  filter(IGHV_gene == "IGHV1-69")  %>%  
   add_count(orig.ident, cluster_cellType_manual_main, .drop = FALSE) %>% 
   distinct() %>%
   group_by(orig.ident) %>%
@@ -1133,8 +1141,8 @@ ggsave2(paste0("../results/VDJ_geneUsage_alleles_IGHV-69_perPatientGroup_perCell
 # make pie chart with celltypeMain for each patient_group
 # !!!! fix this !!!!
 p <- as_tibble(gex@meta.data) %>% 
-  select(cluster_cellType_manual_main, IGHV, patient_group) %>% 
-  filter(IGHV == "IGHV1-69")  %>%  
+  select(cluster_cellType_manual_main, IGHV_gene, patient_group) %>% 
+  filter(IGHV_gene == "IGHV1-69")  %>%  
   add_count(patient_group, cluster_cellType_manual_main, .drop = FALSE) %>% 
   distinct() %>%
   group_by(patient_group) %>%
@@ -1157,63 +1165,9 @@ ggplot(p, aes(x=1,y = perc, fill = cluster_cellType_manual_main)) +
 ```
 
 
-##### IGHV1-18
-
-```{r}
-
-vdj_allele2 <- vdj_allele[grepl("^IGHV1-18*", vdj_allele$gene), ] %>% arrange(desc(seq_count))
-tmp2 <- vdj_allele2[which(vdj_allele2$gene %in% unique(vdj_allele2$gene)[1:10]), ]
-
-p2 <- ggplot(tmp2, aes(x = reorder(gene, -seq_freq), 
-                          y = seq_freq, 
-                          fill = patient_group)) +
-      theme_classic() +
-      theme(axis.text.x = element_text(angle = 90, 
-                                       hjust = 1, 
-                                       vjust = 0.5,
-                                       size = 8), 
-            strip.background = element_blank(), 
-            strip.text.y = element_blank(),
-            legend.position = "none",
-            plot.margin = unit(c(0.2,0,0,0.2), "cm")) +
-      ylab("Percent of allele repertoire") +
-      xlab("") +
-      ggtitle("IGHV1-18 alleles") +
-      #scale_y_continuous(labels = percent) +
-      scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
-      geom_col(position = "dodge") + 
-      facet_grid(rows = vars(patient_group))
-
-#IGHV3-30-3
-vdj_allele3 <- vdj_allele[grepl("^IGHV3-30-3*", vdj_allele$gene),] %>% arrange(desc(seq_count))
-tmp3 <- vdj_allele3[which(vdj_allele3$gene %in% unique(vdj_allele3$gene)[1:10]), ]
-
-p3 <- ggplot(tmp3, aes(x = reorder(gene, -seq_freq), 
-                          y = seq_freq, 
-                          fill = patient_group)) +
-      theme_classic() +
-      theme(axis.text.x = element_text(angle = 90, 
-                                       hjust = 1, 
-                                       vjust = 0.5,
-                                       size = 8), 
-            strip.background = element_blank(), 
-            strip.text.y = element_blank(),
-            legend.position = "none",
-            plot.margin = unit(c(0.2,0,0,0.2), "cm")) +
-      ylab("Percent of allele repertoire") +
-      xlab("") +
-      ggtitle("IGHV3-30-3 alleles") +
-      #scale_y_continuous(labels = percent) +
-      scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
-      geom_col(position = "dodge") + 
-      facet_grid(rows = vars(patient_group))
-
-
-```
-
-
 ## clonotype analysis
-### clonotype diversity
+### diversity
+#### clonotype diversity
 
 ```{r}
 ####---------------------------------------------------------------------
@@ -1257,7 +1211,7 @@ patient_group_alphaDiversity@tests[patient_group_alphaDiversity@tests$pvalue < 0
 ```
 
 
-### plot SFig21
+#### plot SFig16
 
 ```{r}
 
@@ -1271,7 +1225,7 @@ p_legend <- get_legend(p2.1) %>% ggpubr::as_ggplot()
 p2 <- p2.1 + theme(legend.position = "none")
 
 
-ggsave2(paste0("../results/SFig21.png"),
+ggsave2(paste0("../results/SFig16.png"),
           plot_grid(p1, p2, p_legend,
                     nrow = 1, labels = NULL, 
                     align = "vh", axis = "l", rel_widths = c(1, 1, 0.4)) + 
@@ -1286,19 +1240,20 @@ ggsave2(paste0("../results/SFig21.png"),
 ```
 
 
-### plot SFig22
+#### plot SFig17
 
 ```{r}
 
 p_list <- list()
 for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
   
+  
   tmp_Ab <- alakazam::estimateAbundance(
     gex.meta[gex.meta$cluster_cellType_manual_fine == i, ],
     group = "patient_group",
     clone = "cluster_no_airr",
     ci = 0.95,
-    nboot = 50
+    nboot = 30
   )
   
   tmp_alpha <- alakazam::alphaDiversity(
@@ -1309,7 +1264,7 @@ for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
   max_q = 4,
   step_q = 0.1,
   ci = 0.95,
-  nboot = 50
+  nboot = 30
   )
   
   p1 <- plotAbundanceCurve(tmp_Ab) + 
@@ -1329,7 +1284,7 @@ for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
   draw_label(i, 
              fontface = 'bold',
              #x = 0.1,
-             hjust = 0,
+             hjust = 0.5,
              vjust = 0,
              angle = 0)
   
@@ -1359,7 +1314,7 @@ p4 <- plot_grid(plotlist = p_list,
           border("white")
 
 
-ggsave2(paste0("../results/SFig22.png"),
+ggsave2(paste0("../results/SFig17_2.png"),
           plot_grid(p4, p_legend,
                     nrow = 2, labels = NULL, 
                     align = "vh", axis = "l", rel_heights = c(1, 0.1)) + 
@@ -1371,72 +1326,54 @@ ggsave2(paste0("../results/SFig22.png"),
 ```
 
 
+### clonal expansion
+#### plot Fig4A cloneType per cell type fine based on compairr data
 
 ```{r}
 
-length(gex$orig.ident) #[1] 232279
-length(gex$cluster_no_airr[!is.na(gex$cluster_no_airr)]) #[1] 202514 cells with VDJ data
-length(unique(gex$cluster_no_airr)) #[1] 191125 unique clonotypes
-#gex$cloneType_airr
+p1 <- DimPlot(gex, 
+              group.by = "cloneType_airr", 
+              split.by = "patient_group", 
+              reduction = "umap_2", pt.size = 0.6, ncol = 2, 
+              raster = TRUE,
+              order = c("Single (0 < X <= 1)",
+                        "Small (1 < X <= 5)",
+                        "Medium (5 < X <= 20)",
+                        "Large (20 < X <= 100)"), 
+              cols = c(brewer.pal(4, "Dark2")),
+              na.value = "white") +
+  ggtitle("clonotype") +  
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") + 
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "none")
 
-#202514 cells of different types (gex$cluster_cellType_manual_main) that come from patients (gex$orig.ident) that can be divided into groups (gex$patient_group)
-#each cell has a VDJ sequence that comes from the combination of VDJ genes (paste(gex$IGHV, gex$IGHD, gex$IGHJ, sep = "_"))
-#each cell has a VDJ mutation status (gex$mu_load)
-#cells can be grouped into clonotypes based on CDR3 sequence similarities (gex$cluster_no_airr)
+p2 <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)), 
+             aes(x = cluster_cellType_manual_fine, 
+                 fill = cloneType_airr)) +
+      theme_classic() +
+      geom_bar(position = "fill") + 
+      ylab("proportion of cells") + 
+      xlab("") + 
+      facet_grid(rows = vars(patient_group)) + 
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+      scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "clonotype")
 
+ggsave2("../results/Fig4A.png", 
+        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 30, height = 14, unit = "cm")
 
+table(gex$orig.ident, gex$cloneType_airr)
 
-clono_DF <- data.frame(orig.ident = gex$orig.ident,
-                  patient_group = gex$patient_group,
-                  cluster_cellType_manual_fine = gex$cluster_cellType_manual_fine, 
-                  cluster_cellType_manual_main = gex$cluster_cellType_manual_main, 
-                  IGHV = gex$IGHV,
-                  IGHD = gex$IGHD,
-                  IGHJ = gex$IGHJ,
-                  VDJ=paste(gex$IGHV, gex$IGHD, gex$IGHJ, sep = "_"),
-                  c_gene_10x = gex$c_gene_10x,
-                  cluster_no_airr = gex$cluster_no_airr,
-                  mu_load = gex$mu_load,
-                  junction_aa = gex$junction_aa,
-                  cdr3 = gex$cdr3)
-clono_DF <- clono_DF[!is.na(clono_DF$cluster_no_airr),] # remove cells w/o VDJ data
-clono_DF <- clono_DF[!(grepl("Memory_stressed", clono_DF$cluster_cellType_manual_main) |
-                       grepl("Memory_Platelet", clono_DF$cluster_cellType_manual_main) |
-                       grepl("Plasma_cell", clono_DF$cluster_cellType_manual_main)), ] #remove unrelevant cells
-nrow(clono_DF) #[1] 190837
-
-
-tmp <- clono_DF[!grepl("Naive", clono_DF$cluster_cellType_manual_fine), ]
-tmp <- clono_DF
-dim(tmp)
-res <- table(tmp$cluster_no_airr, tmp$orig.ident)
-m <- (table(tmp$orig.ident,tmp$patient_group) > 0) * 1
-res2 <- ((res > 0) * 1) %*% m
-res <- res[apply(res2, 1 , max) >= 2, ]
-dim(res)
-
-
-tmp <- as.matrix(table(clono_DF$VDJ, clono_DF$cluster_cellType_manual_main))
-tmp[order(rowSums(tmp), decreasing = T), ]
-
-tmp <- as.matrix(table(clono_DF$cluster_no_airr, clono_DF$cluster_cellType_manual_main))
-head(tmp[order(rowSums(tmp), decreasing = T), ])
-
-tmp <- as.matrix(table(clono_DF$cluster_no_airr, clono_DF$patient_group))
-head(tmp[order(rowSums(tmp), decreasing = T), ])
-
-tmp <- as.matrix(table(clono_DF$cluster_no_airr, clono_DF$orig.ident))
-head(tmp[order(rowSums(tmp), decreasing = T), ])
-
-tmp <- as.matrix(table(clono_DF$cluster_no_airr, clono_DF$mu_load))
-head(tmp[order(rowSums(tmp), decreasing = T), ])
-
-
+str(gex$cloneType_airr)
 
 ```
 
-
-### plot Fig4B common clonotypes across samples
+### most prevelent clonotypes across samples
+#### plot Fig4B common clonotypes across samples
 
 ```{r}
 
@@ -1444,22 +1381,18 @@ head(tmp[order(rowSums(tmp), decreasing = T), ])
 ####---- make pie charts
 ####---------------------------------------------------------------------
 
-table(gex@meta.data$cluster_cellType_manual_fine)
-imm2 <- gex@meta.data[, c("cluster_no_airr", "orig.ident")]
-imm2 <- gex@meta.data[!(grepl("Naive", gex@meta.data$cluster_cellType_manual_fine) |
-                          grepl("_str", gex@meta.data$cluster_cellType_manual_fine) | 
-                            grepl("Plasma_cell", gex@meta.data$cluster_cellType_manual_fine) |
-                                grepl("Memory_Platelet", gex@meta.data$cluster_cellType_manual_fine)), 
-                      c("cluster_no_airr", "orig.ident")] #without naive and stressed cells
+# imm2 <- gex@meta.data[, c("cluster_no_airr", "orig.ident")]
+# imm2 <- gex@meta.data[!(grepl("Naive", gex@meta.data$cluster_cellType_manual_fine) |
+#                           grepl("_str", gex@meta.data$cluster_cellType_manual_fine) | 
+#                             grepl("Plasma_cell", gex@meta.data$cluster_cellType_manual_fine) |
+#                                 grepl("Memory_Platelet", gex@meta.data$cluster_cellType_manual_fine)), 
+#                       c("cluster_no_airr", "orig.ident")] #without naive and stressed cells
+
 imm2 <- gex.meta[, c("cluster_no_airr", "orig.ident")]
-
-
-
 imm3 <- table(imm2)
 imm4 <- data.frame(table(rowSums(imm3 > 0)))
 colnames(imm4) <- c("clonocount", "cellcount")
 imm4$perc <- round(imm4$cellcount / sum(imm4$cellcount) * 100, digits = 5)
-#head(imm4)
 
 ####---- pie1 - all clonotypes
 p1 <- ggplot(imm4, aes(x = 2, y = cellcount, fill = clonocount)) +
@@ -1501,7 +1434,7 @@ p2 <- ggplot(imm4[2:nrow(imm4), ],
             size = 3.2)+
   theme_void() +
   xlim(0.5, 2.5) +
-  ggtitle(paste0(format(sum(imm4$cellcount[2:nrow(imm4)]), big.mark = " "), " clonotypes\npresent in ≥ 2 samples")) +
+  ggtitle(paste0(format(sum(imm4$cellcount[2:nrow(imm4)]), big.mark = " "), " clonotypes\npresent in ??? 2 samples")) +
   scale_fill_discrete(name = "Samples per clonotype") +
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5)
@@ -1509,8 +1442,8 @@ p2 <- ggplot(imm4[2:nrow(imm4), ],
   scale_fill_manual(values = c.p1$fill[2:nrow(c.p1)])
 
 
-####---- pie3  clonotypes present in ≥ 6 samples
-p3 <- ggplot(imm4[6:nrow(imm4), ], 
+####---- pie3  clonotypes present in ??? 4 samples
+p3 <- ggplot(imm4[4:nrow(imm4), ], 
              aes(x = 2, y = cellcount, fill = clonocount)) +
   geom_bar(stat = "identity") +
   coord_polar(theta = "y", start = 0, direction = 1) +
@@ -1523,12 +1456,12 @@ p3 <- ggplot(imm4[6:nrow(imm4), ],
   #           size = 3.2) +
   theme_void() +
   xlim(0.5, 2.5) +
-  ggtitle(paste0(sum(imm4$cellcount[6:nrow(imm4)]), 
-                 " clonotypes\npresent in ≥ 6 samples")) +
+  ggtitle(paste0(sum(imm4$cellcount[4:nrow(imm4)]), 
+                 " clonotypes\npresent in ??? 4 samples")) +
   scale_fill_discrete(name = "Samples per clonotype") +
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5)) +
-  scale_fill_manual(values = c.p1$fill[6:nrow(c.p1)])
+  scale_fill_manual(values = c.p1$fill[4:nrow(c.p1)])
 
 p4 <- plot_grid(p1, p2, p3, nrow = 1, labels = NULL,
                 align = "vh", axis = "l") + 
@@ -1536,7 +1469,7 @@ p4 <- plot_grid(p1, p2, p3, nrow = 1, labels = NULL,
   border("white")
 
 ####---- save pies
-ggsave2(paste0("../results/Fig4B.png"),
+ggsave2(paste0("../results/Fig4B_2.png"),
           plot_grid(p4, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -1550,230 +1483,7 @@ ggsave2(paste0("../results/Fig4B.png"),
 ```
 
 
-### plot Fig4D heatmap of top clonotypes
-
-```{r}
-
-####--------------------------------------------------------------------- 
-####---- get clonotypes present in ≥ 4 samples using output from compairr
-####---------------------------------------------------------------------
-
-#gex.meta <- gex@meta.data[gex@meta.data$orig.ident != "P024", ]
-pheno_2 <- unique(gex.meta[, c("orig.ident", "patient_group")])
-annot_junc <- unique(gex.meta[, c("cluster_no_airr", "junction_aa")])
-
-tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
-                                  gex.meta$orig.ident))
-
-tmp <- tmp[rowSums(tmp > 0) > 3, ]
-tmp <- tmp[, order(pheno_2$patient_group[match(colnames(tmp), 
-                                               pheno_2$orig.ident)])]
-
-tmp2 <- (tmp > 0) * 1
-pheno3 <- as.data.frame.matrix(table(pheno_2$orig.ident, pheno_2$patient_group))
-tmp3 <- as.matrix(tmp2) %*% as.matrix(pheno3)
-tmp3 <- t(t(tmp3)/c(table(pheno_2$patient_group)))
-h.1 <- hclust(dist(tmp3, method = "binary"), method = "complete")
-#h.1 %>% as.dendrogram %>% plot
-
-clr <- cutree(h.1, h = 0.2) # number of row clusters #15
-
-#table(clr)
-
-ann_cols <- list(patient_group = c(CTRL = "#F8766D", 
-                                   DNEG = "#7CAE00", 
-                                   SSA = "#00BFC4", 
-                                   SSAB = "#C77CFF"),
-                 cluster = scales::hue_pal()(15))
-
-pheatmap(tmp,
-         cluster_cols = FALSE,
-         cluster_rows = h.1,
-         #border_color = NA,
-         cutree_rows = 5,
-         annotation_col = data.frame(patient_group = factor(pheno_2$patient_group[match(colnames(tmp), pheno_2$orig.ident)]), row.names = colnames(tmp)),
-         clustering_method = "ward.D2",
-         color = c("gray95", colorRampPalette(c("gray70", 
-                                                "orange3", 
-                                                "firebrick"))(90)),
-         fontsize_row = 6,
-         fontsize_col = 8,
-         main = paste0(nrow(tmp), " clonotypes occuring in ≥ 6 samples"),
-         #labels_row = annot_junc$junction_aa[match(rownames(tmp), 
-         #                                         annot_junc$cluster_no_airr)],
-         show_rownames = FALSE,
-         annotation_colors = ann_cols[1],
-         legend = TRUE,
-         filename = "../results/Fig4D.png"
-         )  
-
-
-```
-
-
-### clonotypes unique to pSS
-
-```{R}
-
-pheno_2 <- unique(gex.meta[, c("orig.ident", "patient_group")])
-tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
-                                  gex.meta$orig.ident))
-
-gex.meta$VDJ
-names(head(sort(table(gex.meta$junction_aa), decreasing = T), n=10))
-
-
-gex.meta[gex.meta$junction_aa %in% names(head(sort(table(gex.meta$junction_aa), decreasing = T), n=10))[1]]
-
-gex.meta$cluster_cellType_manual_main[gex.meta$junction_aa %in% names(head(sort(table(gex.meta$junction_aa), decreasing = T), n=10))[2]]
-
-gex.meta$orig.ident[gex.meta$junction_aa %in% names(head(sort(table(gex.meta$junction_aa), decreasing = T), n=100))[100]]
-
-gex.meta$orig.ident[gex.meta$junction_aa %in% CDR3_data$CDR3]
-
-table(gex.meta$junction_aa %in% CDR3_data$CDR3)
-
-
-
-CDR3_data$CDR3
-
-
-tmp <- tmp[rowSums(tmp > 0) > 1, ]
-
-pheno3 <- as.data.frame.matrix(table(pheno_2$orig.ident, pheno_2$patient_group))
-tmp3 <- as.data.frame(as.matrix(tmp) %*% as.matrix(pheno3))
-
-class(tmp3)
-nrow(tmp3[!tmp3$CTRL > 0,]) #[1] 1287
-
-test <- tmp3[!tmp3$CTRL > 0,]
-test <- test[order(rowSums(test), decreasing = TRUE), ]
-head(test, n=25)
-
-#gex.meta.tmp <- gex.meta[match(rownames(test)[1:15], gex.meta$cluster_no_airr), ]
-gex.meta.tmp <- gex.meta[gex.meta$cluster_no_airr %in% rownames(test)[1:15], ]
-gex.meta.tmp <- gex.meta[gex.meta$cluster_no_airr %in% rownames(test), ]
-unique(gex.meta.tmp$junction_aa[gex.meta.tmp$cluster_no_airr == "20"])
-
-nrow(gex.meta.tmp)
-sort(table(gex.meta.tmp$VDJ))
-sort(table(gex.meta.tmp$orig.ident))
-length(sort(table(gex.meta.tmp$orig.ident)))
-sort(names(sort(table(gex.meta.tmp$orig.ident))))
-sort(table(gex.meta.tmp$patient_group))
-sort(table(gex.meta.tmp$cluster_cellType_manual_fine))
-sort(table(gex.meta.tmp$cluster_cellType_manual_main)) 
-
-
-res <- stringdist::stringdistmatrix(gex.meta.tmp$junction_aa, gex.meta.tmp$junction_aa,  method = "lv")
-res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(gex.meta.tmp$junction_aa, gex.meta.tmp$junction_aa)))
-
-aa_l <- nchar(rownames(res))
-#aa_lc <- nchar(colnames(res))
-res <- t(  t( res / aa_l ) / aa_l )
-dim(res )
-
-pheatmap(res, 
-         show_rownames = FALSE, 
-         show_colnames = FALSE, 
-         filename = "../results/clonotypes_lvDist_test.png")
-dev.off()
-
-
-# for (i in 1:nrow(res)){
-#   print(i)
-#   for (j in 1:ncol(res)){
-#     print(j)
-#     res[i, j] <-  res[i, j]/mean(nchar(rownames(res)[i]), nchar(colnames(res)[j]))
-#   }
-# }
-
-
-
-#all datasets
-res <- stringdist::stringdistmatrix(unique(gex.meta$junction_aa), unique(CDR3_data$CDR3),  method = "lv")
-res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(unique(gex.meta$junction_aa), unique(CDR3_data$CDR3))))
-#res_min <- apply(res, 1, min)
-#res[order(res_min, decreasing = F), ]
-
-#aa_lr <- nchar(rownames(res))
-#aa_lc <- nchar(colnames(res))
-#res <- t(  t( res / aa_lr ) / aa_lc )
-
-dim(res)
-
-colnames(res)
-
-res_min <- apply(res, 1, min)
-res_min <- res_min[order(res_min)]
-length(res_min[res_min <= 2])
-
-r_names <- names(res_min[res_min <= 2])
-r_names <- r_names [!is.na(r_names )]
-
-test <- res[r_names,]
-
-
-c_names <- unique(apply(test, 1, function(x){
-  colnames(test)[x == 2]
-}))
-
-test <- test[,c_names]
-dim(test)
-
-
-
-CDR3_data[CDR3_data$CDR3 %in% colnames(test),]
-gex.meta[gex.meta$junction_aa %in% rownames(test), c("orig.ident", "patient_group", "VDJ", "cluster_cellType_manual_fine", "mu_load")]
-
-pheatmap(res, show_rownames = FALSE, show_colnames = FALSE)
-colnames(gex.meta)
-
-#wang (RF)
-res <- stringdist::stringdistmatrix(gex.meta.tmp$junction_aa, unique(wang$CDR3),  method = "lv")
-res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(gex.meta.tmp$junction_aa, unique(wang$CDR3))))
-#res_min <- apply(res, 1, min)
-#res[order(res_min, decreasing = F), ]
-
-aa_lr <- nchar(rownames(res))
-aa_lc <- nchar(colnames(res))
-res <- t(  t( res / aa_lr ) / aa_lc )
-
-pheatmap(res, show_rownames = FALSE, show_colnames = FALSE)
-
-
-#corsiero
-res <- stringdist::stringdistmatrix(gex.meta.tmp$junction_aa, unique(corsiero$CDR3),  method = "lv")
-res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(gex.meta.tmp$junction_aa, unique(corsiero$CDR3))))
-#res_min <- apply(res, 1, min)
-#res[order(res_min, decreasing = F), ]
-
-aa_lr <- nchar(rownames(res))
-aa_lc <- nchar(colnames(res))
-res <- t(  t( res / aa_lr ) / aa_lc )
-
-pheatmap(res, show_rownames = FALSE, show_colnames = FALSE)
-
-
-#visser
-res <- stringdist::stringdistmatrix(gex.meta.tmp$junction_aa, unique(visser$AA_JUNCTION),  method = "lv")
-res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(gex.meta.tmp$junction_aa, unique(visser$AA_JUNCTION))))
-#res_min <- apply(res, 1, min)
-#res[order(res_min, decreasing = F), ]
-
-aa_lr <- nchar(rownames(res))
-aa_lc <- nchar(colnames(res))
-res <- t(  t( res / aa_lr ) / aa_lc )
-
-pheatmap(res, show_rownames = FALSE, show_colnames = FALSE)
-
-
-
-
-```
-
-
-### most prevelent clonotypes across samples I
+#### get clonotypes occuring in ??? 2 samples
 
 ```{R}
 
@@ -1782,14 +1492,14 @@ pheno_2 <- unique(gex.meta[, c("orig.ident", "patient_group")])
 tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
                                   gex.meta$orig.ident))
 
-#get clonotypes present in ≥ 2 samples
+#get clonotypes present in ??? 2 samples
 tmp <- tmp[rowSums(tmp > 0) > 1, ]
 
-#export info for 1799 clonotypes
+#export info for 1640 clonotypes
  # outfile <- gex.meta[gex.meta$cluster_no_airr %in% rownames(tmp), c("barcode", "orig.ident", "cluster_cellType_manual_fine", "cluster_cellType_manual_main", "cluster_no_airr", "v_call", "d_call", "j_call", "c_call", "IGHV", "c_gene_10x", "junction", "junction_aa", "cdr3", "patient_group", "mu_load", "mu_freq_total")]
  # write.csv(outfile, "../results/1799_clonotypes.csv", sep = ",", col.names = TRUE, row.names = FALSE, quote = TRUE)
 
-#tmp <- read.csv("../results/1799_clonotypes.csv")
+#tmp <- read.csv("../results/1640_clonotypes.csv")
 
 #make the clonotype data frame per sample binary
 tmp <- (tmp > 0) * 1
@@ -1841,7 +1551,7 @@ p1 <- pheatmap(tmp,
                fontsize_col = 6,
                treeheight_row = 40,
                treeheight_col = 30,
-               main = paste0(nrow(tmp), " clonotypes occuring in ≥ 2 samples"),
+               main = paste0(nrow(tmp), " clonotypes occuring in ??? 2 samples"),
                filename = "../results/Fig5D_II.png",
                show_rownames = FALSE
          )
@@ -1873,7 +1583,7 @@ sum(table(clr[p1$tree_row$order])[c(5)]) #[1] 457
 ```
 
 
-### plot Fig4C_I venn diagram of clonotypes (1799)
+#### plot Fig4C_I venn diagram of clonotypes (1640)
 
 ```{R}
 
@@ -1888,13 +1598,14 @@ for (i in colnames(tmp2)[1:4]){
   venn.list[[i]][j] <- ifelse(tmp2[j, i] == 1, tmp2$ident[j], NA)
   #venn.list[[i]][venn.list[[i]] == "0"] <- NA
 }
+venn.list <- lapply(venn.list, function(x){x <- na.omit(x)})
 
 ann_cols <- list(patient_group = c(CTRL = "#F8766D", 
                                    DNEG = "#7CAE00", 
                                    SSA = "#00BFC4", 
                                    SSAB = "#C77CFF"))
 venn.diagram(venn.list, 
-             filename = "../results/Fig5B_I_1.png", 
+             filename = "../results/Fig5B_I_2.png", 
              na = "none", 
              print.mode = c("raw", "percent"), 
              category.names = names(venn.list),
@@ -1908,7 +1619,7 @@ venn.diagram(venn.list,
              resolution = 200,
              units = "cm",
              imagetype = "png",
-             main = paste0(nrow(tmp2), " unique clonotypes present in ≥ 2 samples"),
+             main = paste0(nrow(tmp2), " unique clonotypes present in ??? 2 samples"),
              #sub = paste(""),
              main.fontfamily = "sans",
              main.cex = 1.5,
@@ -1920,31 +1631,31 @@ venn.diagram(venn.list,
 ```
 
 
-### plot Fig4C_II UpSetR of clonotypes (1799)
+#### plot Fig4C_II UpSetR of clonotypes (1640)
 
 ```{R}
 
-install.packages('ComplexUpset')
-library(ComplexUpset)
-
-png("../results/Fig5B_II_2.png", width = 20, height = 11, units = "cm", res = 200)
+png("../results/Fig4C_II_3.png", width = 12, height = 11, units = "cm", res = 200)
 UpSetR::upset(fromList(venn.list), order.by = "freq")
 dev.off()
 
+#test:
+#install.packages('ComplexUpset')
+#library(ComplexUpset)
 #ComplexUpset::upset(fromList(venn.list), genres, name='genre', width_ratio=0.1)
 
 
 ```
 
 
-### CDR3 sequence similaritys with published data
+#### CDR3 sequence similarities with published data
 
 ```{r}
 
 ####---------
 #1)
 #Corsiero_et_al_2014
-#Accumulation of self-reactive naïve and memory B cell reveals sequential defects in B cell tolerance checkpoints in Sjögren's syndrome
+#Accumulation of self-reactive na??ve and memory B cell reveals sequential defects in B cell tolerance checkpoints in Sj??gren's syndrome
 #https://pubmed.ncbi.nlm.nih.gov/25535746/
 
 corsiero_2 <- read_excel("../suppl/Corsiero_et_al_2014/STable2.xlsx")
@@ -1976,7 +1687,7 @@ corsiero <- readRDS("../suppl/Corsiero_et_al_2014/corsiero.RDS")
 ####---------
 #2)
 #Visser et al 2020
-#Repertoire Analysis of B-Cells Located in Striated Ducts of Salivary Glands of Patients With Sjögren's Syndrome
+#Repertoire Analysis of B-Cells Located in Striated Ducts of Salivary Glands of Patients With Sj??gren's Syndrome
 #https://pubmed.ncbi.nlm.nih.gov/32760405/
 visser <- as.data.frame(read_excel("../suppl/Visser_et_al_2020/Table2.xlsx"))
 head(visser)
@@ -2008,7 +1719,7 @@ visser <- readRDS("../suppl/Visser_et_al_2020/visser.RDS")
 ####--------- 
 #3)
 #Wang_et_al_2018
-#Molecular Profiling and Clonal Tracking of Secreted Rheumatoid Factors in Primary Sjögren's Syndrome
+#Molecular Profiling and Clonal Tracking of Secreted Rheumatoid Factors in Primary Sj??gren's Syndrome
 #https://pubmed-ncbi-nlm-nih-gov.ezproxy.its.uu.se/29697211/
 wang <- as.data.frame(read_excel("../suppl/Wang_et_al_2018/Table3.xlsx"))
 nrow(wang) #[1] 13
@@ -2054,397 +1765,212 @@ saveRDS(CDR3_data, "../results/CDR3_data_literature.rds")
 CDR3_data <- readRDS("../results/CDR3_data_literature.rds")
 
 
-```
+#####---- show that there's no overlap between CDR3 sequences from the three data sets
+CDR3_data <- unique(CDR3_data[, c("CDR3", "dataset")])
+colnames(CDR3_data) <- c("CDR3", "group")
+                
+CDR3_counts <- as.data.frame.matrix(table(CDR3_data$CDR3,
+                                  CDR3_data$group))
+CDR3_counts$ident <- as.character(rownames(CDR3_counts))
+
+venn.list <- list()[1:3]
+names(venn.list) <- colnames(CDR3_counts)[1:3]
+for (i in colnames(CDR3_counts)[1:3]){
+  for (j in 1:nrow(CDR3_counts))
+  venn.list[[i]][j] <- ifelse(CDR3_counts[j, i] == 1, CDR3_counts$ident[j], NA)
+  #venn.list[[i]][venn.list[[i]] == "0"] <- NA
+}
+venn.list <- lapply(venn.list, function(x){x <- na.omit(x)})
+
+venn.diagram(venn.list, 
+             filename = "../results/SFig23_2.png", 
+             na = "none", 
+             print.mode = c("raw", "percent"), 
+             category.names = names(venn.list),
+             disable.logging = TRUE,
+             sigdigs = 1,
+             cat.fontfamily = "sans",
+             fontfamily ="sans",
+             #fill = ann_cols$patient_group,
+             height = 15,
+             width = 15, 
+             resolution = 200,
+             units = "cm",
+             imagetype = "png",
+             #main = paste0(nrow(tmp2), " unique clonotypes present in ??? 2 samples"),
+             #sub = paste(""),
+             main.fontfamily = "sans",
+             main.cex = 1.5,
+             cex = 1,
+             cat.cex = 1.2
+             #sub.fontfamily = "sans"
+             )
+
+####------- pairwise levenstein distances between public data sets
+
+# corsiero vs visser
+length(CDR3_data$CDR3[CDR3_data$group == "corsiero"]) # number of unique CDR3 in data set:  347
+length(CDR3_data$CDR3[CDR3_data$group == "visser"]) # number of unique CDR3 in data set: 98
+res <- stringdist::stringdistmatrix(CDR3_data$CDR3[CDR3_data$group == "corsiero"], 
+                                    CDR3_data$CDR3[CDR3_data$group == "visser"],  method = "lv")
+res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(CDR3_data$CDR3[CDR3_data$group == "corsiero"], 
+                                                             CDR3_data$CDR3[CDR3_data$group == "visser"])))
+
+res_min <- apply(res, 1, min)
+min(res_min) #min levenstein distance: 7
+length(names(res_min)[res_min == min(res_min)]) # number of CDR3 with min levenstein distance :2
+res[order(res_min, decreasing = F), ]
+
+# corsiero vs wang
+length(CDR3_data$CDR3[CDR3_data$group == "corsiero"]) # number of unique CDR3 in data set:  347
+length(CDR3_data$CDR3[CDR3_data$group == "wang"]) ## number of unique CDR3 in data set: 12
+res <- stringdist::stringdistmatrix(CDR3_data$CDR3[CDR3_data$group == "corsiero"], 
+                                    CDR3_data$CDR3[CDR3_data$group == "wang"],  method = "lv")
+res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(CDR3_data$CDR3[CDR3_data$group == "corsiero"], 
+                                                             CDR3_data$CDR3[CDR3_data$group == "wang"])))
+
+res_min <- apply(res, 1, min)
+min(res_min) #min levenstein distance: 7
+length(names(res_min)[res_min == min(res_min)]) # number of CDR3 with min levenstein distance :4
+res[order(res_min, decreasing = F), ]
 
 
-### clonotype hamming distance
+# visser vs wang
+length(CDR3_data$CDR3[CDR3_data$group == "visser"]) # number of unique CDR3 in data set: 98
+length(CDR3_data$CDR3[CDR3_data$group == "wang"]) ## number of unique CDR3 in data set: 12
+res <- stringdist::stringdistmatrix(CDR3_data$CDR3[CDR3_data$group == "visser"], 
+                                    CDR3_data$CDR3[CDR3_data$group == "wang"],  method = "lv")
+res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(CDR3_data$CDR3[CDR3_data$group == "visser"], 
+                                                             CDR3_data$CDR3[CDR3_data$group == "wang"])))
 
-```{R}
+res_min <- apply(res, 1, min)
+min(res_min) #min levenstein distance: 6
+length(names(res_min)[res_min == min(res_min)]) # number of CDR3 with min levenstein distance :1
+res[order(res_min, decreasing = F), ]
 
-### !!! FIX this !!! there are more a clonotype can contain several junction_aa or junction_nt
-
-
-annot_junc_aa <- unique(gex.meta[, c("cluster_no_airr", "junction_aa")])
-#annot_junc_nt <- unique(gex.meta[, c("cluster_no_airr", "junction")])
-
-xxx <- annot_junc_aa$junction_aa[annot_junc_aa$cluster_no_airr %in% rownames(tmp)]
-names(xxx) <- annot_junc_aa$cluster_no_airr[annot_junc_aa$cluster_no_airr %in% rownames(tmp)]
-length(xxx)
-xxx <- annot_junc_nt$junction[annot_junc_nt$cluster_no_airr %in% rownames(tmp)]
-names(xxx) <- annot_junc_nt$cluster_no_airr[annot_junc_nt$cluster_no_airr %in% rownames(tmp)]
-
-my_order <- h.3$labels[h.3$order]
-my_order <- setNames(1:length(my_order),my_order)
-aa_order <- xxx[order(my_order[names(xxx)])]
-
-
-stringdist::seq_dist()
-stringdist::
-  
-res <- msa::msa(AAStringSet(xxx), method = "ClustalOmega", order = "input")
-hemoAln2 <- msaConvert(res, type = "seqinr::alignment")
-hemoAln2$nam <- xxx
-d <- seqinr::dist.alignment(hemoAln2, "identity")
-d[is.na(d)] <- 1
-
-summary(d)
-class(d)
-class(as.matrix(d))
-as_tibble(as.matrix(d))
-head(as.matrix(d))
-head(as.data.frame(as.matrix(d)))
-class(as.data.frame(as.matrix(d)))
-
-head(as.data.frame(as.matrix(d))[aa_order, aa_order])
-
-as.matrix(d)[1:5,1:5]
-as_tibble(as.matrix(d))[1:10, 1:10]
-as_tibble(as.matrix(d))[aa_order, aa_order][1:10, 1:10]
-
-rownames(as.data.frame(as.matrix(d)))
-colnames(as.data.frame(as.matrix(d)))
-
-
- h.5 <- hclust(d, method = "ward.D2") 
- plot(as.dendrogram(h.5)); abline(h = 0.2, col ="red")
-
- h.6 <- hclust(as.matrix(d), method = "ward.D2")
-# plot(as.dendrogram(h.6)); abline(h = 0.2, col ="red")
-
-head(as.data.frame(as.matrix(d))[aa_order, aa_order][1:10, 1:10])
-p3 <- pheatmap(as.data.frame(as.matrix(d))[aa_order, aa_order][1:100, 1:100],
-         cluster_cols = FALSE,
-         cluster_rows = FALSE,
-         #cluster_cols = FALSE,
-         #cluster_rows = FALSE,
-         #clustering_method = "ward.D2",
-         #cutree_cols = length(unique(cl)),
-         show_colnames = FALSE, 
-         show_rownames = FALSE,
-         #cutree_rows = length(unique(cl)),
-         filename = "../results/VDJ_clono_clonotypeDistribution_hamm.dist_6.png",
-         scale = "row",
-         #color = c(colorRampPalette(c("navy", "gray95", "firebrick"))(90))
-         color = c(colorRampPalette(c("firebrick", "gray95", "white"))(90)) 
-        )
-
-#[aa_order, aa_order]
-
-p3 <- pheatmap(as.matrix(d),
-         cluster_cols = h.5,
-         cluster_rows = h.5,
-         #cluster_cols = TRUE,
-         #cluster_rows = TRUE,
-         #clustering_method = "ward.D2",
-         #cutree_cols = length(unique(cl)),
-         show_colnames = FALSE, 
-         show_rownames = FALSE,
-         cutree_rows = 9,
-         cutree_cols = 9,
-         #cutree_rows = length(unique(cl)),
-         filename = "../results/VDJ_clono_clonotypeDistribution_hamm.dist_10.png",
-         scale = "row",
-         color = c(colorRampPalette(c("navy", "gray95", "firebrick"))(90)) 
-        )
-
-
-
-
-
-#h <- njs(d)
-#mypar(1,3)
-# plot(h,cex=.6)
-# 
-# h2 <- hclust(d, method = "ward.D2")
-# par(cex=.6, mar=c(4,2,1,30))
-# mypar(1,1)
-# plot(as.dendrogram(h2),horiz=T,axes=T,xpd=T, main="aa", xlab="distance")
-# par(cex=1)
-# add_letter(figlabels[1]); figlabels <- figlabels[-1]
 
 ```
 
 
-###IGHV genes among most prevelent clonotypes
+#### dist between present study and litterature
 
-```{R}
+```{r}
+tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
+                                  gex.meta$orig.ident))
 
-tmp2 <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
-                                   gex.meta$IGHV))
-tmp2 <- tmp2[rownames(tmp), ]
-tmp2 <- (tmp2 > 0) * 1 #make matrix binary
+#get clonotypes present in ??? 4 samples
+tmp <- tmp[rowSums(tmp > 0) > 3, ]
+tmp <- tmp[rowSums(tmp > 0) > 1, ]
+tmp2 <- as.data.frame(t(rowsum(t(tmp), group = pheno$patient_group[1:27])))
+tmp2 <- as.data.frame((tmp2 > 0) * 1)
+tmp2$ident <- as.character(rownames(tmp2))
 
-#number of clonotypes per cluster
-tmp7 <- rowsum(tmp2, clr)
-tmp7 <- tmp7[, colSums((tmp2 > 0) * 1) > 30]
+m <- unique(gex.meta[(gex.meta$cluster_no_airr %in% rownames(tmp2)) & !gex.meta$patient_group == "CTRL", 
+                     c("junction_aa", "patient_group")])
+m <- m[!duplicated(m$junction_aa),]
+colnames(m) <- c("CDR3", "group")
+dim(m)
 
-tmp8 <- (tmp7 > 0) * 1
-h.8 <- hclust(dist(t(tmp8), method = "binary"), method = "complete")
+# vs corsiero
+length(m$CDR3) # number of unique CDR3 in data set: 4092
+length(CDR3_data$CDR3[CDR3_data$group == "corsiero"]) ## number of unique CDR3 in data set: 347
+res <- stringdist::stringdistmatrix(m$CDR3, 
+                                    CDR3_data$CDR3[CDR3_data$group == "corsiero"],  method = "lv")
+res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(m$CDR3, 
+                                                             CDR3_data$CDR3[CDR3_data$group == "corsiero"])))
 
-p4 <- pheatmap((tmp7[unique(clr[h.3$order ]), ]), 
-         cluster_rows = FALSE,
-         cluster_cols = h.8,
-         color = c("gray95", colorRampPalette(c("gray70", 
-                                                "orange3", 
-                                                "firebrick"))(90)),
-         treeheight_col = 30,
-         border_color = NA,
-         filename = "../results/VDJ_clono_clonotypeDistribution_IGHV_topClonotypes_counts.png")
+res_min <- apply(res, 1, min)
+min(res_min) #min levenstein distance: 3
+length(names(res_min)[res_min == min(res_min)]) # number of CDR3 with min levenstein distance :2
+res[order(res_min, decreasing = F), ]
 
-#frequency of clonotypes per cluster
-tmp9 <- rowsum(tmp2, clr)
-tmp9 <- apply(as.matrix(tmp9), 2, function(x){x/table(clr)})
-tmp9 <- tmp9[, colSums((tmp2 > 0) * 1) > 30]
+# vs visser
+length(m$CDR3) # number of unique CDR3 in data set: 4092
+length(CDR3_data$CDR3[CDR3_data$group == "visser"]) ## number of unique CDR3 in data set: 98
+res <- stringdist::stringdistmatrix(m$CDR3, 
+                                    CDR3_data$CDR3[CDR3_data$group == "visser"],  method = "lv")
+res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(m$CDR3, 
+                                                             CDR3_data$CDR3[CDR3_data$group == "visser"])))
 
-tmp10 <- (tmp9 > 0) * 1
-h.9 <- hclust(dist(t(tmp10), method = "binary"), method = "complete")
+res_min <- apply(res, 1, min)
+min(res_min) #min levenstein distance: 2
+length(names(res_min)[res_min == min(res_min)]) # number of CDR3 with min levenstein distance :8
+res[order(res_min, decreasing = F), ]
+
+# vs wang
+length(m$CDR3) # number of unique CDR3 in data set: 4092
+length(CDR3_data$CDR3[CDR3_data$group == "wang"]) ## number of unique CDR3 in data set: 12
+res <- stringdist::stringdistmatrix(m$CDR3, 
+                                    CDR3_data$CDR3[CDR3_data$group == "wang"],  method = "lv")
+res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(m$CDR3, 
+                                                             CDR3_data$CDR3[CDR3_data$group == "wang"])))
+
+res_min <- apply(res, 1, min)
+min(res_min) #min levenstein distance: 4
+length(names(res_min)[res_min == min(res_min)]) # number of CDR3 with min levenstein distance :8
+res[names(res_min)[res_min == min(res_min)], ]
+res[order(res_min, decreasing = F), ]
 
 
-#binary heatmap for IGHV genes corresponding to clonotype heatmap
-p5 <- pheatmap((tmp9[unique(clr[h.3$order ]), ]), 
-         cluster_rows = FALSE,
-         cluster_cols = h.9,
-         color = c("gray95", colorRampPalette(c("gray70", 
-                                                "orange3", 
-                                                "firebrick"))(90)),
-         treeheight_col = 30,
-         border_color = NA,
-         filename = "../results/VDJ_clono_clonotypeDistribution_IGHV_topClonotypes_clustfract.png")
+```
 
 
-p6 <- pheatmap(tmp2[, colSums((tmp2 > 0) * 1) > 30],
-         cluster_cols = h.8,
-         cluster_rows = h.3,
-         #treeheight_row = 0,
-         #border_color = NA,
-         #annotation_col = data.frame(patient_group = factor(pheno_2$patient_group[match(colnames(tmp), pheno_2$orig.ident)]), row.names = colnames(tmp2)),
-         #clustering_method = "ward.D2",
-         color = c("gray95", colorRampPalette(c("gray70",
-                                                "orange3",
-                                                "firebrick"))(90)),
-         fontsize_row = 5,
-         fontsize_col = 6,
-         legend = FALSE,
-         show_rownames = FALSE,
-         treeheight_row = 40,
-         treeheight_col = 30,
-         cutree_rows = length(unique(clr)),
-         main = paste0(nrow(tmp2), " clonotypes occuring in ≥ 2 samples"),
-         filename = "../results/VDJ_clono_clonotypeDistribution_IGHV_topClonotypes_2.png",
-         # labels_row = annot_junc$junction_aa[match(rownames(tmp2),
-         #                                           annot_junc$cluster_no_airr)]
+#### plot Fig4D
 
+```{r}
+
+tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
+                                  gex.meta$orig.ident))
+
+#get clonotypes present in ??? 4 samples
+tmp <- tmp[rowSums(tmp > 0) > 3, ]
+tmp <- tmp[rowSums(tmp > 0) > 1, ]
+tmp2 <- as.data.frame(t(rowsum(t(tmp), group = pheno$patient_group[1:27])))
+tmp2 <- as.data.frame((tmp2 > 0) * 1)
+tmp2$ident <- as.character(rownames(tmp2))
+
+dim(tmp2)
+m <- unique(gex.meta[(gex.meta$cluster_no_airr %in% rownames(tmp2)) & !gex.meta$patient_group == "CTRL", 
+                     c("junction_aa", "patient_group")])
+m <- m[!duplicated(m$junction_aa),]
+colnames(m) <- c("CDR3", "group")
+dim(m)
+m <- rbind(m, CDR3_data)
+
+unique(m$group)
+res <- stringdist::stringdistmatrix(m$CDR3, m$CDR3,  method = "lv")
+res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(m$CDR3, m$CDR3)))
+
+ann_cols <- list(group = c(corsiero = brewer.pal(9, "YlOrRd")[2],
+                           visser = brewer.pal(9, "YlOrRd")[5],  
+                           wang = brewer.pal(9, "YlOrRd")[7], 
+                           DNEG = "#7CAE00",
+                           SSA = "#00BFC4", 
+                           SSAB = "#C77CFF"))
+ann_cols <- list(group = c(`Corsiero et al.` = brewer.pal(9, "YlOrRd")[2],
+                           `Visser et al.` = brewer.pal(9, "YlOrRd")[5],  
+                           `Wang et al.` = brewer.pal(9, "YlOrRd")[7], 
+                           DNEG = "#7CAE00",
+                           SSA = "#00BFC4", 
+                           SSAB = "#C77CFF"))
+annotation <- data.frame(group = factor(m$group), row.names = m$CDR3 )
+length(m$CDR3)
+length(unique(m$CDR3))
+m[duplicated(m$CDR3), ]
+
+
+# m[m$CDR3 %in% unique(m$CDR3[ duplicated(m$CDR3)]), "CDR3"]
+# table(m[m$CDR3 %in% unique(m$CDR3[ duplicated(m$CDR3)]), "CDR3"], m[m$CDR3 %in% unique(m$CDR3[ duplicated(m$CDR3)]), "group"])
+
+pheatmap(res, 
+         show_rownames = FALSE, 
+         show_colnames = FALSE, 
+         filename = "../results/Fig4D_6.png",
+         annotation_col = data.frame(group = factor(m$group), row.names = m$CDR3),
+         annotation_row = data.frame(group = factor(m$group), row.names = m$CDR3),
+         annotation_colors = ann_cols[1], legend = T
          )
-
-# dev.off()
-# plot_list = list()
-# plot_list[['p1']] = p1$gtable
-# plot_list[['p2']] = p2$gtable
-
-ggsave2(paste0("../results/VDJ_clono_clonotypeDistribution_topClonotypes_2.png"),
-        plot_grid(plotlist = plot_list, 
-                  ncol = 2, 
-                  labels = NULL, 
-                  #align = "h",
-                  greedy = FALSE,
-                  rel_widths = c(1, 1)) + 
-          bgcolor("white") + 
-          border("white"),
-        width = 25, height = 20, unit = "cm")
-
-
-```
-
-
-### clonotype correlation
-
-```{R}
-
-####---------------------------------------------------------------------
-####---- clonotype correlation using cluster_no_airr
-####---------------------------------------------------------------------
-tmp <- gex@meta.data
-tmp$celltype_patient_group <- paste0(tmp$cluster_cellType_manual_main, 
-                                     "-", 
-                                     tmp$patient_group)
-
-tmp2 <- table(list(tmp$cluster_no_airr, 
-                    tmp$celltype_patient_group))
-  
-  cor_tmp <- cor(tmp2, method = "spearman")
-  cor_tmp[is.na(cor_tmp)] <- 0
-  
-p <-pheatmap(cor_tmp, 
-                     annotation_col = data.frame(cell_type = factor(sub("-.*", "", colnames(cor_tmp))),
-                                                 patient_group = factor(sub(".*-", "", colnames(cor_tmp))),
-                                                  row.names = colnames(cor_tmp)),
-                      breaks = seq(0, 1, length.out = 100),
-                      filename = paste0("../results/VDJ_clono_spearman_per_cluster_PatientGroup.png"),
-                      fontsize = 8, 
-                      fontsize_row = 4, 
-                      fontsize_col = 4,
-                      border_color = NA,
-                      main = paste("clonotype spearman correlation"),
-                      color = colorRampPalette(c("lightblue", "gray30","firebrick2", "red"))(99))
-
-
-
-
-
-
-
-
-
-
-
-
-StartracDiversity(gex, type = "Type", 
-            sample = "Patient", by = "overall")
-
-#tmp <- gex$junction_aa
-tmp <- gex$cdr3
-names(tmp) <- colnames(gex); head(tmp)
-
-junc_dist <- pairwiseDist(tmp, dist_mat = getDNAMatrix(gap = 0))
-#Error: vector memory exhausted (limit reached?)
-
-cdr3_eq <- pairwiseEqual(tmp)
-
-seq <- c(A="ATGGC", B="ATGGG", C="ATGGG", D="AT--C", E="NTGGG")
-d <- pairwiseEqual(seq)
-rownames(d) <- colnames(d) <- seq
-d
-
-clones2 <- countClones(gex@meta.data, 
-                      groups = c("patient_group", "cluster_cellType_manual_main"), 
-                      clone = "cluster_no_airr")
-
-### Quantify clonotypes scRepertoire
-
-quantContig(
-  combined_B,
-  cloneCall = "gene+nt",
-  chain = "both",
-  scale = TRUE,
-  group = "patient_group",
-  exportTable = FALSE
-)
-head(combined_B)
-quantContig(combined_B, cloneCall="gene+nt", scale = T)
-
-abundanceContig(combined_B, cloneCall = "gene", scale = F)
-lengthContig(combined_B, cloneCall="aa", chain = "IGL") 
-
-clonalProportion(combined_B, cloneCall = "gene") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-
-occupiedscRepertoire(gex, x.axis = "seurat_clusters")
-
-clonalOverlap(combined_B, cloneCall = "gene+nt", 
-              method = "morisita")
-
-combined2 <- expression2List(gex, split.by = "cluster_cellType_manual_fine")
-combined2 <- expression2List(gex, split.by = "cluster_cellType_manual_main")
-str(combined2)
-
-clonalHomeostasis(combined2, cloneCall = "nt") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-
-clonalProportion(combined2, cloneCall = "nt") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-
-clonalDiversity(gex, cloneCall = "nt",group.by = "cluster_cellType_manual_fine")
-
-
-clonalOverlap(combined2, cloneCall="aa", method="overlap") + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-
-alluvialClonotypes(gex, cloneCall = "gene", 
-                   y.axes = c("orig.ident", "seurat_clusters"), 
-                   color = "seurat_clusters")
-
-p1 <- alluvialClonotypes(gex, cloneCall = "gene", 
-                   y.axes = c("orig.ident", "cluster_cellType_manual_main"), 
-                   color = "cluster_cellType_manual_main")
-ggsave2("../results/alluvialClonotypes_test.png", p1, height = 20, width = 30, units = "cm")
-
-#results <- hierarchicalClones(imm, threshold=0.1)
-
-
-### clonotype overlap correlation across samples and patient groups using compairr
-cairr.aa.x <- as.data.frame.matrix(table(cairr.aa$cluster_no, cairr.aa$repertoire_id))
-cairr.aa.x <- cairr.aa.x[apply(cairr.aa.x, 1, function(x){sum(x >= 1) >= 2}), ]
-cairr.aa.x <- cairr.aa.x[order(-rowSums(cairr.aa.x)),]
-
-
-```
-
-
-### clonotype sequence identity
-
-```{r}
-# READ IN DATA
-
-
-
-
-
-colnames(gex@meta.data)
-head(gex@meta.data$cdr3)
-
-a <- read.delim('/Volumes/GoogleDrive/My Drive/pSS_manuscript/clono/VDJ_immcantation_out.tsv')
-as.character(a$germline_alignment[1])
-as.character(a$sequence_alignment[1])
-as.character(a$sequence[1])
-as.character(a$junction[1])
-
-# REFORMAT STRUCTURE
-xxx <- as.character( unlist(c(droplevels(a[1,c("sequence","sequence_alignment","germline_alignment","junction",
-             "cdr1","cdr2","cdr3","fwr1","fwr2","fwr3","fwr4","junction_10x",
-             "germline_alignment_d_mask")]))) )
-names(xxx) <- c("sequence","sequence_alignment","germline_alignment","junction",
-                "cdr1","cdr2","cdr3","fwr1","fwr2","fwr3","fwr4","junction_10x",
-                "germline_alignment_d_mask")
-
-# CONVERT TO SEQUENCE ALIGNMENT
-res <- msa::msa(DNAStringSet(xxx,use.names = T),method = "ClustalW",order = "input")
-
-# PRINT ON CONSOLE
-print(res,show="complete")
-
-# PRINT ON A PDF FILE
-msaPrettyPrint(res,file = "ClustalW_aligment.pdf",output="pdf",
-               showNames="left", showNumbering="none", showLogo="top",
-               showConsensus="bottom", logoColors="rasmol",
-               verbose=FALSE, askForOverwrite=FALSE)
-
-# SAVE TO CSV
-tmp <- as.character(res@unmasked)
-writeLines(paste0( names(tmp),";",tmp ),sep = "\n",con = "ClustalW_aligment.csv")
-
-# SAVE TO FASTA
-write.fasta(sequences = tmp, names = names(tmp), file.out = "ClustalW_aligment.fasta")
-
-```
-
-
-### clonotype phylogeny
-
-```{r}
-
-library(phangorn)
-#install.packages("phangorn")
-BiocManager::install("phangorn")
-
-fdir <- system.file("extdata/trees", package = "phangorn")
-primates <- read.phyDat(file.path(fdir, "primates.dna"),
-                        format = "interleaved")
-tree <- pratchet(primates, trace = 0) |> acctran(primates)
-parsimony(tree, primates)
-
-library(seqLogo)
-#install.packages("seqLogo")
-BiocManager::install("seqLogo")
-
-seqLogo()
-seqLogo(t(subset(anc.mpr, getRoot(tree), 1:20)[[1]]), ic.scale = FALSE)
-
+dev.off()
 
 ```
 
@@ -2526,95 +2052,6 @@ ggsave2(paste0("../results/Fig3F.png"),
 
 ```
 
-
-#### plot SFig12A , CDR3 mutation count ratio R/S - cell type fine - patient_group,
-
-```{r}
-gex.meta$mu_count_cdr3_RSratio <- log2((gex.meta$mu_count_cdr3_r + 1) / 
-                                         (gex.meta$mu_count_cdr3_s + 1))
-
-#remove cells with no mutations
-#Removed 181168 rows containing non-finite values (stat_ydensity). 
-gex.meta$mu_count_cdr3_RSratio[(gex.meta$mu_count_cdr3_r + 
-                                  gex.meta$mu_count_cdr3_s) == 0] <- NA
-
-nrow(gex.meta[!is.na(gex.meta$mu_count_cdr3_RSratio), ])
-
-p2 <- ggplot(gex.meta, 
-             aes(x = cluster_cellType_manual_fine, 
-                 y = mu_count_cdr3_RSratio, 
-                 fill = patient_group)) +
-      theme_classic() +
-      ggtitle(paste0("CDR3 mutation ratio Replacement/Silent for ", 
-                     nrow(gex.meta[!is.na(gex.meta$mu_count_cdr3_RSratio), ]),
-                     " mutated cells")) +
-      theme(axis.text.x = element_text(angle = 90, 
-                                       hjust = 1, 
-                                       vjust = 0.5),
-            plot.title = element_text(size = 12)) +
-      ylab("mutation count ratio R/S (log2)") +
-      xlab("") +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE)
-
-ggsave2(paste0("../results/SFig12A.png"), 
-          p2,
-          width = 30, height = 10, unit = "cm")
-
-
-```
-
-
-#### plot SFig12B, fraction of CDR3 mutated cells per sample and celltypeFine
-
-```{r}
-
-p3 <- as_tibble(gex.meta) %>% 
-  select(cluster_cellType_manual_fine, 
-         patient_group,
-         orig.ident,
-         mu_count_cdr3_r, 
-         mu_count_cdr3_s) %>% 
-  replace_na(list(mu_count_cdr3_r = 0, mu_count_cdr3_s = 0)) %>%
-  mutate(mu_cdr3_binary = mu_count_cdr3_r #+ mu_count_cdr3_s
-         ,
-         mu_cdr3_binary = (mu_cdr3_binary > 0) * 1,
-         mu_cdr3_binary = recode(mu_cdr3_binary, `0` = "Unmutated", `1` = "Mutated")) %>%
-  group_by(cluster_cellType_manual_fine,
-           patient_group,
-           orig.ident, 
-           mu_cdr3_binary) %>%
-  summarise(cdr3_n = n()) %>%
-  mutate(cdr3_freq = cdr3_n / sum(cdr3_n)) %>% 
-  filter(mu_cdr3_binary == "Mutated") %>%
-  ggplot(aes(x = cluster_cellType_manual_fine, 
-             y = cdr3_freq, 
-             fill = patient_group)) +
-  geom_violin(alpha = 0.8, 
-              scale = "width", 
-              draw_quantiles = c(0.25, 0.5, 0.75),
-              trim = TRUE) +
-  ylab("Proportion of cells with \nreplacement mutations within CDR3") +
-  xlab("") +
-  ggtitle("Replacement mutations in CDR3") +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 90, 
-                                   hjust = 1, 
-                                   vjust = 0.5),
-        plot.title = element_text(size = 12)) +
-  stat_compare_means(method = "anova", hide.ns = TRUE, label = "p.signif") +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) 
-
-ggsave2(paste0("../results/SFig12B.png"), 
-          plot_grid(p3, labels = NULL, align = "h")+ 
-          bgcolor("white") + 
-          border("white"),
-          width = 30, height = 10, unit = "cm")
-
-
-```
 
 
 #### plot SFig13A, total VDJ mutation frequency - celltypeMain - orig.ident 
@@ -2753,7 +2190,98 @@ ggsave2(paste0("../results/SFig13B.png"),
 ```
 
 
-##  plot Fig3A IgH class per cell type, Figure 3A
+#### plot SFig14A , CDR3 mutation count ratio R/S - cell type fine - patient_group,
+
+```{r}
+gex.meta$mu_count_cdr3_RSratio <- log2((gex.meta$mu_count_cdr3_r + 1) / 
+                                         (gex.meta$mu_count_cdr3_s + 1))
+
+#remove cells with no mutations
+#Removed 181168 rows containing non-finite values (stat_ydensity). 
+gex.meta$mu_count_cdr3_RSratio[(gex.meta$mu_count_cdr3_r + 
+                                  gex.meta$mu_count_cdr3_s) == 0] <- NA
+
+nrow(gex.meta[!is.na(gex.meta$mu_count_cdr3_RSratio), ])
+
+p2 <- ggplot(gex.meta, 
+             aes(x = cluster_cellType_manual_fine, 
+                 y = mu_count_cdr3_RSratio, 
+                 fill = patient_group)) +
+      theme_classic() +
+      ggtitle(paste0("CDR3 mutation ratio Replacement/Silent for ", 
+                     nrow(gex.meta[!is.na(gex.meta$mu_count_cdr3_RSratio), ]),
+                     " mutated cells")) +
+      theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 1, 
+                                       vjust = 0.5),
+            plot.title = element_text(size = 12)) +
+      ylab("mutation count ratio R/S (log2)") +
+      xlab("") +
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE)
+
+ggsave2(paste0("../results/SFig14A.png"), 
+          p2,
+          width = 30, height = 10, unit = "cm")
+
+
+```
+
+
+#### plot SFig14B, fraction of CDR3 mutated cells per sample and celltypeFine
+
+```{r}
+
+p3 <- as_tibble(gex.meta) %>% 
+  select(cluster_cellType_manual_fine, 
+         patient_group,
+         orig.ident,
+         mu_count_cdr3_r, 
+         mu_count_cdr3_s) %>% 
+  replace_na(list(mu_count_cdr3_r = 0, mu_count_cdr3_s = 0)) %>%
+  mutate(mu_cdr3_binary = mu_count_cdr3_r #+ mu_count_cdr3_s
+         ,
+         mu_cdr3_binary = (mu_cdr3_binary > 0) * 1,
+         mu_cdr3_binary = recode(mu_cdr3_binary, `0` = "Unmutated", `1` = "Mutated")) %>%
+  group_by(cluster_cellType_manual_fine,
+           patient_group,
+           orig.ident, 
+           mu_cdr3_binary) %>%
+  summarise(cdr3_n = n()) %>%
+  mutate(cdr3_freq = cdr3_n / sum(cdr3_n)) %>% 
+  filter(mu_cdr3_binary == "Mutated") %>%
+  ggplot(aes(x = cluster_cellType_manual_fine, 
+             y = cdr3_freq, 
+             fill = patient_group)) +
+  geom_violin(alpha = 0.8, 
+              scale = "width", 
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE) +
+  ylab("Proportion of cells with \nreplacement mutations within CDR3") +
+  xlab("") +
+  ggtitle("Replacement mutations in CDR3") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, 
+                                   vjust = 0.5),
+        plot.title = element_text(size = 12)) +
+  stat_compare_means(method = "anova", hide.ns = TRUE, label = "p.signif") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) 
+
+ggsave2(paste0("../results/SFig14B.png"), 
+          plot_grid(p3, labels = NULL, align = "h")+ 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 10, unit = "cm")
+
+
+```
+
+
+## export figures
+###  plot Fig3A IgH class per cell type, Figure 3A
 
 ```{r}
 
@@ -2793,53 +2321,7 @@ ggsave2("../results/Fig3A_2.png",
 ```
 
 
-##  plot Fig4A cloneType per cell type fine based on compairr data
-
-```{r}
-
-p1 <- DimPlot(gex, 
-              group.by = "cloneType_airr", 
-              split.by = "patient_group", 
-              reduction = "umap_2", pt.size = 0.6, ncol = 2, 
-              raster = TRUE,
-              order = c("Single (0 < X <= 1)",
-                        "Small (1 < X <= 5)",
-                        "Medium (5 < X <= 20)",
-                        "Large (20 < X <= 100)"), 
-              cols = c(brewer.pal(4, "Dark2")),
-              na.value = "white") +
-  ggtitle("clonotype") +  
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") + 
-  theme(axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        legend.position = "none")
-
-p2 <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)), 
-             aes(x = cluster_cellType_manual_fine, 
-                 fill = cloneType_airr)) +
-      theme_classic() +
-      geom_bar(position = "fill") + 
-      ylab("proportion of cells") + 
-      xlab("") + 
-      facet_grid(rows = vars(patient_group)) + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
-      scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "clonotype")
-
-ggsave2("../results/Fig4A.png", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 30, height = 14, unit = "cm")
-
-table(gex$orig.ident, gex$cloneType_airr)
-
-str(gex$cloneType_airr)
-
-```
-
-
-## plot SFig14A, IgH class per cellTypeMain per patient
+### plot SFig10A, IgH class per cellTypeMain per patient
 
 ```{r}
 
@@ -2892,7 +2374,7 @@ p_legend <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)),
   
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
-ggsave2(paste0("../results/SFig14A.png"), 
+ggsave2(paste0("../results/SFig10A.png"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.2)) + 
@@ -2905,7 +2387,7 @@ ggsave2(paste0("../results/SFig14A.png"),
 ```
 
 
-## plot SFig14B, IgH class per cellTypeFine per patient
+### plot SFig10B, IgH class per cellTypeFine per patient
 
 ```{r}
 
@@ -2968,7 +2450,7 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/SFig14B.png"), 
+ggsave2(paste0("../results/SFig10B.png"), 
           plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
           bgcolor("white") + 
           border("white"),
@@ -2978,7 +2460,7 @@ ggsave2(paste0("../results/SFig14B.png"),
 ```
 
 
-##  plot SFig15, CDR3 aa attributes
+###  plot SFig15, CDR3 aa attributes
 
 ```{r}
 
@@ -3158,7 +2640,7 @@ ggsave2(paste0("../results/SFig15.png"),
 ```
 
 
-## plot SFig16A, clonotypes per patient per cellTypeMain
+### plot SFig18A, clonotypes per patient per cellTypeMain
 
 ```{r}
 tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
@@ -3197,7 +2679,7 @@ p_legend <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)),
   
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
-ggsave2(paste0("../results/SFig16A.png"), 
+ggsave2(paste0("../results/SFig18A.png"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.2)) + 
@@ -3209,7 +2691,7 @@ ggsave2(paste0("../results/SFig16A.png"),
 ```
 
 
-## plot SFig16B, clonotypes per patient per cellTypeFine
+### plot SFig18B, clonotypes per patient per cellTypeFine
 
 ```{r}
 tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
@@ -3269,7 +2751,7 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/SFig16B.png"), 
+ggsave2(paste0("../results/SFig18B.png"), 
           plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
           bgcolor("white") + 
           border("white"),

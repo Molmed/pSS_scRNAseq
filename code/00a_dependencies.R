@@ -151,7 +151,7 @@ suppressMessages(library(glmGamPoi))
 ####----- VDJ
 ####------------------------------------------------------------------------------
 #BiocManager::install("ggtree", dependencies = TRUE)
-suppressMessages(library(ggtree))
+#suppressMessages(library(ggtree))
 
 #BiocManager::install("scRepertoire", dependencies = TRUE)
 ##devtools::install_github("ncborcherding/scRepertoire@dev")
