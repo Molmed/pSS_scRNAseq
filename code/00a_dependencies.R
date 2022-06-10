@@ -115,6 +115,9 @@ suppressMessages(library(scales)) #scales for plotting
 #install.packages('lessR', dependencies = TRUE)
 #suppressMessages(library(lessR))
 
+#install.packages('gridtext', dependencies = TRUE)
+suppressMessages(library(gridtext))
+
 
 ####------------------------------------------------------------------------------
 ####----- scRNAseq

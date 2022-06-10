@@ -543,60 +543,62 @@ names(colors_cellTypeFine2) <- sort(unique(gex.meta$cluster_cellType_manual_fine
 #VDJ gene usage correlation
 VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usage
                     correl, #which correlation to use i.e. spearman or pearson...
-                    VDJgene #VDJ gene to plot
+                    VDJgene, #VDJ gene to plot
+                    figNo #output figure name
                     ){
   
   cat(VDJgene, "\n") 
   cat(correl, "\n")
   
   #remove allele information
-  i[, VDJgene] <- unlist(lapply(strsplit(i[, VDJgene], 
+  i[, VDJgene] <- unlist(lapply(strsplit(as.character(i[, VDJgene]), 
                                          split = "\\*"),
                                 function(x) {return(x[1])}))
   
   i$celltype_patient_group <- paste0(i$cluster_cellType_manual_fine, 
-                                     "-", 
+                                     "__", 
                                      i$patient_group)
   
-  tmp <- as.data.frame.matrix(table(list(i[, VDJgene],
-                    i$celltype_patient_group)))
+  tmp <- as.data.frame.matrix(table(list(i[, VDJgene], i$celltype_patient_group)))
   
   cor_tmp <- cor(tmp, method = correl)
   print(head(cor_tmp))
   cor_tmp[is.na(cor_tmp)] <- 0
 
   ann_cols <- list(patient_group = c(CTRL = "#F8766D", 
-                                     DNEG = "#7CAE00", 
-                                     SSA = "#00BFC4", 
+                                     `SSA-` = "#7CAE00", 
+                                     `SSA+` = "#00BFC4", 
                                      SSAB = "#C77CFF"),
                    #cluster = scales::hue_pal()(15),
                    cell_type = colors_cellTypeFine2)
   
   titles <- data.frame(gexnames = c("v_call", "d_call", "j_call", "c_gene_10x"),
-                       outnames = c("V", "D", "J", "IGH c"))
+                       outnames = c("IGHV", "IGHD", "IGHJ", "IGH c"))
   
   print(titles$outnames[titles$gexnames == VDJgene])
+  print(data.frame(cell_type = factor(sub("__.*", "", colnames(cor_tmp))),
+                   patient_group = factor(sub(".*__", "", colnames(cor_tmp))),
+                   row.names = colnames(cor_tmp)))
   
   p <- pheatmap::pheatmap(cor_tmp, 
-                     annotation_col = data.frame(cell_type = factor(sub("-.*", 
+                     annotation_col = data.frame(cell_type = factor(sub("__.*", 
                                                                         "", 
                                                                         colnames(cor_tmp))),
-                                                 patient_group = factor(sub(".*-", 
+                                                 patient_group = factor(sub(".*__", 
                                                                             "",
                                                                             colnames(cor_tmp))),
                                                  row.names = colnames(cor_tmp)),
                      annotation_colors = ann_cols[1:2],
                      breaks = seq(0, 1, length.out = 100),
-                     filename = paste0("../results/VDJ_Cor_", VDJgene, "_", 
-                                        correl, "_per_cluster_PatientGroup_4.png"),
+                     filename = paste0("../results/", figNo, ".png"),
                      fontsize = 8, 
                      fontsize_row = 4, 
                      fontsize_col = 4,
                      border_color = NA,
                      show_rownames = FALSE,
                      show_colnames = FALSE,
-                     main = paste0(titles$outnames[titles$gexnames == VDJgene], 
-                                   " genes, ", correl, " correlation"),
+                     main = paste(titles$outnames[titles$gexnames == VDJgene], 
+                                   "genes,", correl, "correlation"),
                      color = c(colorRampPalette(c("lightblue1", 
                                                   "lightblue2", 
                                                   "firebrick2"))(99)))
@@ -606,37 +608,28 @@ VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usa
 }
 
 
-sort(unique(gex.meta$cluster_cellType_manual_fine))
-cor.s.v_call <- VDJ_cor(gex.meta, "spearman", "v_call")
-cor.p.v_call <- VDJ_cor(gex.meta, "pearson", "v_call")
-
-cor.s.d_call <- VDJ_cor(gex.meta, "spearman", "d_call")
-cor.p.d_call <- VDJ_cor(gex.meta, "pearson", "d_call")
-
-cor.s.j_call <- VDJ_cor(gex.meta, "spearman", "j_call")
-cor.p.j_call <- VDJ_cor(gex.meta, "pearson", "j_call")
-
-cor.s.c_call <- VDJ_cor(gex.meta, "spearman", "c_gene_10x")
-cor.p.c_call <- VDJ_cor(gex.meta, "pearson", "c_gene_10x")
+cor.p.v_call <- VDJ_cor(gex.meta, "pearson", "v_call", "Fig3B")
+cor.p.c_call <- VDJ_cor(gex.meta, "pearson", "c_gene_10x", "SFig9A")
+cor.p.d_call <- VDJ_cor(gex.meta, "pearson", "d_call", "SFig9B")
+cor.p.j_call <- VDJ_cor(gex.meta, "pearson", "j_call", "SFig9C")
 
 
 ```
 
 
-#### plot Fig3C IGHV usage per patient group, Figure 3C
+#### plot Fig3C IGHV usage per patient group
 
 ```{r}
 
 vdj_gene <- countGenes(gex@meta.data, 
                        gene = "v_call", 
-                       groups = c("patient_group"), 
+                       groups = "patient_group", 
                        mode = "gene",
                        fill = TRUE)
 
 vdj_gene$fc <- NA
 
 #calculate FC relative to CTRL
-table(vdj_gene$gene)
 for (i in 1:nrow(vdj_gene)){
   ifelse(vdj_gene$patient_group[i] == "CTRL", 
          vdj_gene$fc[i] <- NA,
@@ -650,7 +643,7 @@ p1 <- ggplot(tmp, aes(x = reorder(gene, -seq_freq),
                       y = fc, 
                       colour = patient_group)) +
   theme_classic() +
-      ggtitle(paste0("IGHV gene usage per patient group")) +
+      ggtitle(expression(~italic(IGHV)~'gene usage per patient group')) +
       theme(axis.text.x = element_blank(),
             axis.ticks.x = element_blank(),
             legend.position = "none",
@@ -682,17 +675,18 @@ p_legend <- ggplot(tmp, aes(x = reorder(gene, -seq_freq),
                           y = seq_freq, 
                           fill = patient_group)) +
   theme_classic() +
-  scale_fill_discrete(name = "Patient group") +
+  scale_fill_discrete(name = "") +
   geom_col(position = "dodge")
   
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
 p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
-                align = "v", axis = "l", rel_heights = c(1, 2.8))
+                align = "v", axis = "l", rel_heights = c(1, 2.8)) + 
+           bgcolor("white") + 
+           border("white")
 
 
- ggsave2(paste0("../results/VDJ_countGenes_", VDJgene 
-                 ,".png"),
+ ggsave2(paste0("../results/Fig3C_3.png"),
           plot_grid(p3, p_legend, 
                     ncol = 2, 
                     labels = NULL, 
@@ -711,12 +705,12 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
 ```{r}
 
 #gex$VDJ contains concatenated VDJ gene names
-
 vdj_gene <- alakazam::countGenes(gex@meta.data, 
-                       gene = "VDJ", 
-                       groups = c("patient_group"), 
-                       mode="asis",
-                       fill = TRUE, copy = "umi_count")
+                                 gene = "VDJ", 
+                                 groups = "patient_group", 
+                                 mode = "asis",
+                                 fill = TRUE, 
+                                 copy = "umi_count")
 
 vdj_gene$fc <- NA
 
@@ -733,8 +727,8 @@ tmp <- vdj_gene[which(vdj_gene$gene %in% unique(vdj_gene$gene)[1:45]), ]
 p1 <- ggplot(tmp, aes(x = reorder(gene, -seq_freq), 
                       y = fc, 
                       colour = patient_group)) +
-  theme_classic() +
-      ggtitle(paste0("IGH VDJ gene usage per patient group")) +
+      theme_classic() +
+      ggtitle(expression(~italic(IGH)~'VDJ gene usage per patient group')) +
       theme(axis.text.x = element_blank(),
             axis.ticks.x = element_blank(),
             legend.position = "none",
@@ -766,13 +760,15 @@ p_legend <- ggplot(tmp, aes(x = reorder(gene, -seq_freq),
                           y = seq_freq, 
                           fill = patient_group)) +
   theme_classic() +
-  scale_fill_discrete(name = "Patient group") +
+  scale_fill_discrete(name = "") +
   geom_col(position = "dodge")
   
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
 p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
-                align = "v", axis = "l", rel_heights = c(1, 2.8))
+                align = "v", axis = "l", rel_heights = c(1, 2.8)) + 
+           bgcolor("white") + 
+           border("white")
 
 
  ggsave2(paste0("../results/Fig3D.png"),
@@ -798,7 +794,7 @@ get_topVDJ <- function(i, #seurat object
                        ) {
   
   #remove allele information
-  vh_col <- unlist(lapply(strsplit(i@meta.data[, VDJgene], 
+  vh_col <- unlist(lapply(strsplit(as.character(i@meta.data[, VDJgene]), 
                                                    split = "\\*"),
                                           function(x) {return(x[1])})) 
   
@@ -815,7 +811,7 @@ get_topVDJ <- function(i, #seurat object
   nvh <- ifelse(nrow(vh) <= 50, nrow(vh), 50)
   
   titles <- data.frame(gexnames = c("v_call", "d_call", "j_call", "c_gene_10x"),
-                       outnames = c("V", "D", "J", "IGH constant"))
+                       outnames = c("IGHV", "IGHD", "IGHJ", "IGH constant"))
   
   p <- as_tibble(vh[1:nvh, ]) %>% pivot_longer(
        cols = 1:4,
@@ -849,8 +845,8 @@ pd <- get_topVDJ(gex, "d_call")
 pj <- get_topVDJ(gex, "j_call")
 pc <- get_topVDJ(gex, "c_gene_10x")
 
-ggsave2(paste0("../results/SFig12.png"), 
-          plot_grid(pd, pj, align = "hv", labels = "AUTO", ncol = 1) +
+ggsave2(paste0("../results/SFig12A-B.png"), 
+          plot_grid(pd, pj, align = "hv", labels = NULL, ncol = 1) +
           bgcolor("white") + 
           border("white"),
           width = 15, height = 18, unit = "cm", dpi = 300)
@@ -865,12 +861,12 @@ ggsave2(paste0("../results/SFig12.png"),
 ```{r}
 vdj_allele <- countGenes(gex@meta.data, 
                        gene = "v_call", 
-                       groups = c("patient_group"), 
+                       groups = "patient_group", 
                        mode = "allele",
                        fill = TRUE)
 
 #IGHV1-69
-vdj_allele1 <- vdj_allele[grepl("^IGHV1-69*", vdj_allele$gene),] %>% arrange(desc(seq_count))
+vdj_allele1 <- vdj_allele[grepl("^IGHV1-69*", vdj_allele$gene), ] %>% arrange(desc(seq_count))
 tmp1 <- vdj_allele1[which(vdj_allele1$gene %in% unique(vdj_allele1$gene)[1:10]), ]
 
 p1 <- ggplot(tmp1, aes(x = reorder(gene, -seq_freq), 
@@ -881,10 +877,8 @@ p1 <- ggplot(tmp1, aes(x = reorder(gene, -seq_freq),
                                        hjust = 1, 
                                        vjust = 0.5,
                                        size = 8), 
-            #strip.background = element_blank(), 
-            #strip.text.y = element_blank(),
-            legend.position = "none"#,
-            #plot.margin = unit(c(0.2, 0, 0, 0.2), "cm")
+
+            legend.position = "none"
             ) +
       ylab("Percent of allele repertoire") +
       xlab("") +
@@ -893,7 +887,7 @@ p1 <- ggplot(tmp1, aes(x = reorder(gene, -seq_freq),
       geom_col(position = "dodge") + 
       facet_grid(rows = vars(patient_group))
 
-ggsave2(paste0("../results/SFig11.png"), 
+ggsave2(paste0("../results/SFig11_.png"), 
           plot_grid(p1, ncol = 1, labels = NULL, align = "h")+ 
           bgcolor("white") + 
           border("white"),
@@ -1174,14 +1168,14 @@ ggplot(p, aes(x=1,y = perc, fill = cluster_cellType_manual_main)) +
 ####---- clonal diversity
 ####---------------------------------------------------------------------
 
-####---- abundance estimation (SFigXX)
+####---- abundance estimation
 patient_group_estimateAbundance <-
   alakazam::estimateAbundance(
     gex.meta,
     group = "patient_group",
     clone = "cluster_no_airr",
     ci = 0.95,
-    nboot = 100
+    nboot = 50
   )
 
 saveRDS(patient_group_estimateAbundance, "../results/VDJ_clono_patient_group_estimateAbundance.rds")
@@ -1199,14 +1193,12 @@ patient_group_alphaDiversity <- alakazam::alphaDiversity(
   max_q = 4,
   step_q = 0.1,
   ci = 0.95,
-  nboot = 100
+  nboot = 50
 )
 
-#saveRDS(patient_group_alphaDiversity, "../results/VDJ_clono_patient_group_alphaDiversity.rds")
+saveRDS(patient_group_alphaDiversity, "../results/VDJ_clono_patient_group_alphaDiversity.rds")
 #patient_group_alphaDiversity <- readRDS("../results/VDJ_clono_patient_group_alphaDiversity.rds")
 
-head(patient_group_alphaDiversity@tests)
-patient_group_alphaDiversity@tests[patient_group_alphaDiversity@tests$pvalue < 0.1,]
 
 ```
 
@@ -1217,15 +1209,19 @@ patient_group_alphaDiversity@tests[patient_group_alphaDiversity@tests$pvalue < 0
 
 p1 <- plotAbundanceCurve(patient_group_estimateAbundance) + 
   theme_classic() + 
-  theme(legend.position = "none")
+  theme(legend.position = "none",
+        legend.title = element_blank())
 
-p2.1 <- plotDiversityCurve(patient_group_alphaDiversity) + theme_classic()
+p2.1 <- plotDiversityCurve(patient_group_alphaDiversity) + 
+  theme_classic() + 
+  theme(legend.title = element_blank())
+
 p_legend <- get_legend(p2.1) %>% ggpubr::as_ggplot()
 
 p2 <- p2.1 + theme(legend.position = "none")
 
 
-ggsave2(paste0("../results/SFig16.png"),
+ggsave2(paste0("../results/SFig16_1.png"),
           plot_grid(p1, p2, p_legend,
                     nrow = 1, labels = NULL, 
                     align = "vh", axis = "l", rel_widths = c(1, 1, 0.4)) + 
@@ -1357,10 +1353,10 @@ p2 <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)),
       ylab("proportion of cells") + 
       xlab("") + 
       facet_grid(rows = vars(patient_group)) + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
-      scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "clonotype")
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold")) +
+      scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "")
 
-ggsave2("../results/Fig4A.png", 
+ggsave2("../results/Fig4A_.png", 
         plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
           bgcolor("white") + 
           border("white"), 
@@ -1583,9 +1579,16 @@ sum(table(clr[p1$tree_row$order])[c(5)]) #[1] 457
 ```
 
 
-#### plot Fig4C_I venn diagram of clonotypes (1640)
+#### plot Fig4C UpSetR of clonotypes (1640)
 
 ```{R}
+
+pheno_2 <- unique(gex.meta[, c("orig.ident", "patient_group")])
+tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
+                                  gex.meta$orig.ident))
+
+#get clonotypes present in at least 2 samples
+tmp <- tmp[rowSums(tmp > 0) > 1, ]
 
 tmp2 <- as.data.frame(t(rowsum(t(tmp), group = pheno$patient_group[1:27])))
 tmp2 <- as.data.frame((tmp2 > 0) * 1)
@@ -1596,54 +1599,12 @@ names(venn.list) <- colnames(tmp2)[1:4]
 for (i in colnames(tmp2)[1:4]){
   for (j in 1:nrow(tmp2))
   venn.list[[i]][j] <- ifelse(tmp2[j, i] == 1, tmp2$ident[j], NA)
-  #venn.list[[i]][venn.list[[i]] == "0"] <- NA
 }
 venn.list <- lapply(venn.list, function(x){x <- na.omit(x)})
 
-ann_cols <- list(patient_group = c(CTRL = "#F8766D", 
-                                   DNEG = "#7CAE00", 
-                                   SSA = "#00BFC4", 
-                                   SSAB = "#C77CFF"))
-venn.diagram(venn.list, 
-             filename = "../results/Fig5B_I_2.png", 
-             na = "none", 
-             print.mode = c("raw", "percent"), 
-             category.names = names(venn.list),
-             disable.logging = TRUE,
-             sigdigs = 1,
-             cat.fontfamily = "sans",
-             fontfamily ="sans",
-             fill = ann_cols$patient_group,
-             height = 15,
-             width = 15, 
-             resolution = 200,
-             units = "cm",
-             imagetype = "png",
-             main = paste0(nrow(tmp2), " unique clonotypes present in ??? 2 samples"),
-             #sub = paste(""),
-             main.fontfamily = "sans",
-             main.cex = 1.5,
-             cex = 1,
-             cat.cex = 1.2
-             #sub.fontfamily = "sans"
-             )
-
-```
-
-
-#### plot Fig4C_II UpSetR of clonotypes (1640)
-
-```{R}
-
-png("../results/Fig4C_II_3.png", width = 12, height = 11, units = "cm", res = 200)
+png("../results/Fig4C_.png", width = 12, height = 11, units = "cm", res = 200)
 UpSetR::upset(fromList(venn.list), order.by = "freq")
 dev.off()
-
-#test:
-#install.packages('ComplexUpset')
-#library(ComplexUpset)
-#ComplexUpset::upset(fromList(venn.list), genres, name='genre', width_ratio=0.1)
-
 
 ```
 
@@ -1663,10 +1624,6 @@ corsiero_4 <- read_excel("../suppl/Corsiero_et_al_2014/STable4.xlsx")
 corsiero_5 <- read_excel("../suppl/Corsiero_et_al_2014/STable5.xlsx")
 
 corsiero <- as.data.frame(rbind(corsiero_2, corsiero_4, corsiero_5))
-dim(corsiero)
-head(corsiero)
-
-length(unique(corsiero$CDR3))
 
 corsiero_p <- data.frame(Patient = str_sort(unique(corsiero$Patient), numeric = T))
 corsiero_p$age_onset <- c(59, 54, 39, 59, 64, 41, 56)
@@ -1677,10 +1634,10 @@ corsiero_p$SSB <- c(0,1,0,0,0,1,1)
 
 corsiero <- left_join(corsiero, corsiero_p, by = "Patient")
 
-corsiero$dataset <- "corsiero"
+corsiero$dataset <- "Corsiero_et_al"
 corsiero$gender <- "F"
 
-saveRDS(corsiero, "../suppl/Corsiero_et_al_2014/corsiero.RDS")
+#saveRDS(corsiero, "../suppl/Corsiero_et_al_2014/corsiero.RDS")
 corsiero <- readRDS("../suppl/Corsiero_et_al_2014/corsiero.RDS")
 
 
@@ -1690,7 +1647,7 @@ corsiero <- readRDS("../suppl/Corsiero_et_al_2014/corsiero.RDS")
 #Repertoire Analysis of B-Cells Located in Striated Ducts of Salivary Glands of Patients With Sj??gren's Syndrome
 #https://pubmed.ncbi.nlm.nih.gov/32760405/
 visser <- as.data.frame(read_excel("../suppl/Visser_et_al_2020/Table2.xlsx"))
-head(visser)
+
 nrow(visser) #[1] 188
 length(unique(visser$PATIENT)) #[1] 6
 length(unique(visser$AA_JUNCTION)) #[1] 188
@@ -1709,10 +1666,10 @@ visser_p$SSB <- c(1,0,1,0,NA)
 
 visser <- left_join(visser, visser_p, by = "PATIENT")
 
-visser$dataset <- "visser"
+visser$dataset <- "Visser_et_al"
 visser$gender <- "F"
 
-saveRDS(visser, "../suppl/Visser_et_al_2020/visser.RDS")
+#saveRDS(visser, "../suppl/Visser_et_al_2020/visser.RDS")
 visser <- readRDS("../suppl/Visser_et_al_2020/visser.RDS")
 
 
@@ -1721,11 +1678,11 @@ visser <- readRDS("../suppl/Visser_et_al_2020/visser.RDS")
 #Wang_et_al_2018
 #Molecular Profiling and Clonal Tracking of Secreted Rheumatoid Factors in Primary Sj??gren's Syndrome
 #https://pubmed-ncbi-nlm-nih-gov.ezproxy.its.uu.se/29697211/
+
 wang <- as.data.frame(read_excel("../suppl/Wang_et_al_2018/Table3.xlsx"))
 nrow(wang) #[1] 13
 length(unique(wang$Patient)) #[1] 3
 length(unique(wang$CDR3)) #[1] 12
-head(wang)
 
 wang_p <- data.frame(Patient = str_sort(unique(wang$Patient), numeric = T))
 wang_p$age_onset <- c(19, 54, 48)
@@ -1737,10 +1694,10 @@ wang_p$cell_type <- NA
 
 wang <- left_join(wang, wang_p, by = "Patient")
 
-wang$dataset <- "wang"
+wang$dataset <- "Wang_et_al"
 wang$gender <- "F"
 
-saveRDS(wang, "../suppl/Wang_et_al_2018/wang.RDS")
+#saveRDS(wang, "../suppl/Wang_et_al_2018/wang.RDS")
 wang <- readRDS("../suppl/Wang_et_al_2018/wang.RDS")
 
 
@@ -1761,7 +1718,7 @@ colnames(corsiero) <- colnames(wang)
 
 CDR3_data <- rbind(corsiero, visser, wang); head(CDR3_data); dim(CDR3_data)
 
-saveRDS(CDR3_data, "../results/CDR3_data_literature.rds")
+#saveRDS(CDR3_data, "../results/CDR3_data_literature.rds")
 CDR3_data <- readRDS("../results/CDR3_data_literature.rds")
 
 
@@ -1855,6 +1812,8 @@ res[order(res_min, decreasing = F), ]
 #### dist between present study and litterature
 
 ```{r}
+
+
 tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
                                   gex.meta$orig.ident))
 
@@ -1919,48 +1878,40 @@ res[order(res_min, decreasing = F), ]
 
 ```{r}
 
+CDR3_data <- readRDS("../results/CDR3_data_literature.rds")
+CDR3_data <- unique(CDR3_data[, c("CDR3", "dataset")])
+colnames(CDR3_data) <- c("CDR3", "group")
+
 tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
                                   gex.meta$orig.ident))
 
 #get clonotypes present in ??? 4 samples
-tmp <- tmp[rowSums(tmp > 0) > 3, ]
+#tmp <- tmp[rowSums(tmp > 0) > 3, ]
 tmp <- tmp[rowSums(tmp > 0) > 1, ]
 tmp2 <- as.data.frame(t(rowsum(t(tmp), group = pheno$patient_group[1:27])))
 tmp2 <- as.data.frame((tmp2 > 0) * 1)
 tmp2$ident <- as.character(rownames(tmp2))
 
-dim(tmp2)
 m <- unique(gex.meta[(gex.meta$cluster_no_airr %in% rownames(tmp2)) & !gex.meta$patient_group == "CTRL", 
                      c("junction_aa", "patient_group")])
 m <- m[!duplicated(m$junction_aa),]
 colnames(m) <- c("CDR3", "group")
-dim(m)
+
 m <- rbind(m, CDR3_data)
 
-unique(m$group)
+
 res <- stringdist::stringdistmatrix(m$CDR3, m$CDR3,  method = "lv")
 res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(m$CDR3, m$CDR3)))
 
-ann_cols <- list(group = c(corsiero = brewer.pal(9, "YlOrRd")[2],
-                           visser = brewer.pal(9, "YlOrRd")[5],  
-                           wang = brewer.pal(9, "YlOrRd")[7], 
-                           DNEG = "#7CAE00",
-                           SSA = "#00BFC4", 
+ann_cols <- list(group = c(Corsiero_et_al = brewer.pal(9, "YlOrRd")[2],
+                           Visser_et_al = brewer.pal(9, "YlOrRd")[5],  
+                           Wang_et_al = brewer.pal(9, "YlOrRd")[7], 
+                           `SSA-`= "#7CAE00",
+                           `SSA+` = "#00BFC4", 
                            SSAB = "#C77CFF"))
-ann_cols <- list(group = c(`Corsiero et al.` = brewer.pal(9, "YlOrRd")[2],
-                           `Visser et al.` = brewer.pal(9, "YlOrRd")[5],  
-                           `Wang et al.` = brewer.pal(9, "YlOrRd")[7], 
-                           DNEG = "#7CAE00",
-                           SSA = "#00BFC4", 
-                           SSAB = "#C77CFF"))
-annotation <- data.frame(group = factor(m$group), row.names = m$CDR3 )
-length(m$CDR3)
-length(unique(m$CDR3))
-m[duplicated(m$CDR3), ]
 
+annotation <- data.frame(group = factor(m$group), row.names = m$CDR3)
 
-# m[m$CDR3 %in% unique(m$CDR3[ duplicated(m$CDR3)]), "CDR3"]
-# table(m[m$CDR3 %in% unique(m$CDR3[ duplicated(m$CDR3)]), "CDR3"], m[m$CDR3 %in% unique(m$CDR3[ duplicated(m$CDR3)]), "group"])
 
 pheatmap(res, 
          show_rownames = FALSE, 
@@ -1968,9 +1919,11 @@ pheatmap(res,
          filename = "../results/Fig4D_6.png",
          annotation_col = data.frame(group = factor(m$group), row.names = m$CDR3),
          annotation_row = data.frame(group = factor(m$group), row.names = m$CDR3),
-         annotation_colors = ann_cols[1], legend = T
+         annotation_colors = ann_cols[1], 
+         legend = T
          )
 dev.off()
+
 
 ```
 
@@ -2005,20 +1958,15 @@ p2 <- ggplot(gex.meta %>% filter(!is.na(mu_load)),
           ylab("proportion of cells") +
           xlab("") +
           facet_grid(rows = vars(patient_group)) + 
-          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold")) +
           scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "Mutation load")
 
-ggsave2("../results/Fig4A_4.png", 
+ggsave2("../results/Fig3E.png", 
         plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
           bgcolor("white") + 
           border("white"), 
         width = 30, height = 14, unit = "cm")
 
-
-gex.meta$v_call_tmp <-  unlist(lapply(strsplit(gex.meta$v_call, 
-                                         split = "\\*"),
-                                function(x) {return(x[1])}))
-table(gex.meta$v_call_tmp, gex.meta$mu_load)
 
 ```
 
@@ -2040,7 +1988,7 @@ p1 <- ggplot(gex.meta,
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
-      scale_fill_discrete(name = "patient group") +
+      scale_fill_discrete(name = "") +
       geom_violin(alpha = 0.8, 
                   scale = "width", 
                   draw_quantiles = c(0.25, 0.5, 0.75),
@@ -2049,6 +1997,7 @@ p1 <- ggplot(gex.meta,
 ggsave2(paste0("../results/Fig3F.png"), 
           p1,
           width = 30, height = 10, unit = "cm")
+
 
 ```
 
@@ -2062,7 +2011,6 @@ tmp <- data.frame(orig.ident = gex.meta$orig.ident, patient_group = gex.meta$pat
 tmp <- tmp[order(tmp$patient_group), ]
 tmp <- unique(tmp)
 gex.meta$orig.ident <- factor(gex.meta$orig.ident, levels = tmp$orig.ident)
-
 
 p <- ggplot(gex.meta,
             aes(x = orig.ident, 
@@ -2180,7 +2128,7 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/SFig13B.png"),
+ggsave2(paste0("../results/SFig13B_.png"),
         plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"),
@@ -2214,7 +2162,8 @@ p2 <- ggplot(gex.meta,
       theme(axis.text.x = element_text(angle = 90, 
                                        hjust = 1, 
                                        vjust = 0.5),
-            plot.title = element_text(size = 12)) +
+            plot.title = element_text(size = 12),
+            legend.title = element_blank()) +
       ylab("mutation count ratio R/S (log2)") +
       xlab("") +
       geom_violin(alpha = 0.8, 
@@ -2222,7 +2171,7 @@ p2 <- ggplot(gex.meta,
                   draw_quantiles = c(0.25, 0.5, 0.75),
                   trim = TRUE)
 
-ggsave2(paste0("../results/SFig14A.png"), 
+ggsave2(paste0("../results/SFig14A_.png"), 
           p2,
           width = 30, height = 10, unit = "cm")
 
@@ -2266,9 +2215,10 @@ p3 <- as_tibble(gex.meta) %>%
   theme(axis.text.x = element_text(angle = 90, 
                                    hjust = 1, 
                                    vjust = 0.5),
-        plot.title = element_text(size = 12)) +
+        plot.title = element_text(size = 12),
+        legend.title = element_blank()) +
   stat_compare_means(method = "anova", hide.ns = TRUE, label = "p.signif") +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) 
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1L), name = "") 
 
 ggsave2(paste0("../results/SFig14B.png"), 
           plot_grid(p3, labels = NULL, align = "h")+ 
@@ -2294,12 +2244,13 @@ p1 <- DimPlot(gex,
               order = TRUE,
               cols = c(brewer.pal(9, "Set3")),
               na.value = "white") + 
-  ggtitle("IGH constant gene") + 
+  ggtitle(expression(~italic(IGH)~'constant gene')) + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
-    theme(axis.text = element_blank(),
-          axis.ticks = element_blank(),
-          legend.position = "none")
+  theme(axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        title = element_text(face = "bold"),
+        legend.position = "none")
 
 p2 <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)), 
              aes(x = cluster_cellType_manual_fine,
@@ -2309,10 +2260,10 @@ p2 <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)),
       ylab("proportion of cells") + 
       xlab("") +
       facet_grid(rows = vars(patient_group)) + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
-      scale_fill_brewer(palette="Set3", na.value="grey", name = "c gene",  drop = FALSE)
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold")) +
+      scale_fill_brewer(palette="Set3", na.value="grey", name = "",  drop = FALSE)
 
-ggsave2("../results/Fig3A_2.png", 
+ggsave2("../results/Fig3A.png", 
         plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
           bgcolor("white") + 
           border("white"), 
@@ -2623,14 +2574,15 @@ p_legend <- ggplot(gex.meta,
                   fill = patient_group)) +
       theme_classic() +
       geom_boxplot() +
-      theme(legend.position = "bottom")
+      theme(legend.position = "bottom",
+            legend.title = element_blank())
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
 
 p_grid <- plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, p9, 
                     nrow = 3, ncol = 3, labels = "AUTO", align = "hv")
 
-ggsave2(paste0("../results/SFig15.png"), 
+ggsave2(paste0("../results/SFig15_.png"), 
           plot_grid(p_grid, p_legend, ncol = 1, align = "none", rel_heights = c(18, 1)) +
           bgcolor("white") + 
           border("white") ,
