@@ -316,6 +316,12 @@ ggsave2(paste0("../results/SFig3.png"),
           border("white"), 
         width = 30, height = 30, unit = "cm")
 
+ggsave2(paste0("../results/SFig3.pdf"), 
+        plot_grid(p4, p3, ncol = 1, labels = NULL, rel_heights = c(4, 1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 30, height = 30, unit = "cm")
+
 
 ```
 
@@ -496,7 +502,15 @@ for (i in ig.features) {
 
 p2 <- plot_grid(plotlist = p, ncol = 3, align = "hv", scale = 1.1) 
 
-ggsave2(paste0("../results/Fig1B-C_2.png"), 
+ggsave2(paste0("../results/Fig1B-C.png"), 
+        plot_grid(p1, p2, 
+                  ncol = 2, 
+                  rel_widths = c(1, 1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 28.2, height = 15, unit = "cm")
+
+ggsave2(paste0("../results/Fig1B-C.pdf"), 
         plot_grid(p1, p2, 
                   ncol = 2, 
                   rel_widths = c(1, 1)) + 
@@ -533,7 +547,11 @@ p <- DotPlot(gex,
                                        size = 8),
         panel.grid.major = element_line(colour="grey", size = rel(0.5)))
 
-ggsave2(paste0("../results/Fig1D_2.png"), 
+ggsave2(paste0("../results/Fig1D.png"), 
+        p, 
+        width = 12, height = 14, unit = "cm") 
+
+ggsave2(paste0("../results/Fig1D.pdf"), 
         p, 
         width = 12, height = 14, unit = "cm") 
 
@@ -585,7 +603,7 @@ p3 <- plot_grid(p1, p2,
           bgcolor("white") + 
           border("white")
 
-ggsave2("../results/Fig1E_4.png", 
+ggsave2("../results/Fig1E.png", 
         plot_grid(p3, p_legend, 
                   ncol = 2, 
                   rel_widths = c(5, 1), 
@@ -595,6 +613,26 @@ ggsave2("../results/Fig1E_4.png",
           border("white"), 
         width = 25, height = 10, unit = "cm")
 
+ggsave2("../results/Fig1E.pdf", 
+        plot_grid(p3, p_legend, 
+                  ncol = 2, 
+                  rel_widths = c(5, 1), 
+                  labels = NULL, 
+                  align = "h") + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 25, height = 10, unit = "cm")
+
+
+
+(table(gex$cluster_cellType_manual_fine)["Naive"] +
+  table(gex$cluster_cellType_manual_fine)["Naive_IFN"]) / ncol(gex) #0.5101796
+
+table(gex$cluster_cellType_manual_fine)["Naive"] / ncol(gex) #0.4536527 
+
+table(gex$cluster_cellType_manual_fine)["Memory_IgM"]/ncol(gex) #0.09386987
+
+table(gex$cluster_cellType_manual_fine)["Memory_Cl"]/ncol(gex) #0.07603787
 
 ```
 
@@ -678,6 +716,16 @@ ggsave2("../results/Fig1F.png",
           border("white"), 
         width = 40, height = 15, unit = "cm")
 
+ggsave2("../results/Fig1F.pdf", 
+        plot_grid(y_label, p1, 
+                  ncol = 2, 
+                  labels = NULL, 
+                  align = "hv", 
+                  rel_widths = c(0.03, 1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 40, height = 15, unit = "cm")
+
 
 ```
 
@@ -701,6 +749,10 @@ p <- DimPlot(gex,
 
 
 ggsave2(paste0("../results/SFig4A.png"), 
+        p, 
+        width = 20, height = 15, unit = "cm")
+
+ggsave2(paste0("../results/SFig4A.pdf"), 
         p, 
         width = 20, height = 15, unit = "cm")
 
@@ -743,6 +795,10 @@ ggsave2(paste0("../results/SFig4B.png"),
         p, 
         width = 18, height = 17, unit = "cm")
 
+ggsave2(paste0("../results/SFig4B.pdf"), 
+        p, 
+        width = 18, height = 17, unit = "cm")
+
 
 gex$cluster_cluster_cellType_manual_fine <- NULL
 
@@ -767,6 +823,10 @@ p <- ggplot(gex@meta.data,
               legend.title = element_blank())
 
 ggsave2("../results/SFig4C.png", 
+        p, 
+        width = 20, height = 14, unit = "cm")
+
+ggsave2("../results/SFig4C.pdf", 
         p, 
         width = 20, height = 14, unit = "cm")
 

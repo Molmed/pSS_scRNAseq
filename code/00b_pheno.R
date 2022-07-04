@@ -63,11 +63,9 @@ pheno$patient_group1 <- names(pat_annot)[match(pheno$patient_group1, pat_annot)]
 pheno$patient_group1[grep("^C00", pheno$orig.ident) ] <- "CTRL"
 pheno$patient_group1 <- factor(pheno$patient_group1, levels = c("CTRL", "DNEG", "SSA", "SSAB"))
 
-pat_annot <- c(`SSAB+` = "SSAB", `SSA+` = "SSA", `SSA-` = "DNEG", CTRL = "CTRL")
+pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB` = "SSAB")
 pheno$patient_group <- names(pat_annot)[match(pheno$patient_group1, pat_annot)]
-pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB+` = "SSAB")
 pheno$patient_group <- factor(pheno$patient_group, levels = names(pat_annot))
-
 rownames(pheno) <- pheno$orig.ident
 
 saveRDS(pheno, paste0("../results/pheno_", Sys.Date(), ".rds"))

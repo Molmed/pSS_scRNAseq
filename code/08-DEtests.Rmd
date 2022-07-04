@@ -19,6 +19,7 @@ source("./00a_dependencies.R")
 ```{r}
 
 gex <- readRDS("../results/GEX7_BVDJ.rds")
+table(gex$cluster_cellType_manual_fine)
 
 #add patient group
 colnames(gex@meta.data)[colnames(gex@meta.data) == "patient_group"] <- "patient_group1"
@@ -126,7 +127,7 @@ saveRDS(DGE_list, "../results/DGE_B-cells_celltypeMain_patientGroups_listAll.rds
 #DGE_list <- readRDS("../results/DGE_B-cells_celltypeMain_patientGroups_listAll.rds")
 names(DGE_list)
 
-DGE_list <- DGE_list[c("DN", "Memory", "Naive", "Transitional")]
+#DGE_list <- DGE_list[c("DN", "Memory", "Naive", "Transitional")]
 
 ```
 
@@ -300,8 +301,13 @@ p1 <- plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h") +
            border("white")
   
 
+ggsave2("../results/Fig2A.png", 
+        plot_grid(p1, p_legend, ncol = 1, rel_heights = c(8, 1), labels = NULL, align = "h") + 
+           bgcolor("white") + 
+           border("white"), 
+        width = 25, height = 10, unit = "cm")
 
-ggsave2("../results/Fig2A_2.png", 
+ggsave2("../results/Fig2A.pdf", 
         plot_grid(p1, p_legend, ncol = 1, rel_heights = c(8, 1), labels = NULL, align = "h") + 
            bgcolor("white") + 
            border("white"), 
@@ -354,14 +360,12 @@ for (i in sort(names(DGE_list))[-c(3, 4, 6)]){
                                      vjust = 0.5,
                                      size = 12,
                                      color = "black"),
-          #scale_y_continuous(breaks = seq(0, 25, 5), limits = c(0, 25)) +
           strip.background = element_blank(), 
           strip.text.y = element_blank(),
           legend.position = "none",
           plot.margin = unit(c(0.2,0.2,0.2,0.2), "cm")) +
       ylab(expression('-log10('~italic(P)~' adj)')) +
       xlab("") +
-      #scale_x_continuous(breaks = seq(0, 15, 5), limits = c(0, 15)) +
       ggtitle(paste0(i)) +
       geom_hline(aes(yintercept = 2), color = "black", linetype = "dashed")
   
@@ -381,11 +385,11 @@ for (i in sort(names(DGE_list))[-c(3, 4, 6)]){
                                      vjust = 0.5,
                                      size = 12,
                                      color = "black"),
-          scale_y_continuous(breaks = seq(0, 20, 5), limits = c(0, 20)) +
           strip.background = element_blank(), 
           strip.text.y = element_blank(),
           legend.position = "none",
-          plot.margin = unit(c(0.2,0.2,0.2,0.2), "cm")) +
+          plot.margin = unit(c(0.2, 0.2, 0.2, 0.2), "cm")) +
+      scale_y_continuous(breaks = seq(0, 20, 5), limits = c(0, 20)) +
       ylab(expression('-log10('~italic(P)~' adj)')) +
       xlab("") +
       ggtitle(paste0(i)) +
@@ -393,22 +397,36 @@ for (i in sort(names(DGE_list))[-c(3, 4, 6)]){
   
 }
 
-write.csv(do.call(rbind.data.frame, gse_listH),
-          "../results/DGE_B-cells_GSE_celltypeMain_hallmarks.csv", 
-          row.names = FALSE)
+# write.csv(do.call(rbind.data.frame, gse_listH),
+#           "../results/DGE_B-cells_GSE_celltypeMain_hallmarks.csv", 
+#           row.names = FALSE)
+# 
+# write.csv(do.call(rbind.data.frame, gse_listBP),
+#           "../results/DGE_B-cells_GSE_celltypeMain_GOBP.csv", 
+#           row.names = FALSE)
 
-write.csv(do.call(rbind.data.frame, gse_listBP),
-          "../results/DGE_B-cells_GSE_celltypeMain_GOBP.csv", 
-          row.names = FALSE)
-
-ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeMain_hallmarks.png"),
+ggsave2(paste0("../results/Fig2B.png"),
           plot_grid(plotlist = p_listH, 
                     ncol = 4, 
                     labels = NULL, 
                     align = "vh" ) + bgcolor("white"),
           width = 40, height = 8, unit = "cm")
 
-ggsave2(paste0("../results/DGE_B-cells_GSE_celltypeMain_GOBP.png"),
+ggsave2(paste0("../results/Fig2B.pdf"),
+          plot_grid(plotlist = p_listH, 
+                    ncol = 4, 
+                    labels = NULL, 
+                    align = "vh" ) + bgcolor("white"),
+          width = 40, height = 8, unit = "cm")
+
+ggsave2(paste0("../results/Fig2B_GOBP.png"),
+          plot_grid(plotlist = p_listBP, 
+                    ncol = 4, 
+                    labels = NULL, 
+                    align = "vh" ) + bgcolor("white"),
+          width = 90, height = 8, unit = "cm")
+
+ggsave2(paste0("../results/Fig2B_GOBP.pdf"),
           plot_grid(plotlist = p_listBP, 
                     ncol = 4, 
                     labels = NULL, 

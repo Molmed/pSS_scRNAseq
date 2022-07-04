@@ -2,6 +2,7 @@
 output: html_document
 editor_options: 
   chunk_output_type: console
+  
 ---
 
 # VDJ analysis {#VDJ}
@@ -21,10 +22,10 @@ source("./00a_dependencies.R")
 gex <- readRDS("../results/GEX6_BANNOT.rds")
 
 #add patient group
-colnames(gex@meta.data)[colnames(gex@meta.data) == "patient_group"] <- "patient_group1"
-pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB` = "SSAB")
-gex$patient_group <- names(pat_annot)[match(gex$patient_group1, pat_annot)]
-gex$patient_group <- factor(gex$patient_group, levels = names(pat_annot))
+# colnames(gex@meta.data)[colnames(gex@meta.data) == "patient_group"] <- "patient_group1"
+# pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB` = "SSAB")
+# gex$patient_group <- names(pat_annot)[match(gex$patient_group1, pat_annot)]
+# gex$patient_group <- factor(gex$patient_group, levels = names(pat_annot))
 
 ```
 
@@ -259,20 +260,7 @@ write_rearrangement(imm, "../results/VDJ_immcantation_out.tsv")
 #imm_out <- imm[, c("sequence_id", "v_call", "j_call", "junction")]
 #write_rearrangement(imm_out, "../results/VDJ_immcantation_out_forDefineClones.tsv")
 
-colnames(imm)
 
-head(imm$sequence_alignment)
-head(imm$germline_alignment)
-
-head(imm$sequence_id)
-head(imm$sequence)
-
-head(imm$cell_id)
-
-imm$junction[1]
-imm$cdr3[1]
-
-nrow(imm)
 
 ```
 
@@ -575,23 +563,24 @@ VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usa
   titles <- data.frame(gexnames = c("v_call", "d_call", "j_call", "c_gene_10x"),
                        outnames = c("IGHV", "IGHD", "IGHJ", "IGH c"))
   
-  print(titles$outnames[titles$gexnames == VDJgene])
-  print(data.frame(cell_type = factor(sub("__.*", "", colnames(cor_tmp))),
-                   patient_group = factor(sub(".*__", "", colnames(cor_tmp))),
-                   row.names = colnames(cor_tmp)))
+  # print(titles$outnames[titles$gexnames == VDJgene])
+  # print(data.frame(cell_type = factor(sub("__.*", "", colnames(cor_tmp))),
+  #                  patient_group = factor(sub(".*__", "", colnames(cor_tmp))),
+  #                  row.names = colnames(cor_tmp)))
   
+for (j in c("png", "pdf")){
   p <- pheatmap::pheatmap(cor_tmp, 
-                     annotation_col = data.frame(cell_type = factor(sub("__.*", 
+                     annotation_col = data.frame(cell_type = as.character(sub("__.*", 
                                                                         "", 
                                                                         colnames(cor_tmp))),
-                                                 patient_group = factor(sub(".*__", 
+                                                 patient_group = as.character(sub(".*__", 
                                                                             "",
                                                                             colnames(cor_tmp))),
                                                  row.names = colnames(cor_tmp)),
                      annotation_colors = ann_cols[1:2],
                      breaks = seq(0, 1, length.out = 100),
-                     filename = paste0("../results/", figNo, ".png"),
-                     fontsize = 8, 
+                     filename = paste0("../results/", figNo, ".", j),
+                     fontsize = 10, 
                      fontsize_row = 4, 
                      fontsize_col = 4,
                      border_color = NA,
@@ -601,12 +590,15 @@ VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usa
                                    "genes,", correl, "correlation"),
                      color = c(colorRampPalette(c("lightblue1", 
                                                   "lightblue2", 
-                                                  "firebrick2"))(99)))
+                                                  "firebrick2"))(99)),
+                     cellwidth = 8,
+                     cellheight = 10
+                      )
+}
   
   return(p)
   
 }
-
 
 cor.p.v_call <- VDJ_cor(gex.meta, "pearson", "v_call", "Fig3B")
 cor.p.c_call <- VDJ_cor(gex.meta, "pearson", "c_gene_10x", "SFig9A")
@@ -686,7 +678,17 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
            border("white")
 
 
- ggsave2(paste0("../results/Fig3C_3.png"),
+ ggsave2(paste0("../results/Fig3C.png"),
+          plot_grid(p3, p_legend, 
+                    ncol = 2, 
+                    labels = NULL, 
+                    align = "v", 
+                    rel_widths = c(12, 2)) + 
+           bgcolor("white") + 
+           border("white"),
+          width = 20, height = 12, unit = "cm")
+ 
+  ggsave2(paste0("../results/Fig3C.pdf"),
           plot_grid(p3, p_legend, 
                     ncol = 2, 
                     labels = NULL, 
@@ -780,6 +782,16 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
            bgcolor("white") + 
            border("white"),
           width = 20, height = 14, unit = "cm")
+ 
+  ggsave2(paste0("../results/Fig3D.pdf"),
+          plot_grid(p3, p_legend, 
+                    ncol = 2, 
+                    labels = NULL, 
+                    align = "v", 
+                    rel_widths = c(12, 2)) + 
+           bgcolor("white") + 
+           border("white"),
+          width = 20, height = 14, unit = "cm")
 
 
 ```
@@ -852,6 +864,13 @@ ggsave2(paste0("../results/SFig12A-B.png"),
           width = 15, height = 18, unit = "cm", dpi = 300)
 
 
+ggsave2(paste0("../results/SFig12A-B.pdf"), 
+          plot_grid(pd, pj, align = "hv", labels = NULL, ncol = 1) +
+          bgcolor("white") + 
+          border("white"),
+          width = 15, height = 18, unit = "cm", dpi = 300)
+
+
 ```
 
 
@@ -887,13 +906,17 @@ p1 <- ggplot(tmp1, aes(x = reorder(gene, -seq_freq),
       geom_col(position = "dodge") + 
       facet_grid(rows = vars(patient_group))
 
-ggsave2(paste0("../results/SFig11_.png"), 
+ggsave2(paste0("../results/SFig11.png"), 
           plot_grid(p1, ncol = 1, labels = NULL, align = "h")+ 
           bgcolor("white") + 
           border("white"),
           width = 15, height = 10, unit = "cm")
 
-
+ggsave2(paste0("../results/SFig11.pdf"), 
+          plot_grid(p1, ncol = 1, labels = NULL, align = "h")+ 
+          bgcolor("white") + 
+          border("white"),
+          width = 15, height = 10, unit = "cm")
 
 vdj_allele1 <- vdj_allele[grepl("^IGHV1-69*", vdj_allele$gene),] %>% arrange(desc(seq_count))
 tmp1 <- vdj_allele1[which(vdj_allele1$gene %in% unique(vdj_allele1$gene)[1:10]), ]
@@ -1156,6 +1179,7 @@ ggplot(p, aes(x=1,y = perc, fill = cluster_cellType_manual_main)) +
   scale_fill_discrete(name = "Cell type main") +
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5))
+
 ```
 
 
@@ -1207,12 +1231,20 @@ saveRDS(patient_group_alphaDiversity, "../results/VDJ_clono_patient_group_alphaD
 
 ```{r}
 
-p1 <- plotAbundanceCurve(patient_group_estimateAbundance) + 
+p1 <- plotAbundanceCurve(patient_group_estimateAbundance, 
+                         colors = c(CTRL = "#F8766D", 
+                                    `SSA-` = "#7CAE00", 
+                                    `SSA+` = "#00BFC4", 
+                                     SSAB = "#C77CFF")) + 
   theme_classic() + 
   theme(legend.position = "none",
-        legend.title = element_blank())
+        legend.title = element_blank()) 
 
-p2.1 <- plotDiversityCurve(patient_group_alphaDiversity) + 
+p2.1 <- plotDiversityCurve(patient_group_alphaDiversity,
+                           colors = c(CTRL = "#F8766D", 
+                                    `SSA-` = "#7CAE00", 
+                                    `SSA+` = "#00BFC4", 
+                                     SSAB = "#C77CFF")) + 
   theme_classic() + 
   theme(legend.title = element_blank())
 
@@ -1221,7 +1253,15 @@ p_legend <- get_legend(p2.1) %>% ggpubr::as_ggplot()
 p2 <- p2.1 + theme(legend.position = "none")
 
 
-ggsave2(paste0("../results/SFig16_1.png"),
+ggsave2(paste0("../results/SFig16.png"),
+          plot_grid(p1, p2, p_legend,
+                    nrow = 1, labels = NULL, 
+                    align = "vh", axis = "l", rel_widths = c(1, 1, 0.4)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 22, height = 12, unit = "cm")
+
+ggsave2(paste0("../results/SFig16.pdf"),
           plot_grid(p1, p2, p_legend,
                     nrow = 1, labels = NULL, 
                     align = "vh", axis = "l", rel_widths = c(1, 1, 0.4)) + 
@@ -1236,106 +1276,22 @@ ggsave2(paste0("../results/SFig16_1.png"),
 ```
 
 
-#### plot SFig17
-
-```{r}
-
-p_list <- list()
-for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))){
-  
-  
-  tmp_Ab <- alakazam::estimateAbundance(
-    gex.meta[gex.meta$cluster_cellType_manual_fine == i, ],
-    group = "patient_group",
-    clone = "cluster_no_airr",
-    ci = 0.95,
-    nboot = 30
-  )
-  
-  tmp_alpha <- alakazam::alphaDiversity(
-  gex.meta[gex.meta$cluster_cellType_manual_fine == i, ],
-  group = "patient_group",
-  clone = "cluster_no_airr",
-  min_q = 0,
-  max_q = 4,
-  step_q = 0.1,
-  ci = 0.95,
-  nboot = 30
-  )
-  
-  p1 <- plotAbundanceCurve(tmp_Ab) + 
-    theme_classic() + 
-    theme(legend.position = "none")
-
-  p2.1 <- plotDiversityCurve(tmp_alpha) + 
-    theme_classic() +
-    theme(legend.position = "bottom", legend.box = "horizontal")
-  
-  p_legend <- get_legend(p2.1) %>% ggpubr::as_ggplot()
-    
-
-  p2 <- p2.1 + theme(legend.position = "none")
-  
-  main_label <- ggdraw() + 
-  draw_label(i, 
-             fontface = 'bold',
-             #x = 0.1,
-             hjust = 0.5,
-             vjust = 0,
-             angle = 0)
-  
-  p3 <- plot_grid(p1, p2,
-                    nrow = 1, labels = NULL, 
-                    align = "vh", axis = "l", rel_widths = c(1, 1)) + 
-          bgcolor("white") + 
-          border("white")
-  
-  p_list[[i]] <- plot_grid(main_label, p3,
-                    nrow = 2, labels = NULL, 
-                    align = "vh", axis = "l", rel_heights = c(0.1, 1)) + 
-          bgcolor("white") + 
-          border("white")
-  
-  rm(tmp_Ab)
-  rm(tmp_alpha)
-  
-}
-
-names(p_list)
-
-p4 <- plot_grid(plotlist = p_list,
-                    ncol = 3, labels = NULL, 
-                    align = "vh", axis = "l") + 
-          bgcolor("white") + 
-          border("white")
-
-
-ggsave2(paste0("../results/SFig17_2.png"),
-          plot_grid(p4, p_legend,
-                    nrow = 2, labels = NULL, 
-                    align = "vh", axis = "l", rel_heights = c(1, 0.1)) + 
-          bgcolor("white") + 
-          border("white"),
-          width = 30, height = 40, unit = "cm")
-
-
-```
-
-
 ### clonal expansion
 #### plot Fig4A cloneType per cell type fine based on compairr data
 
 ```{r}
+
+gex$cloneType_airr <- gsub("<=", "≤", gex$cloneType_airr)
 
 p1 <- DimPlot(gex, 
               group.by = "cloneType_airr", 
               split.by = "patient_group", 
               reduction = "umap_2", pt.size = 0.6, ncol = 2, 
               raster = TRUE,
-              order = c("Single (0 < X <= 1)",
-                        "Small (1 < X <= 5)",
-                        "Medium (5 < X <= 20)",
-                        "Large (20 < X <= 100)"), 
+              order = c("Single (0 < X ≤ 1)",
+                        "Small (1 < X ≤ 5)",
+                        "Medium (5 < X ≤ 20)",
+                        "Large (20 < X ≤ 100)"), 
               cols = c(brewer.pal(4, "Dark2")),
               na.value = "white") +
   ggtitle("clonotype") +  
@@ -1344,6 +1300,12 @@ p1 <- DimPlot(gex,
   theme(axis.text = element_blank(),
         axis.ticks = element_blank(),
         legend.position = "none")
+
+gex.meta$cloneType_airr <- gsub("<=", "≤", gex.meta$cloneType_airr)
+gex.meta$cloneType_airr <- factor(gex.meta$cloneType_airr, levels = c("Large (20 < X ≤ 100)",
+                                                                      "Medium (5 < X ≤ 20)",
+                                                                      "Small (1 < X ≤ 5)",
+                                                                      "Single (0 < X ≤ 1)"))
 
 p2 <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)), 
              aes(x = cluster_cellType_manual_fine, 
@@ -1356,17 +1318,22 @@ p2 <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)),
       theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold")) +
       scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "")
 
-ggsave2("../results/Fig4A_.png", 
+ggsave2("../results/Fig4A.png", 
         plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
           bgcolor("white") + 
           border("white"), 
         width = 30, height = 14, unit = "cm")
 
-table(gex$orig.ident, gex$cloneType_airr)
+ggsave2("../results/Fig4A.pdf", 
+        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 30, height = 14, unit = "cm")
 
-str(gex$cloneType_airr)
+
 
 ```
+
 
 ### most prevelent clonotypes across samples
 #### plot Fig4B common clonotypes across samples
@@ -1424,13 +1391,13 @@ p2 <- ggplot(imm4[2:nrow(imm4), ],
              aes(x = 2, y = cellcount, fill = clonocount)) +
   geom_bar(stat = "identity") +
   coord_polar(theta = "y", start = 0, direction = 1)+
-  geom_text(aes(label = c(paste0(round(imm4$perc[2:5], digits = 2), "%"), 
+  geom_text(aes(label = c(paste0(round(imm4$perc[2:5], digits = 3), "%"), 
                 rep("", times = nrow(imm4) - 5))), 
             position = position_stack(vjust = 0.75, reverse = FALSE),
             size = 3.2)+
   theme_void() +
   xlim(0.5, 2.5) +
-  ggtitle(paste0(format(sum(imm4$cellcount[2:nrow(imm4)]), big.mark = " "), " clonotypes\npresent in ??? 2 samples")) +
+  ggtitle(paste0(format(sum(imm4$cellcount[2:nrow(imm4)]), big.mark = " "), " clonotypes\npresent in ≥ 2 samples")) +
   scale_fill_discrete(name = "Samples per clonotype") +
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5)
@@ -1438,22 +1405,22 @@ p2 <- ggplot(imm4[2:nrow(imm4), ],
   scale_fill_manual(values = c.p1$fill[2:nrow(c.p1)])
 
 
-####---- pie3  clonotypes present in ??? 4 samples
+####---- pie3  clonotypes present in ≥ 4 samples
 p3 <- ggplot(imm4[4:nrow(imm4), ], 
              aes(x = 2, y = cellcount, fill = clonocount)) +
   geom_bar(stat = "identity") +
   coord_polar(theta = "y", start = 0, direction = 1) +
-  # geom_text(aes(label = c(paste0(round(imm4$cellcount[6:9], digits = 3)
-  #                                #, "%"
-  #                                ), 
-  #               rep("", times = nrow(imm4) - 9))), 
-  #           position = position_stack(vjust = 0.6, 
-  #                                     reverse = FALSE),
-  #           size = 3.2) +
+  geom_text(aes(label = c(paste0(round(imm4$perc[4:6], digits = 3)
+                                 , "%"
+                                 ),
+                rep("", times = nrow(imm4) - 6))),
+            position = position_stack(vjust = 0.6,
+                                      reverse = FALSE),
+            size = 3.2) +
   theme_void() +
   xlim(0.5, 2.5) +
   ggtitle(paste0(sum(imm4$cellcount[4:nrow(imm4)]), 
-                 " clonotypes\npresent in ??? 4 samples")) +
+                 " clonotypes\npresent in ≥ 4 samples")) +
   scale_fill_discrete(name = "Samples per clonotype") +
   theme(legend.position = "none",
         plot.title = element_text(hjust = 0.5)) +
@@ -1465,7 +1432,17 @@ p4 <- plot_grid(p1, p2, p3, nrow = 1, labels = NULL,
   border("white")
 
 ####---- save pies
-ggsave2(paste0("../results/Fig4B_2.png"),
+ggsave2(paste0("../results/Fig4B.png"),
+          plot_grid(p4, p_legend, 
+                    ncol = 1, 
+                    labels = NULL, 
+                    align = "v", 
+                    rel_heights = c(5, 2)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 20, height = 12, unit = "cm")
+
+ggsave2(paste0("../results/Fig4B.pdf"),
           plot_grid(p4, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -1602,7 +1579,11 @@ for (i in colnames(tmp2)[1:4]){
 }
 venn.list <- lapply(venn.list, function(x){x <- na.omit(x)})
 
-png("../results/Fig4C_.png", width = 12, height = 11, units = "cm", res = 200)
+png("../results/Fig4C.png", width = 12, height = 11, units = "cm", res = 200)
+UpSetR::upset(fromList(venn.list), order.by = "freq")
+dev.off()
+
+pdf("../results/Fig4C.pdf", width = 5, height = 4.5)
 UpSetR::upset(fromList(venn.list), order.by = "freq")
 dev.off()
 
@@ -1884,6 +1865,8 @@ colnames(CDR3_data) <- c("CDR3", "group")
 
 tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
                                   gex.meta$orig.ident))
+length(CDR3_data$CDR3)
+length(unique(CDR3_data$CDR3))
 
 #get clonotypes present in ??? 4 samples
 #tmp <- tmp[rowSums(tmp > 0) > 3, ]
@@ -1912,16 +1895,18 @@ ann_cols <- list(group = c(Corsiero_et_al = brewer.pal(9, "YlOrRd")[2],
 
 annotation <- data.frame(group = factor(m$group), row.names = m$CDR3)
 
-
+for (i in c("png", "pdf")){
+  print(i)
 pheatmap(res, 
          show_rownames = FALSE, 
          show_colnames = FALSE, 
-         filename = "../results/Fig4D_6.png",
+         filename = paste0("../results/Fig4D_.", i),
          annotation_col = data.frame(group = factor(m$group), row.names = m$CDR3),
          annotation_row = data.frame(group = factor(m$group), row.names = m$CDR3),
          annotation_colors = ann_cols[1], 
          legend = T
          )
+}
 dev.off()
 
 
@@ -1967,6 +1952,236 @@ ggsave2("../results/Fig3E.png",
           border("white"), 
         width = 30, height = 14, unit = "cm")
 
+ggsave2("../results/Fig3E.pdf", 
+        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 30, height = 14, unit = "cm")
+
+
+```
+
+
+#### plot Fig3G mu freq by IGHV gene, celltype and pat gr.
+
+```{r}
+#select top10 used IGHV genes
+vdj_gene <- countGenes(gex@meta.data, 
+                       gene = "v_call", 
+                       
+                       mode = "gene",
+                       fill = TRUE)
+vdj_gene <- vdj_gene[order(vdj_gene$seq_count, decreasing = TRUE), ]
+vdj_gene <- vdj_gene$gene[1:10]
+
+gex.meta %>%
+  group_by(cluster_cellType_manual_main, IGHV_gene, patient_group) %>%
+  summarise(mean = mean(mu_freq_total, na.rm = T), n = n()) %>% filter(IGHV_gene == "IGHV4-34")
+gex.meta %>%
+  group_by(cluster_cellType_manual_fine, IGHV_gene, patient_group) %>%
+  summarise(mean = mean(mu_freq_total, na.rm = T), n = n()) %>% filter(IGHV_gene == "IGHV4-34") %>% as.data.frame()
+gex.meta[gex.meta$IGHV_gene %in% vdj_gene, ] %>%
+  group_by(cluster_cellType_manual_fine, IGHV_gene, patient_group) %>%
+  summarise(mean = mean(mu_freq_total, na.rm = T), n = n()) %>% filter(cluster_cellType_manual_fine == "Memory_Cl") %>% as.data.frame()
+
+p_list <- list()
+p_list2 <- list()
+for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))) {
+p_list[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i & gex.meta$IGHV_gene %in% vdj_gene, ], 
+            aes(x = IGHV_gene, 
+                y = mu_freq_total, 
+                fill = patient_group)) +
+      theme_classic() + 
+      ggtitle(paste0(i)) +
+      theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 1, 
+                                       vjust = 0.5),
+            plot.title = element_text(size = 12),
+            legend.position = "none") +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
+      scale_fill_discrete(name = "") +
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) 
+  p_list2[[i]] <- p_list[[i]] + theme(legend.position = "none") + ylab("")
+
+  }
+
+#get label
+y_label <- ggdraw() + 
+  draw_label("mutated bp (%)", 
+             fontface = 'bold',
+             #x = 0.1,
+             hjust = 0.5, 
+             angle = 90,vjust = 0)
+
+## get legend
+p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i & gex.meta$IGHV_gene %in% vdj_gene, ], 
+            aes(x = IGHV_gene, 
+                y = mu_freq_total, 
+                fill = patient_group)) +
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) +
+      theme_classic() + 
+      theme(legend.position = "bottom", legend.box = "horizontal") +
+      scale_fill_discrete(name = "")
+  
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+
+p1 <- plot_grid(plotlist = p_list2, ncol = 3, labels = NULL, align = "hv") + 
+          bgcolor("white") + 
+          border("white")
+
+p2 <- plot_grid(y_label, p1, 
+          ncol = 2, labels = NULL, 
+          align = "hv", 
+          rel_widths = c(0.03, 1)) + 
+  bgcolor("white") + 
+  border("white")
+
+ggsave2(paste0("../results/Fig3G.png"),
+        p_list[["Memory_Cl"]],
+          width = 15, height = 10, unit = "cm")
+
+ggsave2(paste0("../results/Fig3G.pdf"),
+        p_list[["Memory_Cl"]],
+          width = 15, height = 10, unit = "cm")
+
+ggsave2(paste0("../results/SFig22.png"),
+        plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 25, unit = "cm")
+
+ggsave2(paste0("../results/SFig22.pdf"),
+        plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 25, unit = "cm")
+
+```
+
+
+#### plot SFig24 mu freq for IGHV4-34, per celltype and sample.
+
+```{r}
+#select top10 used IGHV genes
+vdj_gene <- countGenes(gex@meta.data, 
+                       gene = "v_call", 
+                       
+                       mode = "gene",
+                       fill = TRUE)
+vdj_gene <- vdj_gene[order(vdj_gene$seq_count, decreasing = TRUE), ]
+vdj_gene <- vdj_gene$gene[1:10]
+
+# fix sample order
+tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
+                  patient_group = gex.meta$patient_group)
+tmp <- tmp[order(tmp$patient_group), ]
+tmp <- unique(tmp)
+gex.meta$orig.ident <- factor(gex.meta$orig.ident, 
+                              levels = tmp$orig.ident)
+
+
+ann_cols <- list(patient_group = c(CTRL = "#F8766D", 
+                                   DNEG = "#7CAE00", 
+                                   SSA = "#00BFC4", 
+                                   SSAB = "#C77CFF"))
+
+colors_samples <- c(rep(ann_cols$patient_group[1], times = 4),
+                    rep(ann_cols$patient_group[2], times = 6),
+                    rep(ann_cols$patient_group[3], times = 8),
+                    rep(ann_cols$patient_group[4], times = 9))
+
+p_list <- list()
+p_list2 <- list()
+for (i in sort(unique(gex.meta$cluster_cellType_manual_fine))) {
+p_list[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i & 
+                                 gex.meta$IGHV_gene == "IGHV4-34" & 
+                                 !is.na(gex.meta$mu_freq_total), ], 
+            aes(x = orig.ident, 
+                y = mu_freq_total,
+                fill = patient_group)) +
+      theme_classic() + 
+      ggtitle(paste0("IGHV4-34 cells in: ", i)) +
+      theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 1, 
+                                       vjust = 0.5,
+                                       color = colors_samples),
+            plot.title = element_text(size = 12),
+            legend.position = "none") +
+      ylab("mutated bp (%)") +
+      xlab("") +
+      scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
+      scale_fill_discrete(name = "") +
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) 
+  p_list2[[i]] <- p_list[[i]] + theme(legend.position = "none") + ylab("")
+
+  }
+
+#get label
+y_label <- ggdraw() + 
+  draw_label("mutated bp (%)", 
+             fontface = 'bold',
+             #x = 0.1,
+             hjust = 0.5, 
+             angle = 90,vjust = 0)
+
+## get legend
+p_legend <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i & 
+                                 gex.meta$IGHV_gene == "IGHV4-34" & 
+                                 !is.na(gex.meta$mu_freq_total), ], 
+            aes(x = IGHV_gene, 
+                y = mu_freq_total, 
+                fill = patient_group)) +
+      geom_violin(alpha = 0.8, 
+                  scale = "width", 
+                  draw_quantiles = c(0.25, 0.5, 0.75),
+                  trim = TRUE) +
+      theme_classic() + 
+      theme(legend.position = "bottom", legend.box = "horizontal") +
+      scale_fill_discrete(name = "")
+  
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+
+p1 <- plot_grid(plotlist = p_list2, ncol = 3, labels = NULL, align = "hv") + 
+          bgcolor("white") + 
+          border("white")
+
+p2 <- plot_grid(y_label, p1, 
+          ncol = 2, labels = NULL, 
+          align = "hv", 
+          rel_widths = c(0.03, 1)) + 
+  bgcolor("white") + 
+  border("white")
+
+ggsave2(paste0("../results/Fig3H.png"),
+        p_list[["Memory_Cl"]],
+          width = 15, height = 10, unit = "cm")
+
+ggsave2(paste0("../results/Fig3H.pdf"),
+        p_list[["Memory_Cl"]],
+          width = 15, height = 10, unit = "cm")
+
+ggsave2(paste0("../results/SFig24.png"),
+        plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 25, unit = "cm")
+
+ggsave2(paste0("../results/SFig24.pdf"),
+        plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 25, unit = "cm")
 
 ```
 
@@ -1996,11 +2211,18 @@ p1 <- ggplot(gex.meta,
 
 ggsave2(paste0("../results/Fig3F.png"), 
           p1,
-          width = 30, height = 10, unit = "cm")
+          width = 15, height = 10, unit = "cm")
+
+ggsave2(paste0("../results/Fig3F.pdf"), 
+          p1,
+          width = 15, height = 10, unit = "cm")
 
 
 ```
 
+```{r}
+
+```
 
 
 #### plot SFig13A, total VDJ mutation frequency - celltypeMain - orig.ident 
@@ -2048,6 +2270,14 @@ p_legend <- ggplot(gex.meta,
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
 ggsave2(paste0("../results/SFig13A.png"), 
+          plot_grid(p, p_legend, 
+                    ncol = 1, labels = NULL, 
+                    align = "hv", rel_heights = c(1.5, 0.1)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 12, unit = "cm")
+
+ggsave2(paste0("../results/SFig13A.pdf"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.1)) + 
@@ -2128,7 +2358,13 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/SFig13B_.png"),
+ggsave2(paste0("../results/SFig13B.png"),
+        plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 25, unit = "cm")
+
+ggsave2(paste0("../results/SFig13B.pdf"),
         plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"),
@@ -2171,7 +2407,11 @@ p2 <- ggplot(gex.meta,
                   draw_quantiles = c(0.25, 0.5, 0.75),
                   trim = TRUE)
 
-ggsave2(paste0("../results/SFig14A_.png"), 
+ggsave2(paste0("../results/SFig14A.png"), 
+          p2,
+          width = 30, height = 10, unit = "cm")
+
+ggsave2(paste0("../results/SFig14A.pdf"), 
           p2,
           width = 30, height = 10, unit = "cm")
 
@@ -2226,6 +2466,12 @@ ggsave2(paste0("../results/SFig14B.png"),
           border("white"),
           width = 30, height = 10, unit = "cm")
 
+ggsave2(paste0("../results/SFig14B.pdf"), 
+          plot_grid(p3, labels = NULL, align = "h")+ 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 10, unit = "cm")
+
 
 ```
 
@@ -2269,6 +2515,14 @@ ggsave2("../results/Fig3A.png",
           border("white"), 
         width = 30, height = 14, unit = "cm")
 
+
+ggsave2("../results/Fig3A.pdf", 
+        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 30, height = 14, unit = "cm")
+
+
 ```
 
 
@@ -2291,7 +2545,7 @@ ann_cols <- list(patient_group = c(CTRL = "#F8766D",
                                    SSAB = "#C77CFF"))
 
 colors_samples <- c(rep(ann_cols$patient_group[1], times = 4),
-                    rep(ann_cols$patient_group[2], times = 6,),
+                    rep(ann_cols$patient_group[2], times = 6),
                     rep(ann_cols$patient_group[3], times = 8),
                     rep(ann_cols$patient_group[4], times = 9))
 
@@ -2325,7 +2579,16 @@ p_legend <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)),
   
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
+
 ggsave2(paste0("../results/SFig10A.png"), 
+          plot_grid(p, p_legend, 
+                    ncol = 1, labels = NULL, 
+                    align = "hv", rel_heights = c(1.5, 0.2)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 12, unit = "cm")
+
+ggsave2(paste0("../results/SFig10A.pdf"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.2)) + 
@@ -2402,6 +2665,12 @@ p2 <- plot_grid(y_label, p1,
   border("white")
 
 ggsave2(paste0("../results/SFig10B.png"), 
+          plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 25, unit = "cm")
+
+ggsave2(paste0("../results/SFig10B.pdf"), 
           plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
           bgcolor("white") + 
           border("white"),
@@ -2582,7 +2851,13 @@ p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 p_grid <- plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, p9, 
                     nrow = 3, ncol = 3, labels = "AUTO", align = "hv")
 
-ggsave2(paste0("../results/SFig15_.png"), 
+ggsave2(paste0("../results/SFig15.png"), 
+          plot_grid(p_grid, p_legend, ncol = 1, align = "none", rel_heights = c(18, 1)) +
+          bgcolor("white") + 
+          border("white") ,
+          width = 35, height = 30, unit = "cm")
+
+ggsave2(paste0("../results/SFig15.pdf"), 
           plot_grid(p_grid, p_legend, ncol = 1, align = "none", rel_heights = c(18, 1)) +
           bgcolor("white") + 
           border("white") ,
@@ -2592,7 +2867,7 @@ ggsave2(paste0("../results/SFig15_.png"),
 ```
 
 
-### plot SFig18A, clonotypes per patient per cellTypeMain
+### plot SFig17A, clonotypes per patient per cellTypeMain
 
 ```{r}
 tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
@@ -2606,7 +2881,7 @@ p <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)),
             aes(x = orig.ident,
                 fill = cloneType_airr)) +
       theme_classic() +
-      ggtitle("IGH constant") +
+      ggtitle("clonotypes") +
       theme(axis.text.x = element_text(angle = 90, 
                                        hjust = 0.5, 
                                        vjust = 0.5,
@@ -2631,7 +2906,15 @@ p_legend <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)),
   
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
-ggsave2(paste0("../results/SFig18A.png"), 
+ggsave2(paste0("../results/SFig17A.png"), 
+          plot_grid(p, p_legend, 
+                    ncol = 1, labels = NULL, 
+                    align = "hv", rel_heights = c(1.5, 0.2)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 12, unit = "cm")
+
+ggsave2(paste0("../results/SFig17A.pdf"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.2)) + 
@@ -2643,7 +2926,7 @@ ggsave2(paste0("../results/SFig18A.png"),
 ```
 
 
-### plot SFig18B, clonotypes per patient per cellTypeFine
+### plot SFig17B, clonotypes per patient per cellTypeFine
 
 ```{r}
 tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
@@ -2703,7 +2986,13 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/SFig18B.png"), 
+ggsave2(paste0("../results/SFig17B.png"), 
+          plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 25, unit = "cm")
+
+ggsave2(paste0("../results/SFig17B.pdf"), 
           plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
           bgcolor("white") + 
           border("white"),
