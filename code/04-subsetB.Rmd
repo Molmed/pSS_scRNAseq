@@ -4,51 +4,41 @@ editor_options:
   chunk_output_type: console
 ---
 
-
-# Subset B-cells {#Subset_B-cells}
-## Load packages
+# subset B-cells {#Subset_B-cells}
+## soad packages
 
 ```{r}
 
-source("./00_dependencies.R")
+source("./00a_dependencies.R")
 
 ```
 
 
-## Load data
+## load data, filter to only include B cell clusters and remove sample P024 
+### (containing a low number of B cells and plasma cells)
 
 ```{r}
 
-gex <- readRDS("../results/GEX3_DIMRED1.rds")
+gex <- readRDS("../results/GEX3_DIMRED1.rds") %>%
+  filter(celltype == "B-cell" | celltype == "Plasma cell")  %>%
+           filter(orig.ident != "P024")
+
 
 ```
 
 
-## subset Seurat object to only include B-cell clusters
-
-```{r}
-
-Idents(object = gex) <- "celltype"
-gex <- subset(gex, idents = c("B-cell", "Plasma cell"))
-
-colnames(gex@meta.data)[colnames(gex@meta.data) == "seurat_clusters"] <- "seurat_clusters_1"
-DefaultAssay(object = gex) <- "RNA"; gex
-Idents(object = gex) <- "orig.ident"
-
-```
-
-
-## Save rds GEX4_BCELLS.rds
+## save rds GEX4_BCELLS.rds
 
 ```{r}
 
 saveRDS(gex, file = "../results/GEX4_BCELLS.rds")
-#gex <- readRDS(file = "../results/GEX4_BCELLS.rds")
+#gex <- readRDS(file = "../results/GEX4_BCELLS.rds") 
+
 
 ```
 
 
-## Print sessionInfo()
+## print sessionInfo()
 
 ```{r}
 

@@ -6,7 +6,7 @@ editor_options:
 
 
 # annotation of B-cell clusters {#B-cell_annotation}
-## Load packages
+## load packages
 
 ```{r}
 
@@ -15,7 +15,7 @@ source("./00a_dependencies.R")
 ```
 
 
-## Load data
+## load data
 
 ```{r}
 
@@ -46,7 +46,8 @@ colors_cellType <- c(naive= rev(brewer.pal(7, "Greens")),
 # all 23 cell clusters:
 # Naive 7 - green
 # DN 5 - blue
-# Memory - 6
+# Memory_IgM - ?
+# Memory_Classical - ?
 # Memory_Stressed 3 - gray
 # Memory_Platelet 1 - pink
 # Plasma_cells 1 - purple
@@ -242,7 +243,94 @@ names(gex@meta.data)[names(gex@meta.data) == scPredcols[3]] <- paste0(scPredcols
 ```
 
 
-## plot SFig3
+## add cellType predictions to seurat object
+
+```{r}
+####---- add cluster cell type classification based on majority fraction of predicted cell type in cluster
+annot.df <- data.frame(cluster = rownames(hm1), 
+                       annot_sort = colnames(hm1)[apply(hm1, 1, which.max)], 
+                       annot_clust = colnames(hm2)[apply(hm2, 1, which.max)])
+  
+gex@meta.data["cluster_stewart_sort"] <- annot.df$annot_sort[match(gex$seurat_clusters,
+                                                                   annot.df$cluster)]
+
+gex@meta.data["cluster_stewart_cl"] <- annot.df$annot_clust[match(gex$seurat_clusters,
+                                                                  annot.df$cluster)]
+
+table(gex@meta.data$cluster_stewart_sort, gex@meta.data$cluster_stewart_cl)
+
+
+```
+
+
+## manual annotation using output from scPred and cluster marker genes
+
+```{r}
+
+annotation_fine <- c(
+  Naive = 0,#CCR7, BACH2, SELL, IL4R
+  Naive = 1,#IGHD,FCER2
+  Naive = 2,#IGHD,FCER2
+  Memory_IgM = 3,
+  Naive_Transitional = 4,# CD9, IGHD,FCER2
+  Memory_Classical = 5,
+  Naive_IFN = 6,#CCR7, BACH2, SELL, IL4R, IGHD, FCER2, + IFN regulated genes
+  Memory_DN2 = 7, #IGHA1
+  Memory_Cl_str = 8,
+  Memory_DN1_ID3 = 9, #ID3, LGALS3, ITGB1, IGHA1
+  Naive = 10,#COL19A1, CCR7, BACH2, SELL, IL4R, IGHD,FCER2
+  Memory_DN4 = 11, #IGHE, IL13RA (allergy)
+  Memory_IgM = 12, #?? early memory?, no concrete marker, down regulates "naive genes"
+  Memory_DN2_CXCR3 = 13, #ITGB7, IGHG1, IGHG2, IGHG3, CXCR3, IGHA1
+  Memory_IgM_CD1C = 14,#CD1C
+  Memory_DN2_ITGAX = 15, #FCRL3, MPP6, ARL4D, ZEB2, ITGAX, ITGB7, IGHA1
+  Memory_Classical = 16, #IGHA
+  Memory_IgM_ALOX5 = 17, #?? ALOX5, ACADM, GID8, CMSS1
+  Memory_Cl_CD69_str = 18, #FOS, CD69, EGR1, DUSP1
+  Memory_Platelet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
+  Naive = 20,#
+  Memory_Cl_str = 21,#dead/dying cells
+  Plasma_cell = 22
+)
+
+gex@meta.data["cluster_cellType_manual_fine"] <- names(annotation_fine)[match(gex$seurat_clusters,
+                                                                     annotation_fine)] 
+
+annotation_main <- c(
+  Naive = 0,#CCR7, BACH2, SELL, IL4R
+  Naive = 1,#IGHD,FCER2
+  Naive = 2,#IGHD,FCER2
+  Memory_IgM = 3,
+  Transitional = 4,# CD9, IGHD,FCER2
+  Memory_Classical = 5,
+  Naive = 6,#CCR7, BACH2, SELL, IL4R, IGHD, FCER2, + IFN regulated genes
+  Memory_DN = 7, #IGHA1
+  Memory_str = 8,
+  Memory_DN = 9, #ID3, LGALS3, ITGB1, IGHA1
+  Naive = 10,#COL19A1, CCR7, BACH2, SELL, IL4R, IGHD,FCER2
+  Memory_DN = 11, #IGHE, IL13RA (allergy)
+  Memory_IgM = 12, #?? early memory?, no concrete marker, down regulates "naive genes"
+  Memory_DN = 13, #ITGB7, IGHG1, IGHG2, IGHG3, CXCR3, IGHA1
+  Memory_IgM = 14,#CD1C
+  Memory_DN = 15, #FCRL3, MPP6, ARL4D, ZEB2, ITGAX, ITGB7, IGHA1
+  Memory_Classical = 16, #IGHA
+  Memory_IgM = 17, #?? ALOX5, ACADM, GID8, CMSS1
+  Memory_str = 18, #FOS, CD69, EGR1, DUSP1
+  Memory_Platelet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
+  Naive = 20,#
+  Memory_str = 21,#dead/dying cells
+  Plasma_cell = 22
+)
+
+
+gex@meta.data["cluster_cellType_manual_main"] <- names(annotation_main)[match(gex$seurat_clusters,
+                                                                     annotation_main)] 
+
+
+```
+
+## plots
+### plot SFig3
 
 ```{r}
 
@@ -326,145 +414,7 @@ ggsave2(paste0("../results/SFig3.pdf"),
 ```
 
 
-## add cellType predictions to seurat object
-
-```{r}
-####---- add cluster cell type classification based on majority fraction of predicted cell type in cluster
-annot.df <- data.frame(cluster = rownames(hm1), 
-                       annot_sort = colnames(hm1)[apply(hm1, 1, which.max)], 
-                       annot_clust = colnames(hm2)[apply(hm2, 1, which.max)])
-  
-gex@meta.data["cluster_stewart_sort"] <- annot.df$annot_sort[match(gex$seurat_clusters,
-                                                                   annot.df$cluster)]
-
-gex@meta.data["cluster_stewart_cl"] <- annot.df$annot_clust[match(gex$seurat_clusters,
-                                                                  annot.df$cluster)]
-
-table(gex@meta.data$cluster_stewart_sort, gex@meta.data$cluster_stewart_cl)
-
-
-```
-
-
-## manual annotation using output from scPred and cluster marker genes
-
-```{r}
-
-annotation_fine <- c(
-  Naive = 0,#CCR7, BACH2, SELL, IL4R
-  Naive = 1,#IGHD,FCER2
-  Naive = 2,#IGHD,FCER2
-  Memory_IgM = 3,
-  Naive_Transitional = 4,# CD9, IGHD,FCER2
-  Memory_Cl = 5,
-  Naive_IFN = 6,#CCR7, BACH2, SELL, IL4R, IGHD, FCER2, + IFN regulated genes
-  DN2 = 7, #IGHA1
-  Memory_Cl_str = 8,
-  DN1_ID3 = 9, #ID3, LGALS3, ITGB1, IGHA1
-  Naive = 10,#COL19A1, CCR7, BACH2, SELL, IL4R, IGHD,FCER2
-  DN4 = 11, #IGHE, IL13RA (allergy)
-  Memory_IgM = 12, #?? early memory?, no concrete marker, down regulates "naive genes"
-  DN2_CXCR3 = 13, #ITGB7, IGHG1, IGHG2, IGHG3, CXCR3, IGHA1
-  Memory_IgM_CD1C = 14,#CD1C
-  DN2_ITGAX = 15, #FCRL3, MPP6, ARL4D, ZEB2, ITGAX, ITGB7, IGHA1
-  Memory_Cl = 16, #IGHA
-  Memory_IgM_ALOX5 = 17, #?? ALOX5, ACADM, GID8, CMSS1
-  Memory_Cl_CD69_str = 18, #FOS, CD69, EGR1, DUSP1
-  Memory_Platelet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
-  Naive = 20,#
-  Memory_Cl_str = 21,#dead/dying cells
-  Plasma_cell = 22
-)
-
-gex@meta.data["cluster_cellType_manual_fine"] <- names(annotation_fine)[match(gex$seurat_clusters,
-                                                                     annotation_fine)] 
-
-annotation_main <- c(
-  Naive = 0,#CCR7, BACH2, SELL, IL4R
-  Naive = 1,#IGHD,FCER2
-  Naive = 2,#IGHD,FCER2
-  Memory = 3,
-  Transitional = 4,# CD9, IGHD,FCER2
-  Memory = 5,
-  Naive = 6,#CCR7, BACH2, SELL, IL4R, IGHD,FCER2, + IFN regulated genes
-  DN = 7, #IGHA1
-  Memory_stressed = 8,
-  DN = 9, #ID3, LGALS3, ITGB1, IGHA1
-  Naive = 10,#COL19A1, CCR7, BACH2, SELL, IL4R, IGHD,FCER2
-  DN = 11, #IGHE, IL13RA1 (allergy)
-  Memory = 12, #?? early memory?, no concrete marker, down regulates "naive genes"
-  DN = 13, #ITGB7, IGHG1, IGHG2, IGHG3, CXCR3, IGHA1
-  Memory = 14,#CD1C
-  DN = 15, #FCRL3, MPP6, ARL4D, ZEB2, ITGAX, ITGB7, IGHA1
-  Memory = 16, #IGHA1
-  Memory = 17, #?? ALOX5, ACADM, GID8, CMSS1
-  Memory_stressed = 18, #FOS, CD69, EGR1, DUSP1
-  Memory_Platelet = 19, #CCL5, F13A1, PPBP, NRGN, CLU
-  Naive = 20,#
-  Memory_stressed = 21,#dead/dying cells
-  Plasma_cell = 22
-)
-
-
-gex@meta.data["cluster_cellType_manual_main"] <- names(annotation_main)[match(gex$seurat_clusters,
-                                                                     annotation_main)] 
-
-p1 <- DimPlot(gex, 
-              group.by = "cluster_stewart_sort", 
-              reduction = "umap_2") + 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") +
-  ggtitle("Stewart et al. 2021 celltypes", 
-          subtitle = "by sorted celltype")
-
-p2 <- DimPlot(gex, 
-              group.by = "cluster_stewart_cl", 
-              reduction = "umap_2") + 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") + 
-  ggtitle("Stewart et al. 2021 celltypes", 
-          subtitle = "by clustered sorted celltype")
-
-p3 <- DimPlot(gex, 
-              group.by = "cluster_cellType_manual_fine", 
-              reduction = "umap_2") + 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") + 
-  ggtitle("Manual cluster cell type annotation", 
-          subtitle = "fine")
-
-p4 <- DimPlot(gex, 
-              group.by = "cluster_cellType_manual_main", 
-              reduction = "umap_2") + 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") + 
-  ggtitle("Manual cluster cell type annotation", 
-          subtitle = "main")
-
-p5 <- plot_grid(p1, p2, p3, p4, ncol = 2) + bgcolor("white") + border("white")
-#p6 <- plot_grid(phm1[[4]], phm2[[4]], ncol = 2) + bgcolor("white")
-p7 <- tableGrob(table(gex@meta.data$cluster_stewart_sort, gex@meta.data$cluster_stewart_cl))
-
-ggsave2(paste0("../results/SFig3.png"), 
-        plot_grid(p5, p7, 
-                  ncol = 1, rel_heights = c(4, 1)) + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 40, height = 30, unit = "cm")
-
-# ggsave2(paste0("../results/UMAP_cellType_fine.png"), 
-#         p3, 
-#         width = 25, height = 20, unit = "cm")
-# 
-# ggsave2(paste0("../results/UMAP_cellType_main.png"), 
-#         p4, 
-#         width = 20, height = 20, unit = "cm")
-
-
-```
-
-
-## plot Fig1B-C, Main cell types and IGH constant region expression (Fig1B-C)
+### plot Fig1B-C, fine cell types and IGH constant region expression
 
 ```{r}
 
@@ -522,7 +472,7 @@ ggsave2(paste0("../results/Fig1B-C.pdf"),
 ```
 
 
-## plot Fig1D, dotplot for cluster marker genes Fig1D 
+### plot Fig1D, dotplot for cluster marker genes
 
 ```{r}
 
@@ -559,7 +509,7 @@ ggsave2(paste0("../results/Fig1D.pdf"),
 ```
 
 
-##  plot Fig1E, patient subtypes per cell type
+###  plot Fig1E, patient subtypes per cell type fine
 
 ```{r}
 
@@ -637,7 +587,85 @@ table(gex$cluster_cellType_manual_fine)["Memory_Cl"]/ncol(gex) #0.07603787
 ```
 
 
-## plot Fig1F, violins split by cell type
+###  plot Fig1E, patient subtypes per cell type main
+
+```{r}
+
+p1 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_main,
+                                        -table(cluster_cellType_manual_main)[cluster_cellType_manual_main]),
+                                            fill = patient_group)) +
+        theme_classic() +
+        geom_bar(position = position_stack(reverse = FALSE)) + 
+        ylab("cells") + 
+        xlab("") + 
+        theme(#axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+              legend.position = "none",
+              axis.text.x = element_blank(),
+              axis.ticks.x=element_blank()) +
+        scale_fill_manual(name = "Patient group", values = scales::hue_pal()(4))
+
+p2 <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_main,
+                                        -table(cluster_cellType_manual_main)[cluster_cellType_manual_main]), 
+                                            fill = patient_group)) +
+        theme_classic() +
+        geom_bar(position = "fill") + 
+        ylab("proportion of cells") + 
+        xlab("") + 
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+              axis.ticks.x = element_blank(),
+              legend.position = "none") +
+        scale_fill_manual(name = "Patient group", values = scales::hue_pal()(4))
+
+#get legend
+p_legend <- ggplot(gex@meta.data, aes(x = reorder(cluster_cellType_manual_main,
+                                        -table(cluster_cellType_manual_main)[cluster_cellType_manual_main]), 
+                                            fill = patient_group)) +
+        theme_classic() +
+        geom_bar(position = "fill") + 
+        scale_fill_manual(name = "", values = scales::hue_pal()(4))
+
+p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
+
+p3 <- plot_grid(p1, p2, 
+                ncol = 1, labels = NULL, rel_heights = c(0.8, 1) , align = "v") + 
+          bgcolor("white") + 
+          border("white")
+
+ggsave2("../results/Fig1E.png", 
+        plot_grid(p3, p_legend, 
+                  ncol = 2, 
+                  rel_widths = c(5, 1), 
+                  labels = NULL, 
+                  align = "h") + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 25, height = 10, unit = "cm")
+
+ggsave2("../results/Fig1E.pdf", 
+        plot_grid(p3, p_legend, 
+                  ncol = 2, 
+                  rel_widths = c(5, 1), 
+                  labels = NULL, 
+                  align = "h") + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 25, height = 10, unit = "cm")
+
+
+
+(table(gex$cluster_cellType_manual_fine)["Naive"] +
+  table(gex$cluster_cellType_manual_fine)["Naive_IFN"]) / ncol(gex) #0.5101796
+
+table(gex$cluster_cellType_manual_fine)["Naive"] / ncol(gex) #0.4536527 
+
+table(gex$cluster_cellType_manual_fine)["Memory_IgM"]/ncol(gex) #0.09386987
+
+table(gex$cluster_cellType_manual_fine)["Memory_Cl"]/ncol(gex) #0.07603787
+
+```
+
+
+### plot Fig1F, violins split by cell type (fine)
 
 ```{r}
 
@@ -648,7 +676,8 @@ cell_summary <- as_tibble(gex@meta.data) %>%
   distinct() %>%
   group_by(orig.ident) %>%
   mutate(per =  prop.table(n)) %>%
-  drop_na()
+  drop_na() %>%
+  filter(orig.ident != "P024")
 
 # reorder factor for celltypeFine to match the Fig1E
 theorder <- unique(names(sort(table(gex@meta.data$cluster_cellType_manual_fine)[gex@meta.data$cluster_cellType_manual_fine], decreasing = TRUE)))
@@ -730,7 +759,112 @@ ggsave2("../results/Fig1F.pdf",
 ```
 
 
-## plot SFig4A, cellTypesMain by patient group, Supplementary Figure 4A
+### plot Fig1F, violins split by cell type main (test)
+
+```{r}
+
+# add violin plot for Fig1F per celltype fine per orig.ident/patient_group
+cell_summary <- as_tibble(gex@meta.data) %>%
+  select(orig.ident, cluster_cellType_manual_main, patient_group) %>%
+  add_count(orig.ident, cluster_cellType_manual_main, .drop = FALSE) %>%
+  distinct() %>%
+  group_by(orig.ident) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na() %>%
+  filter(orig.ident != "P024")
+
+#table(cell_summary$orig.ident)
+#cell_summary <- cell_summary[!cell_summary$orig.ident == "P024", ]
+
+#test plot
+ggplot(cell_summary, aes(x = patient_group,
+                           y = per)) + 
+  geom_violin() +
+  facet_grid(cols = vars(cluster_cellType_manual_main))
+
+#cell_summary[cell_summary$patient_group == "SSAB" & cell_summary$cluster_cellType_manual_main == "Naive", ]
+
+# reorder factor for celltypeFine to match the Fig1E
+theorder <- unique(names(sort(table(gex@meta.data$cluster_cellType_manual_main)[gex@meta.data$cluster_cellType_manual_main], decreasing = TRUE)))
+cell_summary$cluster_cellType_manual_main <- factor(cell_summary$cluster_cellType_manual_main,
+                                         levels = theorder)
+
+p_out <- list()
+for (i in levels(cell_summary$cluster_cellType_manual_main)){
+maxval  <- max(cell_summary$per[cell_summary$cluster_cellType_manual_main == i])
+p_out[[i]] <- ggplot(cell_summary[cell_summary$cluster_cellType_manual_main == i, ], 
+                     aes(x = patient_group,
+                         y = per,
+                         fill = patient_group)) +
+                     theme_classic() +
+                     geom_violin(scale = "width", 
+                                 draw_quantiles = c(0.25, 0.5, 0.75),
+                                 trim = TRUE,
+                                 alpha = 0.8) + 
+                     geom_jitter(size = 0.3) +
+                     ylab("") + 
+                     xlab("") +
+                     ggtitle(i) + 
+                     scale_fill_manual(values = scales::hue_pal()(4)) +
+                     stat_compare_means(method = "t.test", 
+                                        comparisons = list(c("CTRL", "SSA-"), 
+                                                           c("CTRL", "SSA+"), 
+                                                           c("CTRL", "SSAB")), 
+                                        label = "p.format",
+                                        size = 3.5 
+                                        #vjust = 0.5
+                                        ) +
+                     theme(axis.text.x = element_text(angle = 90, 
+                                                      vjust = 0.5, 
+                                                      hjust = 1,
+                                                      face = "bold"),
+                           plot.title = element_text(size = 9,
+                                                     face = "bold"),
+                     legend.position = "none") +
+                     scale_y_continuous(labels = scales::percent_format(accuracy = 1L), 
+                                        limits = c(0, (maxval * 1.4)))
+}
+
+#draw y label
+y_label <- ggdraw() + 
+  draw_label("proportion of cells in sample", 
+             fontface = 'bold',
+             hjust = 0.5, 
+             angle = 90, 
+             vjust = 0)
+
+p1 <- plot_grid(plotlist = p_out, 
+                ncol = 8, 
+                labels = NULL, 
+                align = "hv") + 
+          bgcolor("white") + 
+          border("white")
+
+ggsave2("../results/Fig1F.png", 
+        plot_grid(y_label, p1, 
+                  ncol = 2, 
+                  labels = NULL, 
+                  align = "hv", 
+                  rel_widths = c(0.03, 1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 40, height = 15, unit = "cm")
+
+ggsave2("../results/Fig1F.pdf", 
+        plot_grid(y_label, p1, 
+                  ncol = 2, 
+                  labels = NULL, 
+                  align = "hv", 
+                  rel_widths = c(0.03, 1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 40, height = 15, unit = "cm")
+
+
+```
+
+
+### plot SFig4A, cellTypesMain by patient group
 
 ```{r}
 
@@ -760,7 +894,7 @@ ggsave2(paste0("../results/SFig4A.pdf"),
 ```
 
 
-## plot SFig4B
+### plot SFig4B
 
 ```{r}
 
@@ -806,7 +940,7 @@ gex$cluster_cluster_cellType_manual_fine <- NULL
 ```
 
 
-## plot SFig4C
+### plot SFig4C
 
 ```{r}
 
@@ -834,7 +968,7 @@ ggsave2("../results/SFig4C.pdf",
 ```
 
 
-## Save rds GEX6_BANNOT.rds
+## save rds GEX6_BANNOT.rds
 
 ```{r}
 
@@ -844,7 +978,7 @@ saveRDS(gex, file = "../results/GEX6_BANNOT.rds")
 ```
 
 
-## Print sessionInfo()
+## print sessionInfo()
 
 ```{r}
 

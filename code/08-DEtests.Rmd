@@ -5,7 +5,7 @@ editor_options:
 ---
 
 # DE tests and Visualization {#DE-tests}
-## Load packages
+## load packages
 
 ```{r}
 
@@ -14,33 +14,28 @@ source("./00a_dependencies.R")
 ```
 
 
-## Load data
+## load data
 
 ```{r}
 
 gex <- readRDS("../results/GEX7_BVDJ.rds")
 table(gex$cluster_cellType_manual_fine)
 
-#add patient group
-colnames(gex@meta.data)[colnames(gex@meta.data) == "patient_group"] <- "patient_group1"
-pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB` = "SSAB")
-gex$patient_group <- names(pat_annot)[match(gex$patient_group1, pat_annot)]
-gex$patient_group <- factor(gex$patient_group, levels = names(pat_annot))
-
 
 ```
 
 
-## Check patient groups in Seurat object
+## check patient groups in Seurat object
 
 ```{r}
 
 table(gex$patient_group, useNA = "always")
+
 #Four non-overlapping groups
-#1. SSAB - SSA+/SSB+
-#2. SSA  - SSA+/SSB-
-#3. DNEG - SSA-/SSB-
-#4. CTRL - CTRL
+#1. SSAB: SSA+/SSB+
+#2. SSA+: SSA+/SSB-
+#3. SSA-: SSA-/SSB-
+#4. CTRL: CTRL
 
 
 ```
@@ -317,7 +312,7 @@ ggsave2("../results/Fig2A.pdf",
 ```
 
 
-### plot FIG2B and SFig7, GSEA celltypesMain (GO_Biological_Process_2021 and MSigDB_Hallmark_2020)
+### plot Fig2B and SFig7, GSEA celltypesMain (GO_Biological_Process_2021 and MSigDB_Hallmark_2020)
 
 ```{r}
 
@@ -1463,7 +1458,7 @@ Seurat::DotPlot(gex, ,features = c("BCL6", "AICDA", "FASLG"), group.by = "cellMa
 
 
 
-## Save rds 
+## save rds 
 
 ```{r}
 
@@ -1472,7 +1467,7 @@ Seurat::DotPlot(gex, ,features = c("BCL6", "AICDA", "FASLG"), group.by = "cellMa
 ```
 
 
-## Print sessionInfo()
+## print sessionInfo()
 
 ```{r}
 

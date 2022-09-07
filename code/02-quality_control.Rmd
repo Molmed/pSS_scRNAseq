@@ -6,16 +6,16 @@ editor_options:
 
 
 # QC and cell filtering {#QC}
-## Load packages
+## load packages
 
 ```{r}
 
-source("./00_dependencies.R")
+source("./00a_dependencies.R")
 
 ```
 
 
-## Load data
+## load data
 
 ```{r}
 
@@ -24,7 +24,7 @@ gex <- readRDS("../results/GEX1_RAW.rds")
 ```
 
 
-## Gather gene annotations for GRCh38.98
+## gather gene annotations for GRCh38.98
 
 ```{r}
 
@@ -46,7 +46,7 @@ print(head(annot))
 ```
 
 
-## Mark doublets
+## mark doublets
 
 ```{r}
 
@@ -66,7 +66,7 @@ gex@meta.data$ident <- NULL
 ```
 
 
-## Qualculate QC and mark cells per sample
+## cualculate QC and mark cells per sample
 
 ```{r}
 
@@ -112,7 +112,7 @@ gex$cells_discard <- rowSums(gex@meta.data[, grepl("_th", colnames(gex@meta.data
 ```
 
 
-# Summarize QC
+# summarize QC
 
 ```{r}
 
@@ -157,8 +157,7 @@ ggsave2(paste0("../results/Discarded_cellcounts.png"),
 ```
 
 
-## Plot QC
-### Supplementary Figure 1 (SFig1)
+## plot SFig1, QC
 
 ```{r}
 
@@ -208,7 +207,7 @@ ggsave2(paste0("../results/SFig1_2.png"),
 ```
 
 
-## Filter genes and filter cells
+## filter genes and filter cells
 
 ```{r}
 
@@ -229,7 +228,7 @@ Idents(object = gex) <- "orig.ident"
 ```
 
 
-## Save rds GEX2_FILTERED
+## save rds GEX2_FILTERED
 
 ```{r}
 
@@ -239,7 +238,7 @@ saveRDS(gex, file = "../results/GEX2_FILTERED.rds")
 ```
 
 
-## Print sessionInfo()
+## print sessionInfo()
 
 ```{r}
 

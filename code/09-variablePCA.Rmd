@@ -5,7 +5,7 @@ editor_options:
 ---
 # PCA per sample variables {#PCA}
 
-## Load packages
+## load packages
 
 ```{r}
 
@@ -14,7 +14,7 @@ source("./00a_dependencies.R")
 ```
 
 
-## Load Seurat object
+## load Seurat object
 
 ```{r}
 
@@ -46,7 +46,7 @@ gex.slim <- gex.slim[, (gex.slim$cluster_cellType_manual_fine == "DN1_ID3" |
 ```
 
 
-## Patient Meta Data
+## patient Meta Data
 
 ```{r}
 
@@ -64,6 +64,7 @@ colnames(pheno)
 #remove variables only present in one sample
 pheno <- pheno[, c(1, (1 + which(colSums(pheno[,2:29], na.rm = TRUE) > 2 )), 36)]
 colnames(pheno)
+
 
 ```
 
@@ -908,7 +909,7 @@ gex$pat_gr_cell_type <- paste(gex$patient_group, gex$cluster_cellType_manual_mai
 
 
 
-## Save rds GEX_xxx
+## save rds GEX_xxx
 
 ```{r}
 
@@ -917,7 +918,7 @@ gex$pat_gr_cell_type <- paste(gex$patient_group, gex$cluster_cellType_manual_mai
 ```
 
 
-## Print sessionInfo()
+## print sessionInfo()
 
 ```{r}
 

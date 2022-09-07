@@ -6,7 +6,7 @@ editor_options:
 ---
 
 # VDJ analysis {#VDJ}
-## Load packages
+## load packages
 
 ```{r}
 
@@ -15,22 +15,16 @@ source("./00a_dependencies.R")
 ```
 
 
-## Load Seurat object
+## load Seurat object
 
 ```{r}
 
 gex <- readRDS("../results/GEX6_BANNOT.rds")
 
-#add patient group
-# colnames(gex@meta.data)[colnames(gex@meta.data) == "patient_group"] <- "patient_group1"
-# pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB` = "SSAB")
-# gex$patient_group <- names(pat_annot)[match(gex$patient_group1, pat_annot)]
-# gex$patient_group <- factor(gex$patient_group, levels = names(pat_annot))
-
 ```
 
 
-## Load pheno file
+## load pheno file
 
 ```{r}
 
@@ -38,17 +32,17 @@ gex <- readRDS("../results/GEX6_BANNOT.rds")
 source("./00b_pheno.R")
 
 #Four non-overlapping groups
-#1. SSAB - SSA+/SSB+
-#2. SSA  - SSA+/SSB-
-#3. DNEG - SSA-/SSB-
-#4. CTRL - CTRL
+#1. SSAB: SSA+/SSB+
+#2. SSA+: SSA+/SSB-
+#3. SSA-: SSA-/SSB-
+#4. CTRL: CTRL
 
 
 ```
 
 
 ## immcantation
-### Load output from Immcantation and perform mutation analysis
+### load output from Immcantation and perform mutation analysis
 
 ```{r}
 
@@ -337,7 +331,7 @@ gex$cloneType_airr <- factor(ifelse(is.na(gex$cluster_size_airr), NA,
 
 
 ## scRepertiore BCR
-### Read 10x BCR files
+### read 10x BCR files
 
 ```{r}
 
@@ -514,7 +508,6 @@ gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "DN1_ID3" |
 ```
 
 
-
 ## immcantation and scRepertoir output visualization
 ### VDJ gene usage
 #### plot FiG3B VDJ correlation 
@@ -609,7 +602,7 @@ cor.p.j_call <- VDJ_cor(gex.meta, "pearson", "j_call", "SFig9C")
 ```
 
 
-#### plot Fig3C IGHV usage per patient group
+#### plot Fig3C, IGHV usage per patient group
 
 ```{r}
 
@@ -702,7 +695,7 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
 ```
 
 
-#### plot Fig3D VDJ gene usage per patient group, Figure 3D
+#### plot Fig3D, VDJ gene usage per patient group
 
 ```{r}
 
@@ -797,7 +790,7 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
 ```
 
 
-#### plot SFig12A-C top VDJ genes per patient subgroup
+#### plot SFig12A-C, top VDJ genes per patient subgroup
 
 ```{r}
 
@@ -875,7 +868,7 @@ ggsave2(paste0("../results/SFig12A-B.pdf"),
 
 
 #### allele usage for differentially used IGHV genes
-#### plot SFig11 IGHV1-69
+#### plot SFig11, IGHV1-69
 
 ```{r}
 vdj_allele <- countGenes(gex@meta.data, 
@@ -1277,7 +1270,7 @@ ggsave2(paste0("../results/SFig16.pdf"),
 
 
 ### clonal expansion
-#### plot Fig4A cloneType per cell type fine based on compairr data
+#### plot Fig4A, cloneType per cell type fine based on compairr data
 
 ```{r}
 
@@ -1336,7 +1329,7 @@ ggsave2("../results/Fig4A.pdf",
 
 
 ### most prevelent clonotypes across samples
-#### plot Fig4B common clonotypes across samples
+#### plot Fig4B, common clonotypes across samples
 
 ```{r}
 
@@ -1556,7 +1549,7 @@ sum(table(clr[p1$tree_row$order])[c(5)]) #[1] 457
 ```
 
 
-#### plot Fig4C UpSetR of clonotypes (1640)
+#### plot Fig4C, UpSetR of clonotypes (1640)
 
 ```{R}
 
@@ -1914,7 +1907,7 @@ dev.off()
 
 
 ## mutation status
-### plot mutation status per celltypes and samples
+## export figures
 ####  plot Fig3E, mutation load per cell type
 
 ```{r}
@@ -2476,8 +2469,8 @@ ggsave2(paste0("../results/SFig14B.pdf"),
 ```
 
 
-## export figures
-###  plot Fig3A IgH class per cell type, Figure 3A
+
+####  plot Fig3A IgH class per cell type
 
 ```{r}
 
@@ -2526,7 +2519,7 @@ ggsave2("../results/Fig3A.pdf",
 ```
 
 
-### plot SFig10A, IgH class per cellTypeMain per patient
+#### plot SFig10A, IgH class per cellTypeMain per patient
 
 ```{r}
 
@@ -2601,7 +2594,7 @@ ggsave2(paste0("../results/SFig10A.pdf"),
 ```
 
 
-### plot SFig10B, IgH class per cellTypeFine per patient
+#### plot SFig10B, IgH class per cellTypeFine per patient
 
 ```{r}
 
@@ -2680,7 +2673,7 @@ ggsave2(paste0("../results/SFig10B.pdf"),
 ```
 
 
-###  plot SFig15, CDR3 aa attributes
+#### plot SFig15, CDR3 aa attributes
 
 ```{r}
 
@@ -2867,7 +2860,7 @@ ggsave2(paste0("../results/SFig15.pdf"),
 ```
 
 
-### plot SFig17A, clonotypes per patient per cellTypeMain
+#### plot SFig17A, clonotypes per patient per cellTypeMain
 
 ```{r}
 tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
@@ -2926,7 +2919,7 @@ ggsave2(paste0("../results/SFig17A.pdf"),
 ```
 
 
-### plot SFig17B, clonotypes per patient per cellTypeFine
+#### plot SFig17B, clonotypes per patient per cellTypeFine
 
 ```{r}
 tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
@@ -3002,7 +2995,7 @@ ggsave2(paste0("../results/SFig17B.pdf"),
 ```
 
 
-## Save rds GEX7_VDJ
+## save rds GEX7_VDJ
 
 ```{r}
 
@@ -3012,14 +3005,11 @@ ggsave2(paste0("../results/SFig17B.pdf"),
 ```
 
 
-## Print sessionInfo()
+## print sessionInfo()
 
 ```{r}
 
-test <- sessionInfo()
-sort(names(test$loadedOnly))
-test$loadedOnly$
-
+sessionInfo()
 
 ```
 

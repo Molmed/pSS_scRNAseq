@@ -5,17 +5,17 @@ editor_options:
 ---
 
 
-# Dimensionality reduction, clusterimg, and cluster annotation {#Dimred1}
-## Load packages
+# dimensionality reduction, clusterimg, and cluster annotation {#Dimred1}
+## load packages
 
 ```{r}
 
-source("./00_dependencies.R")
+source("./00a_dependencies.R")
 
 ```
 
 
-## Load data
+## load data
 
 ```{r}
 
@@ -25,7 +25,7 @@ annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
 ```
 
 
-# Normalize and get variable features
+## normalize and get variable features
  
 ```{r}
 
@@ -64,7 +64,7 @@ ggsave2("../results/VariableFeatures_allCells.png",
 ```
 
 
-## Scale data
+## scale data
 
 ```{r}
 
@@ -97,7 +97,7 @@ gc()
 ```
 
 
-## Harmony batch correction
+## batch correction - harmony 
 
 ```{r}
 
@@ -116,7 +116,7 @@ gex <- RunHarmony(
 ```
 
 
-# plot PCA and harmony
+### plot PCA and harmony
 
 ```{r}
 
@@ -144,7 +144,7 @@ ggsave2("../results/PCA_harmony_allCells_.png",
 ```
 
 
-# run UMAP
+## run UMAP
 
 ```{r}
 
@@ -166,7 +166,7 @@ gex <- RunUMAP(gex,
 ```
 
 
-## Clustering
+## clustering
 
 ```{r}
 
@@ -187,8 +187,7 @@ table(gex@meta.data$seurat_clusters)
 ```
 
 
-## hclust
-### Check cluster relations
+## hclust - check cluster relations
 
 ```{r}
 
@@ -211,7 +210,7 @@ dev.off()
 ```
 
 
-## Get cluster marker genes
+## cluster marker genes
 
 ```{r}
 
@@ -265,7 +264,7 @@ dev.off()
 ```
 
 
-## Manual cluster annotation
+## cluster annotation - manual
 
 ```{r}
 
@@ -288,9 +287,8 @@ gex$celltype <- as.factor(gex$celltype)
 
 ```
 
-
-## plot Figure 1B Fig1B
-### UMAP of allCells
+## plot
+### plot Fig1B, UMAP of allCells
 
 ```{r}
 
@@ -322,8 +320,7 @@ write.csv(counts, "../results/cellcounts_celltypes_orig.ident_GEX3_DIMRED1.csv",
 ```
 
 
-## Plot Celltypes per sample
-### Supplementary Figure S2A (SFig2A)
+### plot SFig2A, Celltypes per sample
 
 ```{r}
 
@@ -366,8 +363,8 @@ ggsave2(paste0("../results/SFig2A_4.png"),
 ```
 
 
-## Plot Dimplot and markler genes for all cells
-### Supplementary Figure 2B (SFig2B)
+### plot SFig2B, Dimplot and markler genes for all cells
+
 
 ```{r}
 
@@ -459,7 +456,7 @@ ggsave2(paste0("../results/SFig2B_3.png"),
 ```
 
 
-## Save rds GEX3_DIMRED1.rds
+## save rds GEX3_DIMRED1.rds
 
 ```{r}
 
@@ -469,7 +466,7 @@ saveRDS(gex, file = "../results/GEX3_DIMRED1.rds")
 ```
 
 
-## Print sessionInfo()
+## print sessionInfo()
 
 ```{r}
 
