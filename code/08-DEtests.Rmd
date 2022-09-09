@@ -19,7 +19,6 @@ source("./00a_dependencies.R")
 ```{r}
 
 gex <- readRDS("../results/GEX7_BVDJ.rds")
-table(gex$cluster_cellType_manual_fine)
 
 
 ```
@@ -56,8 +55,7 @@ for (j in sort(unique(gex$cluster_cellType_manual_main))){
   #subset gex to only contain subtype j
   gex.tmp <- gex %>% 
     DietSeurat(dimreducs = "umap_2") %>% 
-    tidyseurat::filter(orig.ident != "P024", 
-                       cluster_cellType_manual_main == j)
+    tidyseurat::filter(cluster_cellType_manual_main == j)
 
   #create a model matrix for pseudo bulk generation
   mm <- model.matrix(~ 0 + orig.ident, 
@@ -113,16 +111,16 @@ for (j in sort(unique(gex$cluster_cellType_manual_main))){
   
   DGE_list[[j]] <- de_g
   
-  saveRDS(fit, paste0("../results/DGEfit_patientGroups_celltypeMain_", j,".rds"))
+  #saveRDS(fit, paste0("../results/DGEfit_patientGroups_celltypeMain_", j,".rds"))
   write.csv(de_g, paste0("../results/DGE_patientGroups_celltypeMain_", j,".csv"), row.names = TRUE)
 
 }
 
 saveRDS(DGE_list, "../results/DGE_B-cells_celltypeMain_patientGroups_listAll.rds")
 #DGE_list <- readRDS("../results/DGE_B-cells_celltypeMain_patientGroups_listAll.rds")
-names(DGE_list)
 
-#DGE_list <- DGE_list[c("DN", "Memory", "Naive", "Transitional")]
+DGE_list <- DGE_list[c("Memory_Classical", "Memory_DN", "Memory_IgM", "Naive", "Transitional")]
+
 
 ```
 
@@ -161,7 +159,10 @@ DGE_list_out <- lapply(DGE_list, function(x){
 
 DGE_list_out <- as.data.frame(do.call(rbind, DGE_list_out))
 
-write.csv(DGE_list_out, paste0("../results/DGE_B-cells_celltypeMain_all_FDR", FDR_cutoff, ".csv"), row.names = FALSE)
+write.csv(DGE_list_out, 
+          paste0("../results/DGE_B-cells_celltypeMain_all_FDR", FDR_cutoff, ".csv"), 
+          row.names = FALSE)
+
 
 ```
 
@@ -241,7 +242,7 @@ DGE_list_p <- lapply(DGE_list, function(a) {
 ngenes <- 25
 
 p_list <- list()
-for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(3, 4, 6)]){
+for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(4, 5, 7)]){
 
   cat(i,"\n")
   
@@ -261,8 +262,7 @@ for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(3, 4, 6)]){
   #subset gex
   DGE_DATA <- gex[a,] %>% 
   DietSeurat(dimreducs = NULL, graphs = NULL) %>% 
-  tidyseurat::filter(orig.ident != "P024", 
-                     cluster_cellType_manual_main == i)
+  tidyseurat::filter(cluster_cellType_manual_main == i)
 
   tmp <-  DotPlot(DGE_DATA,
                          features = p_features,
@@ -291,28 +291,27 @@ for (i in sort(unique(gex$cluster_cellType_manual_main))[-c(3, 4, 6)]){
 
 }
 
-p1 <- plot_grid(plotlist = p_list, ncol = 4, labels = NULL, align = "h") + 
+p1 <- plot_grid(plotlist = p_list, ncol = 5, labels = NULL, align = "h") + 
            bgcolor("white") + 
            border("white")
   
-
 ggsave2("../results/Fig2A.png", 
         plot_grid(p1, p_legend, ncol = 1, rel_heights = c(8, 1), labels = NULL, align = "h") + 
            bgcolor("white") + 
            border("white"), 
-        width = 25, height = 10, unit = "cm")
+        width = 28, height = 10, unit = "cm")
 
 ggsave2("../results/Fig2A.pdf", 
         plot_grid(p1, p_legend, ncol = 1, rel_heights = c(8, 1), labels = NULL, align = "h") + 
            bgcolor("white") + 
            border("white"), 
-        width = 25, height = 10, unit = "cm")
+        width = 28, height = 10, unit = "cm")
 
 
 ```
 
 
-### plot Fig2B and SFig7, GSEA celltypesMain (GO_Biological_Process_2021 and MSigDB_Hallmark_2020)
+### plot Fig2B, GSEA celltypesMain (MSigDB_Hallmark_2020)
 
 ```{r}
 
@@ -321,7 +320,7 @@ p_listBP <- list()
 gse_listH <- list()
 gse_listBP <- list()
 
-for (i in sort(names(DGE_list))[-c(3, 4, 6)]){
+for (i in names(DGE_list)){
   
   go_cluster <- enrichr(genes = DGE_list[[i]]$gene[1:50], 
                         databases = c("GO_Biological_Process_2021", 
@@ -402,31 +401,46 @@ for (i in sort(names(DGE_list))[-c(3, 4, 6)]){
 
 ggsave2(paste0("../results/Fig2B.png"),
           plot_grid(plotlist = p_listH, 
-                    ncol = 4, 
+                    ncol = 5, 
                     labels = NULL, 
-                    align = "vh" ) + bgcolor("white"),
-          width = 40, height = 8, unit = "cm")
+                    align = "vh" ) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 52, height = 8, unit = "cm")
 
 ggsave2(paste0("../results/Fig2B.pdf"),
           plot_grid(plotlist = p_listH, 
-                    ncol = 4, 
+                    ncol = 5, 
                     labels = NULL, 
-                    align = "vh" ) + bgcolor("white"),
-          width = 40, height = 8, unit = "cm")
+                    align = "vh" ) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 52, height = 8, unit = "cm")
 
-ggsave2(paste0("../results/Fig2B_GOBP.png"),
-          plot_grid(plotlist = p_listBP, 
-                    ncol = 4, 
-                    labels = NULL, 
-                    align = "vh" ) + bgcolor("white"),
-          width = 90, height = 8, unit = "cm")
 
-ggsave2(paste0("../results/Fig2B_GOBP.pdf"),
+```
+
+
+### plot SFig7, GSEA celltypesMain (GO_Biological_Process_2021)
+
+```{r}
+ggsave2(paste0("../results/SFig7.png"),
           plot_grid(plotlist = p_listBP, 
-                    ncol = 4, 
+                    ncol = 2, 
                     labels = NULL, 
-                    align = "vh" ) + bgcolor("white"),
-          width = 90, height = 8, unit = "cm")
+                    align = "vh" ) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 50, height = 35, unit = "cm")
+
+ggsave2(paste0("../results/SFig7.pdf"),
+          plot_grid(plotlist = p_listBP, 
+                    ncol = 2, 
+                    labels = NULL, 
+                    align = "vh" ) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 50, height = 35, unit = "cm")
 
 
 ```

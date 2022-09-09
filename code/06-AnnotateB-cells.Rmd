@@ -71,9 +71,10 @@ colors_cellTypeFine <- colors_cellType[c("dn1", "dn2", "dn3", "dn4", "dn5",
 
 # cellTypeMain (7)
 #table(gex$cluster_cellType_manual_main)
-colors_cellTypeMain <- colors_cellType[c("dn3", "memory3", "plasma_cells", 
-                                         "memory_stressed1", "naive4",
-                                         "memory_platelet", "naive6")]
+colors_cellTypeMain <- colors_cellType[c("memory5", "dn3", "memory3", "memory_platelet", "memory_stressed1",
+                                         "naive4", "plasma_cells", "naive6")]
+
+#show_col(colors_cellTypeMain)
 
 # cellType scpred
 colors_scpred1 <- colors_cellType[c("memory5", "dn3", "memory3", 
@@ -239,7 +240,6 @@ names(gex@meta.data)[names(gex@meta.data) == scPredcols[2]] <- paste0(scPredcols
 names(gex@meta.data)[names(gex@meta.data) == scPredcols[3]] <- paste0(scPredcols[3], "_ref2")
 
 
-
 ```
 
 
@@ -256,8 +256,6 @@ gex@meta.data["cluster_stewart_sort"] <- annot.df$annot_sort[match(gex$seurat_cl
 
 gex@meta.data["cluster_stewart_cl"] <- annot.df$annot_clust[match(gex$seurat_clusters,
                                                                   annot.df$cluster)]
-
-table(gex@meta.data$cluster_stewart_sort, gex@meta.data$cluster_stewart_cl)
 
 
 ```
@@ -414,7 +412,7 @@ ggsave2(paste0("../results/SFig3.pdf"),
 ```
 
 
-### plot Fig1B-C, fine cell types and IGH constant region expression
+### plot Fig1B-C, fine cell types and IGH constant region expression (cellTypeFine)
 
 ```{r}
 
@@ -472,7 +470,65 @@ ggsave2(paste0("../results/Fig1B-C.pdf"),
 ```
 
 
-### plot Fig1D, dotplot for cluster marker genes
+### plot Fig1B-C, fine cell types and IGH constant region expression (cellTypeMain)
+
+```{r}
+
+p1 <- DimPlot(gex, 
+              reduction = "umap_2", 
+              group.by = "cluster_cellType_manual_main",
+              pt.size = 0.1, 
+              cols = unname(colors_cellTypeMain)) + 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") + 
+    theme(plot.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "bottom",
+          legend.text = element_text(size = 6.5, face = "bold" ))
+
+ig.features <- c("IGHA1", "IGHA2", "IGHG1", "IGHG2", "IGHG3", "IGHG4",  "IGHD", "IGHE", "IGHM")
+
+p <- list()
+for (i in ig.features) {
+  
+  p[[i]] <- FeaturePlot(gex, 
+                        reduction = "umap_2", 
+                        features = i,
+                        pt.size = 0.2,
+                        order = TRUE,
+                        cols = c("lightgray", "blue", "navy")) + 
+    theme_void() +
+    theme(legend.position = "none",
+          plot.title = element_text(hjust = 0.5, vjust = 0),
+          plot.margin = unit(c(0, 0, 0, 0), "cm")) + 
+    NoLegend()
+  
+}
+
+p2 <- plot_grid(plotlist = p, ncol = 3, align = "hv", scale = 1.1) 
+
+ggsave2(paste0("../results/Fig1B-C_main.png"), 
+        plot_grid(p1, p2, 
+                  ncol = 2, 
+                  rel_widths = c(1, 1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 28.2, height = 15, unit = "cm")
+
+ggsave2(paste0("../results/Fig1B-C_main.pdf"), 
+        plot_grid(p1, p2, 
+                  ncol = 2, 
+                  rel_widths = c(1, 1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 28.2, height = 15, unit = "cm")
+
+
+```
+
+
+### plot Fig1D, dotplot for cluster marker genes (cellTypeFine)
 
 ```{r}
 
@@ -502,6 +558,43 @@ ggsave2(paste0("../results/Fig1D.png"),
         width = 12, height = 14, unit = "cm") 
 
 ggsave2(paste0("../results/Fig1D.pdf"), 
+        p, 
+        width = 12, height = 14, unit = "cm") 
+
+
+```
+
+
+### plot Fig1D, dotplot for cluster marker genes (cellTypeMain)
+
+```{r}
+
+cl_genes <- c("CCR7", "BACH2", "SELL", "IL4R", "IGHD", "FCER2", "CD9", "SELL", "IGHA1", "ID3", "LGALS3", "ITGB1", "COL19A1", "IGHE",  "ITGB7", "IGHG1", "IGHG2", "IGHG3", "CXCR3", "CD1C", "FCRL3", "MPP6", "ARL4D", "ZEB2", "ITGAX", "ALOX5", "ACADM", "GID8", "CMSS1", "FOS", "CD69", "EGR1", "DUSP1", "CCL5", "F13A1", "PPBP", "NRGN", "CLU")
+
+#"IL13RA",
+
+cl_genes <- unique(cl_genes)
+
+p <- DotPlot(gex, 
+        features = cl_genes, 
+        group.by = "cluster_cellType_manual_main",
+        dot.scale = 4
+        ) +
+  theme_classic() +
+  xlab("") + 
+  ylab("") + 
+  coord_flip() + 
+  theme(axis.text.x = element_text(angle = 90, 
+                                       hjust = 1, 
+                                       vjust = 0.5,
+                                       size = 8),
+        panel.grid.major = element_line(colour="grey", size = rel(0.5)))
+
+ggsave2(paste0("../results/Fig1D_main.png"), 
+        p, 
+        width = 12, height = 14, unit = "cm") 
+
+ggsave2(paste0("../results/Fig1D_main.pdf"), 
         p, 
         width = 12, height = 14, unit = "cm") 
 
@@ -574,15 +667,15 @@ ggsave2("../results/Fig1E.pdf",
         width = 25, height = 10, unit = "cm")
 
 
-
 (table(gex$cluster_cellType_manual_fine)["Naive"] +
-  table(gex$cluster_cellType_manual_fine)["Naive_IFN"]) / ncol(gex) #0.5101796
+  table(gex$cluster_cellType_manual_fine)["Naive_IFN"]) / ncol(gex) #0.5103686
 
-table(gex$cluster_cellType_manual_fine)["Naive"] / ncol(gex) #0.4536527 
+table(gex$cluster_cellType_manual_fine)["Naive"] / ncol(gex) #0.4538247 
 
-table(gex$cluster_cellType_manual_fine)["Memory_IgM"]/ncol(gex) #0.09386987
+table(gex$cluster_cellType_manual_fine)["Memory_IgM"]/ncol(gex) #0.09387099 
 
-table(gex$cluster_cellType_manual_fine)["Memory_Cl"]/ncol(gex) #0.07603787
+table(gex$cluster_cellType_manual_fine)["Memory_Classical"]/ncol(gex) #0.07606669
+
 
 ```
 
@@ -631,7 +724,7 @@ p3 <- plot_grid(p1, p2,
           bgcolor("white") + 
           border("white")
 
-ggsave2("../results/Fig1E.png", 
+ggsave2("../results/Fig1E_main.png", 
         plot_grid(p3, p_legend, 
                   ncol = 2, 
                   rel_widths = c(5, 1), 
@@ -641,7 +734,7 @@ ggsave2("../results/Fig1E.png",
           border("white"), 
         width = 25, height = 10, unit = "cm")
 
-ggsave2("../results/Fig1E.pdf", 
+ggsave2("../results/Fig1E_main.pdf", 
         plot_grid(p3, p_legend, 
                   ncol = 2, 
                   rel_widths = c(5, 1), 
@@ -676,8 +769,7 @@ cell_summary <- as_tibble(gex@meta.data) %>%
   distinct() %>%
   group_by(orig.ident) %>%
   mutate(per =  prop.table(n)) %>%
-  drop_na() %>%
-  filter(orig.ident != "P024")
+  drop_na()
 
 # reorder factor for celltypeFine to match the Fig1E
 theorder <- unique(names(sort(table(gex@meta.data$cluster_cellType_manual_fine)[gex@meta.data$cluster_cellType_manual_fine], decreasing = TRUE)))
@@ -770,19 +862,8 @@ cell_summary <- as_tibble(gex@meta.data) %>%
   distinct() %>%
   group_by(orig.ident) %>%
   mutate(per =  prop.table(n)) %>%
-  drop_na() %>%
-  filter(orig.ident != "P024")
+  drop_na() 
 
-#table(cell_summary$orig.ident)
-#cell_summary <- cell_summary[!cell_summary$orig.ident == "P024", ]
-
-#test plot
-ggplot(cell_summary, aes(x = patient_group,
-                           y = per)) + 
-  geom_violin() +
-  facet_grid(cols = vars(cluster_cellType_manual_main))
-
-#cell_summary[cell_summary$patient_group == "SSAB" & cell_summary$cluster_cellType_manual_main == "Naive", ]
 
 # reorder factor for celltypeFine to match the Fig1E
 theorder <- unique(names(sort(table(gex@meta.data$cluster_cellType_manual_main)[gex@meta.data$cluster_cellType_manual_main], decreasing = TRUE)))
@@ -840,7 +921,7 @@ p1 <- plot_grid(plotlist = p_out,
           bgcolor("white") + 
           border("white")
 
-ggsave2("../results/Fig1F.png", 
+ggsave2("../results/Fig1F_main.png", 
         plot_grid(y_label, p1, 
                   ncol = 2, 
                   labels = NULL, 
@@ -848,9 +929,9 @@ ggsave2("../results/Fig1F.png",
                   rel_widths = c(0.03, 1)) + 
           bgcolor("white") + 
           border("white"), 
-        width = 40, height = 15, unit = "cm")
+        width = 40, height = 9, unit = "cm")
 
-ggsave2("../results/Fig1F.pdf", 
+ggsave2("../results/Fig1F_main.pdf", 
         plot_grid(y_label, p1, 
                   ncol = 2, 
                   labels = NULL, 
@@ -858,7 +939,7 @@ ggsave2("../results/Fig1F.pdf",
                   rel_widths = c(0.03, 1)) + 
           bgcolor("white") + 
           border("white"), 
-        width = 40, height = 15, unit = "cm")
+        width = 40, height = 9, unit = "cm")
 
 
 ```
@@ -940,7 +1021,7 @@ gex$cluster_cluster_cellType_manual_fine <- NULL
 ```
 
 
-### plot SFig4C
+### plot SFig4C, celltype fine per patient subgroup 
 
 ```{r}
 
@@ -967,6 +1048,33 @@ ggsave2("../results/SFig4C.pdf",
 
 ```
 
+
+### plot SFig4C, celltype main per patient subgroup 
+
+```{r}
+
+p <- ggplot(gex@meta.data, 
+            aes(x = patient_group, 
+                fill =  cluster_cellType_manual_main)) +
+        scale_fill_manual(values = unname(colors_cellTypeMain)) +
+        theme_classic() +
+        geom_bar(position = "fill") + 
+        ylab("proportion of cells") + 
+        xlab("") +
+        ggtitle("celltype main per patient subgroup") +
+        theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
+              legend.title = element_blank())
+
+ggsave2("../results/SFig4C_main.png", 
+        p, 
+        width = 20, height = 14, unit = "cm")
+
+ggsave2("../results/SFig4C_main.pdf", 
+        p, 
+        width = 20, height = 14, unit = "cm")
+
+
+```
 
 ## save rds GEX6_BANNOT.rds
 
