@@ -30,7 +30,7 @@ gex$patient_group <- factor(gex$patient_group, levels = names(pat_annot))
 
 ```
 
-## cellType colors
+## colors - cellType 
 
 ```{r}
 
@@ -328,7 +328,7 @@ gex@meta.data["cluster_cellType_manual_main"] <- names(annotation_main)[match(ge
 ```
 
 ## plots
-### plot SFig3
+### plot SFig2
 
 ```{r}
 
@@ -396,13 +396,13 @@ p4 <- plot_grid(p1, p2, phm1[[4]], phm2[[4]], ncol = 2, labels = NULL, align = "
           bgcolor("white") + 
           border("white")
 
-ggsave2(paste0("../results/SFig3.png"), 
+ggsave2(paste0("../results/SFig2.png"), 
         plot_grid(p4, p3, ncol = 1, labels = NULL, rel_heights = c(4, 1)) + 
           bgcolor("white") + 
           border("white"), 
         width = 30, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig3.pdf"), 
+ggsave2(paste0("../results/SFig2.pdf"), 
         plot_grid(p4, p3, ncol = 1, labels = NULL, rel_heights = c(4, 1)) + 
           bgcolor("white") + 
           border("white"), 
@@ -945,7 +945,7 @@ ggsave2("../results/Fig1F_main.pdf",
 ```
 
 
-### plot SFig4A, cellTypesMain by patient group
+### plot SFig3A, cellTypesMain by patient group
 
 ```{r}
 
@@ -963,11 +963,11 @@ p <- DimPlot(gex,
           plot.title = element_blank())
 
 
-ggsave2(paste0("../results/SFig4A.png"), 
+ggsave2(paste0("../results/SFig3A.png"), 
         p, 
         width = 20, height = 15, unit = "cm")
 
-ggsave2(paste0("../results/SFig4A.pdf"), 
+ggsave2(paste0("../results/SFig3A.pdf"), 
         p, 
         width = 20, height = 15, unit = "cm")
 
@@ -975,7 +975,7 @@ ggsave2(paste0("../results/SFig4A.pdf"),
 ```
 
 
-### plot SFig4B
+### plot SFig3B
 
 ```{r}
 
@@ -1006,11 +1006,11 @@ p <- DimPlot(gex,
           legend.position = "none")
 
 
-ggsave2(paste0("../results/SFig4B.png"), 
+ggsave2(paste0("../results/SFig3B.png"), 
         p, 
         width = 18, height = 17, unit = "cm")
 
-ggsave2(paste0("../results/SFig4B.pdf"), 
+ggsave2(paste0("../results/SFig3B.pdf"), 
         p, 
         width = 18, height = 17, unit = "cm")
 
@@ -1021,7 +1021,7 @@ gex$cluster_cluster_cellType_manual_fine <- NULL
 ```
 
 
-### plot SFig4C, celltype fine per patient subgroup 
+### plot SFig3C, celltype fine per patient subgroup 
 
 ```{r}
 
@@ -1037,11 +1037,11 @@ p <- ggplot(gex@meta.data,
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
               legend.title = element_blank())
 
-ggsave2("../results/SFig4C.png", 
+ggsave2("../results/SFig3C.png", 
         p, 
         width = 20, height = 14, unit = "cm")
 
-ggsave2("../results/SFig4C.pdf", 
+ggsave2("../results/SFig3C.pdf", 
         p, 
         width = 20, height = 14, unit = "cm")
 
@@ -1049,7 +1049,7 @@ ggsave2("../results/SFig4C.pdf",
 ```
 
 
-### plot SFig4C, celltype main per patient subgroup 
+### plot SFig3C_main, celltype main per patient subgroup 
 
 ```{r}
 
@@ -1065,11 +1065,11 @@ p <- ggplot(gex@meta.data,
         theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
               legend.title = element_blank())
 
-ggsave2("../results/SFig4C_main.png", 
+ggsave2("../results/SFig3C_main.png", 
         p, 
         width = 20, height = 14, unit = "cm")
 
-ggsave2("../results/SFig4C_main.pdf", 
+ggsave2("../results/SFig3C_main.pdf", 
         p, 
         width = 20, height = 14, unit = "cm")
 

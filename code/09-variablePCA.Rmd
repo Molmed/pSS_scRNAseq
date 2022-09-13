@@ -14,27 +14,18 @@ source("./00a_dependencies.R")
 ```
 
 
-## load Seurat object
+## load Seurat object and reduce size
 
 ```{r}
 
-gex <- readRDS("../results/GEX7_BVDJ.rds")
-
-```
-
-
-## reduce gex size
-
-```{r}
-
-gex.slim <- gex; rm(gex)
+gex.slim <- readRDS("../results/GEX7_BVDJ.rds")
 gex.slim <- DietSeurat(gex.slim, counts = TRUE, dimreducs = NULL, graphs = NULL, scale.data = FALSE)
-gex.slim <- gex.slim[, (gex.slim$cluster_cellType_manual_fine == "DN1_ID3" |
-                        gex.slim$cluster_cellType_manual_fine == "DN2" |
-                        gex.slim$cluster_cellType_manual_fine == "DN2_CXCR3" |
-                        gex.slim$cluster_cellType_manual_fine == "DN2_ITGAX" |
-                        gex.slim$cluster_cellType_manual_fine == "DN4" |
-                        gex.slim$cluster_cellType_manual_fine == "Memory_Cl" |
+gex.slim <- gex.slim[, (gex.slim$cluster_cellType_manual_fine == "Memory_DN1_ID3" |
+                        gex.slim$cluster_cellType_manual_fine == "Memory_DN2" |
+                        gex.slim$cluster_cellType_manual_fine == "Memory_DN2_CXCR3" |
+                        gex.slim$cluster_cellType_manual_fine == "Memory_DN2_ITGAX" |
+                        gex.slim$cluster_cellType_manual_fine == "Memory_DN4" |
+                        gex.slim$cluster_cellType_manual_fine == "Memory_Classical" |
                         gex.slim$cluster_cellType_manual_fine == "Memory_IgM" |
                         gex.slim$cluster_cellType_manual_fine == "Memory_IgM_ALOX5" |
                         gex.slim$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
@@ -46,7 +37,7 @@ gex.slim <- gex.slim[, (gex.slim$cluster_cellType_manual_fine == "DN1_ID3" |
 ```
 
 
-## patient Meta Data
+## load patient Meta Data
 
 ```{r}
 
@@ -58,18 +49,25 @@ pheno <- pheno[-28,] # remove P024
 pheno[pheno == "NO"] <- 0
 pheno[pheno == "YES"] <- 1
 pheno[pheno == "MD"] <- NA
-pheno[, 2:(ncol(pheno)-2)] <- sapply(pheno[, 2:(ncol(pheno)-2)], as.numeric)
+pheno[, 2:(ncol(pheno)-2)] <- sapply(pheno[, 2:(ncol(pheno) - 2)], as.numeric)
 colnames(pheno)
 
 #remove variables only present in one sample
 pheno <- pheno[, c(1, (1 + which(colSums(pheno[,2:29], na.rm = TRUE) > 2 )), 36)]
+pheno <- pheno[, !(names(pheno) %in% c("Treatment_at_B_cell_sampling_HCQ", "arthralgia_firstSymptom"))]
 colnames(pheno)
+
+pheno$group <- as.character(pheno$patient_group)
+pheno$group[5:nrow(pheno)] <- "pSS"
+pheno$group <- as.factor(pheno$group)
+
+pheno <- pheno[, c(1, ncol(pheno), ncol(pheno) - 1, 2:(ncol(pheno) - 2)) ]
 
 
 ```
 
 
-## celltype frequencies per patient
+## 1. celltype frequencies per patient
 
 ```{r}
 
@@ -91,13 +89,13 @@ cells_main <- dplyr::select(gex.slim@meta.data,
 
 colnames(cells_main)[2:ncol(cells_main)] <- paste0(colnames(cells_main)[2:ncol(cells_main)], "_%")
 
-saveRDS(cells_main, file = "../results/cells_main.rds")
+saveRDS(cells_main, file = "../results/forPCA_cellsMain.rds")
 
 
 ```
 
 
-## VDJ percentages per celltype
+## 2. VDJ percentages per celltype
 
 ```{r}
 
@@ -193,7 +191,7 @@ colnames(c_gene_10x_main)[2:ncol(c_gene_10x_main)] <-
 ```
 
 
-## IFN score
+## 3. IFN score
 
 ```{r}
 
@@ -223,14 +221,14 @@ IFN_main <- pivot_wider(IFN_main,
 
 colnames(IFN_main)[2:ncol(IFN_main)] <- paste0(colnames(IFN_main)[2:ncol(IFN_main)], "_IFNscore")
 
-saveRDS(IFN_main, file = "../results/IFN_main.rds")
+saveRDS(IFN_main, file = "../results/forPCA_IFN_main.rds")
 
 
 
 ```
 
 
-## mutated VDJ bp per celltype 
+## 4. mutated VDJ bp per celltype 
 
 ```{r}
 
@@ -249,7 +247,7 @@ colnames(mu_main)[2:ncol(mu_main)] <- paste0(colnames(mu_main)[2:ncol(mu_main)],
 ```
 
 
-## clonotypes % 
+## 5. clonotypes % 
 
 ```{r}
 
@@ -292,11 +290,10 @@ var_df <-
   full_join(mu_main, by = "orig.ident") %>%
   full_join(clono_main, by = "orig.ident")
 
-var_df <- var_df[-28, ] #remove P024
 var_df[is.na(var_df)] <- 0
 
-#saveRDS(var_df, "../results/variables_per_patient.rds")
-#var_df <- readRDS("../results/variables_per_patient.rds")
+#saveRDS(var_df, "../results/forPCA_variables_per_patient.rds")
+#var_df <- readRDS("../results/forPCA_variables_per_patient.rds")
 
 colors_df <- data.frame(names = colnames(var_df),
                         category = NA,
@@ -324,13 +321,19 @@ colors_df$category <- factor(colors_df$category, levels = unique(colors_df$categ
 
 ```{r}
 
-#selecting variables with significant differences between patient groups
-m <- apply(var_df[, 2:ncol(var_df)], 2, function(x){glm(x ~pheno$patient_group)} ) 
+# !!! change selection process to only include variables differing between CTRL and pSS
+m <- apply(var_df[, 2:ncol(var_df)], 2, function(x){glm(x ~pheno$group)} ) 
 m <- lapply(m, summary)
-m <- t(sapply(m, function(x){x$coefficients[2:4, 4]}))
+m <- as.data.frame(t(sapply(m, function(x){x$coefficients[2, 4]})))
 
-sell1 <- rowMin(m)
-sell <- rownames(m)[sell1 < 0.05]
+#selecting variables with significant differences between patient groups
+# m <- apply(var_df[, 2:ncol(var_df)], 2, function(x){glm(x ~pheno$patient_group)} ) 
+# m <- lapply(m, summary)
+# m <- t(sapply(m, function(x){x$coefficients[2:4, 4]}))
+
+#sell1 <- rowMin(m)
+sell <- names(m)[m < 0.1]
+#sell <- rownames(m)[sell1 < 0.05]
 
 #pc_df <- full_join(pheno[, c(1:2, 8:(ncol(pheno)-1))], var_df[, c("orig.ident", sell)])
 #pc_df <- as.data.frame(var_df[, c("orig.ident", sell)])
@@ -370,14 +373,14 @@ pc_out <- nipals::nipals(pc_df[, sell],
                        gramschmidt = FALSE)
 
 
-#saveRDS(pc_out, "../results/pc_out_var_df.rds")
-pc_out <- readRDS("../results/pc_out_var_df.rds")
+#saveRDS(pc_out, "../results/PCA_out_var_df.rds")
+pc_out <- readRDS("../results/PCA_out_var_df.rds")
 
 
 ```
 
 
-## plot PCA output 
+## plot PCA-out to list
 
 ```{r}
 
@@ -467,6 +470,8 @@ pc_out_ld$category <- colors_df$category[match(pc_out_ld$var, colors_df$names)]
   
   tmp3 <- full_join(tmp1, tmp2, by = "variable", copy = FALSE, suffix = c("", ""))
   
+  tmp3$variable[c(1:8, 17:24)]
+  
   p3.1 <- ggplot(tmp3) + 
     geom_text_repel(size = 3,
                     aes(x = PC1, 
@@ -501,26 +506,27 @@ pc_out_full <- full_join(pc_out_sc, pheno, by = c("orig.ident", "patient_group")
   full_join(pc_df, by = "orig.ident") 
 
 # test for correlations between principal components and phenotype data
-p_pheno <- data.frame(row.names = colnames(pc_out_full[, 7:(ncol(pc_out_full))]))
+p_pheno <- data.frame(row.names = colnames(pc_out_full[, 8:(ncol(pc_out_full))]))
 for (i in c("PC1", "PC2")){
-  m <- apply(pc_out_full[, rownames(p_pheno)], 2, function(x){glm(pc_out_sc[, i] ~ x)} ) 
+  m <- apply(pc_out_full[, rownames(p_pheno)], 2, function(x){glm(pc_out_full[, i] ~ x)} ) 
   m <- lapply(m, summary)
   p_pheno[, i] <- c(t(sapply(m, function(x){x$coefficients[2, 4]})))
 }
 
 p_pheno$group <- as.factor(c(rep("age", times = 2),
                    rep("auto-Ab", times = 7),
-                   rep("other", times = 11),
+                   rep("other", times = 9),
                    as.character(na.omit(colors_df$category[match(rownames(p_pheno), rownames(colors_df))]))))
+
 p_pheno <- p_pheno[!(row.names(p_pheno) %in% c("SSA_Ro52", "SSA_Ro60", "SSA_and_SSB")),]
 
 
-p5.1 <- ggplot(p_pheno[1:17, ], aes(x = -log10(PC1),
+p5.1 <- ggplot(p_pheno[1:15, ], aes(x = -log10(PC1),
                                     y = -log10(PC2),
                                     color = group)) +
   geom_point() +
   geom_text_repel(size = 2,
-                  aes(label = rownames(p_pheno[1:17, ]))) +
+                  aes(label = rownames(p_pheno[1:15, ]))) +
   geom_hline(yintercept = -log10(0.05), linetype = 2, alpha = 0.4, size = 0.5) + 
   geom_vline(xintercept = -log10(0.05), linetype = 2, alpha = 0.4, size = 0.5) +
   ylab(expression(paste("-log10(", italic("P"), ") PC2"))) +
@@ -528,6 +534,7 @@ p5.1 <- ggplot(p_pheno[1:17, ], aes(x = -log10(PC1),
   ggtitle("glm(PC ~ variable)") +
   ylim(0, 3) +
   xlim(0, 6.5) +
+  scale_color_brewer(palette="Dark2") +
   theme_classic(base_size = 11) +
   theme(legend.position = "bottom",
         legend.title=element_blank())
@@ -563,20 +570,16 @@ ggsave2(paste0("../results/Fig5_A-C.pdf"),
           width = 42, height = 12, unit = "cm")
 
 
-
-
-
 ```
 
 
-## plot Fig5D-E
-## plot SFig18-21 PCA 
+## ggplot correlations between PCA and variables
 
 ```{r}
 
 #pheno_var <- colnames(pheno[, 2:(ncol(pheno)-1)])
 #pheno_var <- rownames(p_pheno)[p_pheno$PC1 <= 0.05]
-pheno_var <- colnames(pc_out_full)[c(7:9, 12:13, 15:ncol(pc_out_full))]
+pheno_var <- c(colnames(pc_out_full)[c(8:10, 13:14, 16:25)], sell)
 
 ## function for keeping patient group colors
 scale_fill_pss <- function(...){
@@ -591,7 +594,7 @@ scale_fill_pss <- function(...){
 }
 
 
-# PC1 plots to list
+# plot PC1 to list
 p_list_PC1 <- list()
 for (i in pheno_var){
 
@@ -632,9 +635,9 @@ for (i in pheno_var){
     geom_smooth(method = lm, se = FALSE, color = "black", weight = 0.5) +
     stat_cor(method = "pearson", na.rm = TRUE) +
     scale_x_continuous(breaks = seq(0, 
-                                    signif(max(tmp[, 1]), digits = 1), 
-                                    by =  signif(max(tmp[, 1]) /6, digits = 1)),
-                       limits = c(0, signif(max(tmp[, 1])*1.1, digits = 1))) +
+                                    signif(max(tmp[, 1]) * 1.1, digits = 1), 
+                                    by =  signif((max(tmp[, 1]) * 1.1) / 3, digits = 1)),
+                       limits = c(0, signif(max(tmp[, 1]) * 1.1, digits = 1))) +
     theme_classic(base_size = 12) +
     theme(plot.title = element_text(size = 10), 
           legend.position = "bottom",
@@ -648,7 +651,7 @@ for (i in pheno_var){
 }
 
 
-# plot PC2
+# plot PC2 to list
 p_list_PC2 <- list()
 for (i in pheno_var){
 
@@ -688,9 +691,9 @@ for (i in pheno_var){
     geom_smooth(method = lm, se = FALSE, color = "black", weight = 0.5) +
     stat_cor(method = "pearson", na.rm = TRUE) +
     scale_x_continuous(breaks = seq(0, 
-                                    signif(max(tmp[, 1]), digits = 1), 
-                                    by = signif(max(tmp[, 1])/6, digits = 1)),
-                       limits = c(0, signif(max(tmp[, 1])*1.1, digits = 1))) +
+                                    signif(max(tmp[, 1]) * 1.1, digits = 1), 
+                                    by = signif((max(tmp[, 1]) * 1.1) / 3, digits = 1)),
+                       limits = c(0, signif(max(tmp[, 1]) * 1.1, digits = 1))) +
     theme_classic(base_size = 12) +
     theme(plot.title = element_text(size = 11), 
           legend.position = "none",
@@ -700,40 +703,16 @@ for (i in pheno_var){
 
 
 
+```
+
+
+## plot SFig19
+
+```{r}
+
 # plot all clinical variables for PC1 and PC2
-p1 <- plot_grid(plotlist = p_list_PC1[pheno_var[1:18]], 
-                    nrow = 6, 
-                    ncol = 3, 
-                    labels = NULL, 
-                    align = "hv") + 
-          bgcolor("white") + 
-          border("white")
-
-ggsave2(paste0("../results/SFig18.png"),
-          plot_grid(p1, p_legend, 
-                    ncol = 1, 
-                    labels = NULL, 
-                    align = "hv",
-                    rel_heights = c(10, 0.2)) + 
-          bgcolor("white") + 
-          border("white"),
-          width = 20, height = 30, unit = "cm")
-
-ggsave2(paste0("../results/SFig18.pdf"),
-          plot_grid(p1, p_legend, 
-                    ncol = 1, 
-                    labels = NULL, 
-                    align = "hv",
-                    rel_heights = c(10, 0.2)) + 
-          bgcolor("white") + 
-          border("white"),
-          width = 20, height = 30, unit = "cm")
-
-
-
-
-p1 <- plot_grid(plotlist = p_list_PC2[pheno_var[1:18]], 
-                    nrow = 6, 
+p1 <- plot_grid(plotlist = p_list_PC1[pheno_var[1:15]], 
+                    nrow = 5, 
                     ncol = 3, 
                     labels = NULL, 
                     align = "hv") + 
@@ -761,11 +740,16 @@ ggsave2(paste0("../results/SFig19.pdf"),
           width = 20, height = 30, unit = "cm")
 
 
-# plot GEX and VDJ variables for PC1 and PC2
-#length(pheno_var[19:length(pheno_var)]) #[1] 33
-p1 <- plot_grid(plotlist = p_list_PC1[pheno_var[19:length(pheno_var)]], 
-                    nrow = 7, 
-                    ncol = 5, 
+```
+
+
+## plot SFig20
+
+```{r}
+
+p1 <- plot_grid(plotlist = p_list_PC2[pheno_var[1:15]], 
+                    nrow = 5, 
+                    ncol = 3, 
                     labels = NULL, 
                     align = "hv") + 
           bgcolor("white") + 
@@ -779,7 +763,7 @@ ggsave2(paste0("../results/SFig20.png"),
                     rel_heights = c(10, 0.2)) + 
           bgcolor("white") + 
           border("white"),
-          width = 30, height = 30, unit = "cm")
+          width = 20, height = 30, unit = "cm")
 
 ggsave2(paste0("../results/SFig20.pdf"),
           plot_grid(p1, p_legend, 
@@ -789,10 +773,20 @@ ggsave2(paste0("../results/SFig20.pdf"),
                     rel_heights = c(10, 0.2)) + 
           bgcolor("white") + 
           border("white"),
-          width = 30, height = 30, unit = "cm")
+          width = 20, height = 30, unit = "cm")
 
-p1 <- plot_grid(plotlist = p_list_PC2[pheno_var[19:length(pheno_var)]], 
-                    nrow = 7, 
+
+```
+
+
+## plot SFig21
+
+```{r}
+
+# plot GEX and VDJ variables for PC1 and PC2
+#length(pheno_var[16:length(pheno_var)]) #[1] 30
+p1 <- plot_grid(plotlist = p_list_PC1[pheno_var[16:length(pheno_var)]], 
+                    nrow = 6, 
                     ncol = 5, 
                     labels = NULL, 
                     align = "hv") + 
@@ -820,6 +814,48 @@ ggsave2(paste0("../results/SFig21.pdf"),
           width = 30, height = 30, unit = "cm")
 
 
+```
+
+
+## plot SFig22
+
+```{r}
+
+p1 <- plot_grid(plotlist = p_list_PC2[pheno_var[16:length(pheno_var)]], 
+                    nrow = 6, 
+                    ncol = 5, 
+                    labels = NULL, 
+                    align = "hv") + 
+          bgcolor("white") + 
+          border("white")
+
+ggsave2(paste0("../results/SFig22.png"),
+          plot_grid(p1, p_legend, 
+                    ncol = 1, 
+                    labels = NULL, 
+                    align = "hv",
+                    rel_heights = c(10, 0.2)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 30, unit = "cm")
+
+ggsave2(paste0("../results/SFig22.pdf"),
+          plot_grid(p1, p_legend, 
+                    ncol = 1, 
+                    labels = NULL, 
+                    align = "hv",
+                    rel_heights = c(10, 0.2)) + 
+          bgcolor("white") + 
+          border("white"),
+          width = 30, height = 30, unit = "cm")
+table(gex$celltype)
+
+```
+
+
+## plot Fig5D-E
+
+```{r}
 
 # plot select patient variables for PC1 
 p_pat_var <- c("SSA", "SSB", "ANA", "RF", 
@@ -844,10 +880,12 @@ p1.2 <- plot_grid(p1.1, p_legend,
           border("white")
 
 # plot select GEX and VDJ variables for PC1 
-p_gex_var <- c("Memory_%", "DN_%", "Naive_%", "Transitional_%",
-  "Memory_IFNscore", "DN_IFNscore", "Naive_IFNscore", "Transitional_IFNscore", 
-  "Memory_VDJmutation", "Transitional_VDJmutation",
-  "IGHV1-69_%", "IGHV3-66_%")
+# p_gex_var <- c("Memory_%", "DN_%", "Naive_%", "Transitional_%",
+#   "Memory_IFNscore", "DN_IFNscore", "Naive_IFNscore", "Transitional_IFNscore", 
+#   "Memory_VDJmutation", "Transitional_VDJmutation",
+#   "IGHV1-69_%", "IGHV3-66_%")
+
+p_gex_var <- tmp3$variable[c(1:6, 19:24)]
 
 p2.1 <- plot_grid(plotlist = p_list_PC1[p_gex_var], 
                     nrow = 3, 
@@ -871,49 +909,21 @@ ggsave2(paste0("../results/Fig5D-E.png"),
                     ncol = 3, 
                     labels = NULL, 
                     align = "hv",
-                    rel_widths = c(1,0.1,1.4)) + 
+                    rel_widths = c(1, 0.1, 1.2)) + 
           bgcolor("white") + 
           border("white"),
-          width = 42, height = 18, unit = "cm", dpi = 200)
+          width = 45, height = 18, unit = "cm", dpi = 200)
 
 ggsave2(paste0("../results/Fig5D-E.pdf"),
           plot_grid(p1.2, NULL, p2.2, 
                     ncol = 3, 
                     labels = NULL, 
                     align = "hv",
-                    rel_widths = c(1,0.1,1.4)) + 
+                    rel_widths = c(1, 0.1, 1.2)) + 
           bgcolor("white") + 
           border("white"),
-          width = 42, height = 18, unit = "cm", dpi = 200)
+          width = 45, height = 18, unit = "cm", dpi = 200)
 
-
-```
-
-
-
-```{r}
-
-#CD21 "CR2"
-p1 <- FeaturePlot(gex, "CR2", reduction = "umap_2", split.by = "patient_group", order = TRUE)
-p1 <- VlnPlot(gex, "CR2", split.by = "patient_group", group.by = "cluster_cellType_manual_main")
-p1 <- DotPlot(gex, features = "CR2", group.by = "pat_gr_cell_type")
-group.by = "cluster_cellType_manual_main"
-
-DoHeatmap(subset(gex, downsample = 100), features = "CR2", size = 3, slot = "data")
-
-#p1 <- RidgePlot(gex, features = "CR2", group.by = "pat_gr_cell_type")
-
-gex$pat_gr_cell_type <- paste(gex$patient_group, gex$cluster_cellType_manual_main, sep = "_")
-
-```
-
-
-
-## save rds GEX_xxx
-
-```{r}
-
-#saveRDS(gex, file = "../results/GEX_xxx.rds")
 
 ```
 

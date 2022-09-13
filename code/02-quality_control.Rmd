@@ -157,7 +157,7 @@ ggsave2(paste0("../results/Discarded_cellcounts.png"),
 ```
 
 
-## plot SFig1, QC
+## plot SFigXX, QC
 
 ```{r}
 
@@ -197,7 +197,7 @@ p_legend <- plotColData(as.SingleCellExperiment(gex),
 
 p_out[["legend"]] <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
-ggsave2(paste0("../results/SFig1_2.png"), 
+ggsave2(paste0("../results/SFigXX.png"), 
         plot_grid(plotlist = p_out, ncol = 2, labels = NULL, align = "hv") + 
           bgcolor("white") + 
           border("white"),

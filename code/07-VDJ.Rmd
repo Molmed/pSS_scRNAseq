@@ -623,7 +623,7 @@ ggsave2("../results/Fig3A_main.pdf",
 
 
 #### plot FiG3B, VDJ correlation 
-#### plot SFig S9A-C
+#### plot SFig S8A-C
 
 ```{r}
 
@@ -706,16 +706,16 @@ for (j in c("png", "pdf")){
 }
 
 cor.p.v_call <- VDJ_cor(gex.meta, "pearson", "v_call", "Fig3B")
-cor.p.c_call <- VDJ_cor(gex.meta, "pearson", "c_gene_10x", "SFig9A")
-cor.p.d_call <- VDJ_cor(gex.meta, "pearson", "d_call", "SFig9B")
-cor.p.j_call <- VDJ_cor(gex.meta, "pearson", "j_call", "SFig9C")
+cor.p.c_call <- VDJ_cor(gex.meta, "pearson", "c_gene_10x", "SFig8A")
+cor.p.d_call <- VDJ_cor(gex.meta, "pearson", "d_call", "SFig8B")
+cor.p.j_call <- VDJ_cor(gex.meta, "pearson", "j_call", "SFig8C")
 
 
 ```
 
 
 #### plot FiG3B VDJ correlation main 
-#### plot SFig S9A-C main
+#### plot SFig S8A-C main
  
 ```{r}
 
@@ -796,9 +796,9 @@ for (j in c("png", "pdf")){
 }
 
 cor.p.v_call <- VDJ_cor(gex.meta, "pearson", "v_call", "Fig3B")
-cor.p.c_call <- VDJ_cor(gex.meta, "pearson", "c_gene_10x", "SFig9A")
-cor.p.d_call <- VDJ_cor(gex.meta, "pearson", "d_call", "SFig9B")
-cor.p.j_call <- VDJ_cor(gex.meta, "pearson", "j_call", "SFig9C")
+cor.p.c_call <- VDJ_cor(gex.meta, "pearson", "c_gene_10x", "SFig8A")
+cor.p.d_call <- VDJ_cor(gex.meta, "pearson", "d_call", "SFig8B")
+cor.p.j_call <- VDJ_cor(gex.meta, "pearson", "j_call", "SFig8C")
 
 
 ```
@@ -899,7 +899,7 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
 ```
 
 
-#### plot SFig10A, IgH class per cellTypeMain per patient
+#### plot SFig9A, IgH class per cellTypeMain per patient
 
 ```{r}
 
@@ -953,27 +953,27 @@ p_legend <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)),
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
 
-ggsave2(paste0("../results/SFig10A.png"), 
+ggsave2(paste0("../results/SFig9A.png"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.2)) + 
           bgcolor("white") + 
           border("white"),
-          width = 30, height = 12, unit = "cm")
+          width = 34, height = 10, unit = "cm")
 
-ggsave2(paste0("../results/SFig10A.pdf"), 
+ggsave2(paste0("../results/SFig9A.pdf"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.2)) + 
           bgcolor("white") + 
           border("white"),
-          width = 30, height = 12, unit = "cm")
-
+          width = 34, height = 10, unit = "cm")
 
 
 ```
 
-#### plot SFig10B, IgH class per cellTypeFine per patient
+
+#### plot SFig9B, IgH class per cellTypeFine per patient
 
 ```{r}
 
@@ -1036,13 +1036,13 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/SFig10B.png"), 
+ggsave2(paste0("../results/SFig9B.png"), 
           plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
           bgcolor("white") + 
           border("white"),
           width = 30, height = 25, unit = "cm")
 
-ggsave2(paste0("../results/SFig10B.pdf"), 
+ggsave2(paste0("../results/SFig9B.pdf"), 
           plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
           bgcolor("white") + 
           border("white"),
@@ -1052,7 +1052,7 @@ ggsave2(paste0("../results/SFig10B.pdf"),
 ```
 
 
-#### plot SFig11A, allele usage for differentially used IGHV genes IGHV1-69
+#### plot SFig10A, allele usage for differentially used IGHV genes IGHV1-69
 
 ```{r}
 vdj_allele <- countGenes(gex@meta.data, 
@@ -1083,13 +1083,13 @@ p1 <- ggplot(tmp1, aes(x = reorder(gene, -seq_freq),
       geom_col(position = "dodge") + 
       facet_grid(rows = vars(patient_group))
 
-ggsave2(paste0("../results/SFig11A.png"), 
+ggsave2(paste0("../results/SFig10A.png"), 
           plot_grid(p1, ncol = 1, labels = NULL, align = "h")+ 
           bgcolor("white") + 
           border("white"),
           width = 15, height = 10, unit = "cm")
 
-ggsave2(paste0("../results/SFig11A.pdf"), 
+ggsave2(paste0("../results/SFig10A.pdf"), 
           plot_grid(p1, ncol = 1, labels = NULL, align = "h")+ 
           bgcolor("white") + 
           border("white"),
@@ -1099,7 +1099,7 @@ ggsave2(paste0("../results/SFig11A.pdf"),
 ```
 
 
-#### plot SFig11B?, VDJ gene usage per patient group
+#### plot SFig10B?, VDJ gene combination usage per patient group for IGHV1-69
 
 ```{r}
 
@@ -1170,7 +1170,7 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
            border("white")
 
 
- ggsave2(paste0("../results/SFig11B.png"),
+ ggsave2(paste0("../results/SFig10B.png"),
           plot_grid(p3, p_legend, 
                     ncol = 2, 
                     labels = NULL, 
@@ -1180,7 +1180,7 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
            border("white"),
           width = 20, height = 14, unit = "cm")
  
-  ggsave2(paste0("../results/SFig11B.pdf"),
+  ggsave2(paste0("../results/SFig10B.pdf"),
           plot_grid(p3, p_legend, 
                     ncol = 2, 
                     labels = NULL, 
@@ -1194,7 +1194,7 @@ p3 <- plot_grid(p1, p2, nrow = 2, labels = NULL,
 ```
 
 
-#### plot SFig12A-B, top IGHD and IGHJ genes per patient subgroup
+#### plot SFig11A-B, top IGHD and IGHJ genes per patient subgroup
 
 ```{r}
 
@@ -1254,14 +1254,14 @@ pd <- get_topVDJ(gex, "d_call")
 pj <- get_topVDJ(gex, "j_call")
 pc <- get_topVDJ(gex, "c_gene_10x")
 
-ggsave2(paste0("../results/SFig12A-B.png"), 
+ggsave2(paste0("../results/SFig11A-B.png"), 
           plot_grid(pd, pj, align = "hv", labels = NULL, ncol = 1) +
           bgcolor("white") + 
           border("white"),
           width = 15, height = 18, unit = "cm", dpi = 300)
 
 
-ggsave2(paste0("../results/SFig12A-B.pdf"), 
+ggsave2(paste0("../results/SFig11A-B.pdf"), 
           plot_grid(pd, pj, align = "hv", labels = NULL, ncol = 1) +
           bgcolor("white") + 
           border("white"),
@@ -2055,7 +2055,8 @@ dev.off()
 
 ```
 
-#### plot SFig17A, clonotypes per patient per cellTypeMain
+
+#### plot SFig18A, clonotypes per patient per cellTypeMain
 
 ```{r}
 tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
@@ -2094,21 +2095,21 @@ p_legend <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)),
   
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
-ggsave2(paste0("../results/SFig17A.png"), 
+ggsave2(paste0("../results/SFig18A.png"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.2)) + 
           bgcolor("white") + 
           border("white"),
-          width = 30, height = 12, unit = "cm")
+          width = 34, height = 10, unit = "cm")
 
-ggsave2(paste0("../results/SFig17A.pdf"), 
+ggsave2(paste0("../results/SFig18A.pdf"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.2)) + 
           bgcolor("white") + 
           border("white"),
-          width = 30, height = 12, unit = "cm")
+          width = 34, height = 10, unit = "cm")
 
 
 ```
@@ -2174,13 +2175,13 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/SFig17B.png"), 
+ggsave2(paste0("../results/SFig18B.png"), 
           plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
           bgcolor("white") + 
           border("white"),
           width = 30, height = 25, unit = "cm")
 
-ggsave2(paste0("../results/SFig17B.pdf"), 
+ggsave2(paste0("../results/SFig18B.pdf"), 
           plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) +
           bgcolor("white") + 
           border("white"),
@@ -2387,7 +2388,7 @@ ggsave2(paste0("../results/Fig3E_main.pdf"),
 ```
 
 
-#### plot Fig3F mu freq by IGHV gene, celltype and pat gr.
+#### plot Fig3F and SFig15, mu freq by for IGHV4-34 gene, celltype and pat gr.
 
 ```{r}
 #select top10 used IGHV genes
@@ -2477,13 +2478,13 @@ ggsave2(paste0("../results/Fig3F.pdf"),
         p_list[["Memory_Classical"]],
           width = 15, height = 10, unit = "cm")
 
-ggsave2(paste0("../results/SFig22.png"),
+ggsave2(paste0("../results/SFig15.png"),
         plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"),
           width = 30, height = 25, unit = "cm")
 
-ggsave2(paste0("../results/SFig22.pdf"),
+ggsave2(paste0("../results/SFig15.pdf"),
         plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"),
@@ -2492,7 +2493,7 @@ ggsave2(paste0("../results/SFig22.pdf"),
 ```
 
 
-#### plot SFig24 mu freq for IGHV4-34, per celltype and sample.
+#### plot SFig16 mu freq for IGHV4-34, per celltype and sample.
 
 ```{r}
 #select top10 used IGHV genes
@@ -2588,21 +2589,21 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/Fig3H.png"),
-        p_list[["Memory_Classical"]],
-          width = 15, height = 10, unit = "cm")
+# ggsave2(paste0("../results/Fig3H.png"),
+#         p_list[["Memory_Classical"]],
+#           width = 15, height = 10, unit = "cm")
+# 
+# ggsave2(paste0("../results/Fig3H.pdf"),
+#         p_list[["Memory_Classical"]],
+#           width = 15, height = 10, unit = "cm")
 
-ggsave2(paste0("../results/Fig3H.pdf"),
-        p_list[["Memory_Classical"]],
-          width = 15, height = 10, unit = "cm")
-
-ggsave2(paste0("../results/SFig24.png"),
+ggsave2(paste0("../results/SFig16.png"),
         plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"),
           width = 30, height = 25, unit = "cm")
 
-ggsave2(paste0("../results/SFig24.pdf"),
+ggsave2(paste0("../results/SFig16.pdf"),
         plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"),
@@ -2611,7 +2612,7 @@ ggsave2(paste0("../results/SFig24.pdf"),
 ```
 
 
-#### plot SFig13A, total VDJ mutation frequency - celltypeMain - orig.ident 
+#### plot SFig12A, total VDJ mutation frequency - celltypeMain - orig.ident 
 
 ```{r}
 
@@ -2628,11 +2629,12 @@ p <- ggplot(gex.meta,
       ggtitle("VDJ mutations") +
       theme(axis.text.x = element_text(angle = 90, 
                                        hjust = 0.5, 
-                                       vjust = 0.5), 
+                                       vjust = 0.5,
+                                       size = 8), 
             legend.position = "none") +
       ylab("mutated bp (%)") +
       xlab("") +
-      scale_y_continuous(labels = percent)  +
+      scale_y_continuous(labels = percent, limits = c(0, 0.2))  +
       scale_fill_discrete(name = "patient group") +
       facet_grid(cols = vars(cluster_cellType_manual_main)) +
       geom_violin(alpha = 0.8, 
@@ -2655,27 +2657,27 @@ p_legend <- ggplot(gex.meta,
   
 p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
-ggsave2(paste0("../results/SFig13A.png"), 
+ggsave2(paste0("../results/SFig12A.png"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.1)) + 
           bgcolor("white") + 
           border("white"),
-          width = 30, height = 12, unit = "cm")
+          width = 34, height = 12, unit = "cm")
 
-ggsave2(paste0("../results/SFig13A.pdf"), 
+ggsave2(paste0("../results/SFig12A.pdf"), 
           plot_grid(p, p_legend, 
                     ncol = 1, labels = NULL, 
                     align = "hv", rel_heights = c(1.5, 0.1)) + 
           bgcolor("white") + 
           border("white"),
-          width = 30, height = 12, unit = "cm")
+          width = 34, height = 12, unit = "cm")
 
 
 ```
 
 
-####  plot SFig13B, total VDJ mutation frequency - celltypeFine - orig.ident
+####  plot SFig12B, total VDJ mutation frequency - celltypeFine - orig.ident
 
 ```{r}
 
@@ -2744,13 +2746,13 @@ p2 <- plot_grid(y_label, p1,
   bgcolor("white") + 
   border("white")
 
-ggsave2(paste0("../results/SFig13B.png"),
+ggsave2(paste0("../results/SFig12B.png"),
         plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"),
           width = 30, height = 25, unit = "cm")
 
-ggsave2(paste0("../results/SFig13B.pdf"),
+ggsave2(paste0("../results/SFig12B.pdf"),
         plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"),
@@ -2760,7 +2762,7 @@ ggsave2(paste0("../results/SFig13B.pdf"),
 ```
 
 
-#### plot SFig14A , CDR3 mutation count ratio R/S - cell type fine - patient_group,
+#### plot SFig13A, CDR3 mutation count ratio R/S - cell type fine - patient_group,
 
 ```{r}
 gex.meta$mu_count_cdr3_RSratio <- log2((gex.meta$mu_count_cdr3_r + 1) / 
@@ -2793,11 +2795,11 @@ p2 <- ggplot(gex.meta,
                   draw_quantiles = c(0.25, 0.5, 0.75),
                   trim = TRUE)
 
-ggsave2(paste0("../results/SFig14A.png"), 
+ggsave2(paste0("../results/SFig13A.png"), 
           p2,
           width = 30, height = 10, unit = "cm")
 
-ggsave2(paste0("../results/SFig14A.pdf"), 
+ggsave2(paste0("../results/SFig13A.pdf"), 
           p2,
           width = 30, height = 10, unit = "cm")
 
@@ -2805,7 +2807,7 @@ ggsave2(paste0("../results/SFig14A.pdf"),
 ```
 
 
-#### plot SFig14B, fraction of CDR3 mutated cells per sample and celltypeFine
+#### plot SFig13B, fraction of CDR3 mutated cells per sample and celltypeFine
 
 ```{r}
 
@@ -2846,13 +2848,13 @@ p3 <- as_tibble(gex.meta) %>%
   stat_compare_means(method = "anova", hide.ns = TRUE, label = "p.signif") +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1L), name = "") 
 
-ggsave2(paste0("../results/SFig14B.png"), 
+ggsave2(paste0("../results/SFig13B.png"), 
           plot_grid(p3, labels = NULL, align = "h")+ 
           bgcolor("white") + 
           border("white"),
           width = 30, height = 10, unit = "cm")
 
-ggsave2(paste0("../results/SFig14B.pdf"), 
+ggsave2(paste0("../results/SFig13B.pdf"), 
           plot_grid(p3, labels = NULL, align = "h")+ 
           bgcolor("white") + 
           border("white"),
@@ -2863,7 +2865,7 @@ ggsave2(paste0("../results/SFig14B.pdf"),
 
 
 ## CDR3 attributes
-#### plot SFig15, CDR3 aa attributes
+#### plot SFig14, CDR3 aa attributes
 
 ```{r}
 
@@ -3034,13 +3036,13 @@ p_legend <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 p_grid <- plot_grid(p1, p2, p3, p4, p5, p6, p7, p8, p9, 
                     nrow = 3, ncol = 3, labels = "AUTO", align = "hv")
 
-ggsave2(paste0("../results/SFig15.png"), 
+ggsave2(paste0("../results/SFig14.png"), 
           plot_grid(p_grid, p_legend, ncol = 1, align = "none", rel_heights = c(18, 1)) +
           bgcolor("white") + 
           border("white") ,
           width = 35, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig15.pdf"), 
+ggsave2(paste0("../results/SFig14.pdf"), 
           plot_grid(p_grid, p_legend, ncol = 1, align = "none", rel_heights = c(18, 1)) +
           bgcolor("white") + 
           border("white") ,

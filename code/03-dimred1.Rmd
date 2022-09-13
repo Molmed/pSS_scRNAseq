@@ -320,7 +320,7 @@ write.csv(counts, "../results/cellcounts_celltypes_orig.ident_GEX3_DIMRED1.csv",
 ```
 
 
-### plot SFig2A, Celltypes per sample
+### plot SFig1A, Celltypes per sample
 
 ```{r}
 
@@ -353,7 +353,7 @@ p4 <- cells %>% gather(celltype, cellcount, `B-cell`:`T-cell`) %>%
   ggtitle(paste0("B-cells and Plasma cells: ", sum(cells$`B-cell`) + sum(cells$`Plasma cell`) , "\n", 
                  "Total cells: ", sum(cells$tot)))
 
-ggsave2(paste0("../results/SFig2A_4.png"), 
+ggsave2(paste0("../results/SFig1A.png"), 
         plot_grid(p3, p4, align = "hv", ncol = 2, rel_widths = c(1, 1.8)) +
         bgcolor("white") + 
         border("white")  ,
@@ -363,7 +363,7 @@ ggsave2(paste0("../results/SFig2A_4.png"),
 ```
 
 
-### plot SFig2B, Dimplot and markler genes for all cells
+### plot SFig1B, Dimplot and markler genes for all cells
 
 
 ```{r}
@@ -446,7 +446,7 @@ p3 <- plot_grid(p1, p2, ncol = 1)
 p4 <- plot_grid(plotlist = pig, ncol = 3)
 p5 <- plot_grid(plotlist = pp, ncol = 3)
 
-ggsave2(paste0("../results/SFig2B_3.png"), 
+ggsave2(paste0("../results/SFig1B.png"), 
         plot_grid(p3, NULL, p4, NULL, p5, ncol = 5, rel_widths = c(1, 0.1, 1.5, 0.1, 1.5)) + 
           bgcolor("white") + 
           border("white"), 
