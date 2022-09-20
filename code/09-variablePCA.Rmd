@@ -208,9 +208,10 @@ ALL_expr <- AggregateExpression(gex.slim,
 
 ALL_expr <- as.data.frame(ALL_expr$RNA)
 IFN_expr <- ALL_expr[IFN, ]
-ALL_expr <- ALL_expr[!(rownames(ALL_expr) %in% IFN), ]
+#ALL_expr <- ALL_expr[!(rownames(ALL_expr) %in% IFN), ]
 
 IFN_main <- as.data.frame(colSums(IFN_expr, na.rm = TRUE) / colSums(ALL_expr, na.rm = TRUE) * 100)
+
 colnames(IFN_main)[1] <- "IFN_score"
 IFN_main$cluster_cellType_manual_main <- substr(rownames(IFN_main), 1, nchar(rownames(IFN_main)) - 5)
 IFN_main$orig.ident <- substr(rownames(IFN_main), nchar(rownames(IFN_main)) - 3, nchar(rownames(IFN_main)))
@@ -222,7 +223,6 @@ IFN_main <- pivot_wider(IFN_main,
 colnames(IFN_main)[2:ncol(IFN_main)] <- paste0(colnames(IFN_main)[2:ncol(IFN_main)], "_IFNscore")
 
 saveRDS(IFN_main, file = "../results/forPCA_IFN_main.rds")
-
 
 
 ```
@@ -334,7 +334,7 @@ m <- as.data.frame(t(sapply(m, function(x){x$coefficients[2, 4]})))
 #sell1 <- rowMin(m)
 sell <- names(m)[m < 0.1]
 #sell <- rownames(m)[sell1 < 0.05]
-
+length(sell)
 #pc_df <- full_join(pheno[, c(1:2, 8:(ncol(pheno)-1))], var_df[, c("orig.ident", sell)])
 #pc_df <- as.data.frame(var_df[, c("orig.ident", sell)])
 
@@ -547,7 +547,7 @@ p5.1 <- ggplot(p_pheno[1:15, ], aes(x = -log10(PC1),
 
 ```{r}
 
-ggsave2(paste0("../results/Fig5_A-C.png"),
+ggsave2(paste0("../results/Fig5_A-C_2.png"),
           plot_grid(p1.1, p3.1, p5.1, 
                     nrow = 1, 
                     ncol = 3, 
@@ -558,7 +558,7 @@ ggsave2(paste0("../results/Fig5_A-C.png"),
           border("white"),
           width = 42, height = 12, unit = "cm")
 
-ggsave2(paste0("../results/Fig5_A-C.pdf"),
+ggsave2(paste0("../results/Fig5_A-C_2.pdf"),
           plot_grid(p1.1, p3.1, p5.1, 
                     nrow = 1, 
                     ncol = 3, 
@@ -719,7 +719,7 @@ p1 <- plot_grid(plotlist = p_list_PC1[pheno_var[1:15]],
           bgcolor("white") + 
           border("white")
 
-ggsave2(paste0("../results/SFig19.png"),
+ggsave2(paste0("../results/SFig19_2.png"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -729,7 +729,7 @@ ggsave2(paste0("../results/SFig19.png"),
           border("white"),
           width = 20, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig19.pdf"),
+ggsave2(paste0("../results/SFig19_2.pdf"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -755,7 +755,7 @@ p1 <- plot_grid(plotlist = p_list_PC2[pheno_var[1:15]],
           bgcolor("white") + 
           border("white")
 
-ggsave2(paste0("../results/SFig20.png"),
+ggsave2(paste0("../results/SFig20_2.png"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -765,7 +765,7 @@ ggsave2(paste0("../results/SFig20.png"),
           border("white"),
           width = 20, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig20.pdf"),
+ggsave2(paste0("../results/SFig20_2.pdf"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -793,7 +793,7 @@ p1 <- plot_grid(plotlist = p_list_PC1[pheno_var[16:length(pheno_var)]],
           bgcolor("white") + 
           border("white")
 
-ggsave2(paste0("../results/SFig21.png"),
+ggsave2(paste0("../results/SFig21_2.png"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -803,7 +803,7 @@ ggsave2(paste0("../results/SFig21.png"),
           border("white"),
           width = 30, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig21.pdf"),
+ggsave2(paste0("../results/SFig21_2.pdf"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -829,7 +829,7 @@ p1 <- plot_grid(plotlist = p_list_PC2[pheno_var[16:length(pheno_var)]],
           bgcolor("white") + 
           border("white")
 
-ggsave2(paste0("../results/SFig22.png"),
+ggsave2(paste0("../results/SFig22_2.png"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -839,7 +839,7 @@ ggsave2(paste0("../results/SFig22.png"),
           border("white"),
           width = 30, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig22.pdf"),
+ggsave2(paste0("../results/SFig22_2.pdf"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -848,7 +848,7 @@ ggsave2(paste0("../results/SFig22.pdf"),
           bgcolor("white") + 
           border("white"),
           width = 30, height = 30, unit = "cm")
-table(gex$celltype)
+
 
 ```
 
@@ -904,7 +904,7 @@ p2.2 <- plot_grid(p2.1, p_legend,
           border("white")
 
 
-ggsave2(paste0("../results/Fig5D-E.png"),
+ggsave2(paste0("../results/Fig5D-E_2.png"),
           plot_grid(p1.2, NULL, p2.2, 
                     ncol = 3, 
                     labels = NULL, 
@@ -914,7 +914,7 @@ ggsave2(paste0("../results/Fig5D-E.png"),
           border("white"),
           width = 45, height = 18, unit = "cm", dpi = 200)
 
-ggsave2(paste0("../results/Fig5D-E.pdf"),
+ggsave2(paste0("../results/Fig5D-E_2.pdf"),
           plot_grid(p1.2, NULL, p2.2, 
                     ncol = 3, 
                     labels = NULL, 
@@ -935,6 +935,4 @@ ggsave2(paste0("../results/Fig5D-E.pdf"),
 sessionInfo()
 
 ```
-
-
 

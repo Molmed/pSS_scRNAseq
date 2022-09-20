@@ -516,8 +516,7 @@ gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "Memory_DN1_ID3" 
                           gex$cluster_cellType_manual_fine == "Memory_IgM_CD1C" |
                           gex$cluster_cellType_manual_fine == "Naive" |
                           gex$cluster_cellType_manual_fine == "Naive_IFN" |
-                          gex$cluster_cellType_manual_fine == "Naive_Transitional") &
-                          gex$orig.ident !="P024", ]
+                          gex$cluster_cellType_manual_fine == "Naive_Transitional"), ]
 
 
 ```
@@ -525,55 +524,6 @@ gex.meta <- gex@meta.data[(gex$cluster_cellType_manual_fine == "Memory_DN1_ID3" 
 
 ## immcantation and scRepertoir output visualization
 ### VDJ gene usage
-
-####  plot Fig3A, IgH class per cell type fine
-
-```{r}
-
-####---- IgH per cluster
-p1 <- DimPlot(gex, 
-              group.by = "c_gene_10x", 
-              split.by = "patient_group", 
-              reduction = "umap_2", pt.size = 0.6, ncol = 2, 
-              raster = TRUE,
-              order = TRUE,
-              cols = c(brewer.pal(9, "Set3")),
-              na.value = "white") + 
-  ggtitle(expression(~italic(IGH)~'constant gene')) + 
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") + 
-  theme(axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        title = element_text(face = "bold"),
-        legend.position = "none")
-
-p2 <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)), 
-             aes(x = cluster_cellType_manual_fine,
-                 fill = c_gene_10x)) +
-      theme_classic() +
-      geom_bar(position = "fill") + 
-      ylab("proportion of cells") + 
-      xlab("") +
-      facet_grid(rows = vars(patient_group)) + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold")) +
-      scale_fill_brewer(palette="Set3", na.value="grey", name = "",  drop = FALSE)
-
-ggsave2("../results/Fig3A.png", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 30, height = 14, unit = "cm")
-
-ggsave2("../results/Fig3A.pdf", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 30, height = 14, unit = "cm")
-
-
-```
-
-
 ####  plot Fig3A, IgH class per cell type main
 
 ```{r}
@@ -603,124 +553,86 @@ p2 <- ggplot(gex.meta %>% filter(!is.na(c_gene_10x)),
       ylab("proportion of cells") + 
       xlab("") +
       facet_grid(rows = vars(patient_group)) + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold")) +
-      scale_fill_brewer(palette="Set3", na.value="grey", name = "",  drop = FALSE)
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+            legend.position = "bottom") +
+      scale_fill_brewer(palette="Set3", na.value="grey", name = "",  drop = FALSE) 
 
-ggsave2("../results/Fig3A_main.png", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h", rel_widths = c(1.5, 1)) + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 25, height = 14, unit = "cm")
+p_legend <- get_legend(p2) %>% ggpubr::as_ggplot()
 
-ggsave2("../results/Fig3A_main.pdf", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h", rel_widths = c(1.5, 1)) + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 25, height = 14, unit = "cm")
+p2 <- p2 + theme(legend.position = "none")
+
+p3 <- plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h", rel_widths = c(1.5, 1))
 
 
-```
+cell_summary <-  as_tibble(gex.meta) %>% 
+  filter(!is.na(c_gene_10x)) %>%
+  select(orig.ident, cluster_cellType_manual_main, patient_group, c_gene_10x) %>%
+  add_count(orig.ident, cluster_cellType_manual_main, c_gene_10x, .drop = FALSE) %>% 
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_main) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na()
 
-
-#### plot FiG3B, VDJ correlation 
-#### plot SFig S8A-C
-
-```{r}
-
-colors_cellTypeFine2 <- colors_cellType[c("memory5", "dn1", "dn2", "dn3", "dn4", "dn5",
-                         "memory1", "memory3", "memory4", "naive2", "naive4", "naive6")]
-
-names(colors_cellTypeFine2) <- sort(unique(gex.meta$cluster_cellType_manual_fine))
-
-
-#VDJ gene usage correlation
-VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usage
-                    correl, #which correlation to use i.e. spearman or pearson...
-                    VDJgene, #VDJ gene to plot
-                    figNo #output figure name
-                    ){
-  
-  cat(VDJgene, "\n") 
-  cat(correl, "\n")
-  
-  #remove allele information
-  i[, VDJgene] <- unlist(lapply(strsplit(as.character(i[, VDJgene]), 
-                                         split = "\\*"),
-                                function(x) {return(x[1])}))
-  
-  i$celltype_patient_group <- paste0(i$cluster_cellType_manual_fine, 
-                                     "__", 
-                                     i$patient_group)
-  
-  tmp <- as.data.frame.matrix(table(list(i[, VDJgene], i$celltype_patient_group)))
-  
-  cor_tmp <- cor(tmp, method = correl)
-  print(head(cor_tmp))
-  cor_tmp[is.na(cor_tmp)] <- 0
-
-  ann_cols <- list(patient_group = c(CTRL = "#F8766D", 
-                                     `SSA-` = "#7CAE00", 
-                                     `SSA+` = "#00BFC4", 
-                                     SSAB = "#C77CFF"),
-                   #cluster = scales::hue_pal()(15),
-                   cell_type = colors_cellTypeFine2)
-  
-  titles <- data.frame(gexnames = c("v_call", "d_call", "j_call", "c_gene_10x"),
-                       outnames = c("IGHV", "IGHD", "IGHJ", "IGH c"))
-  
-  # print(titles$outnames[titles$gexnames == VDJgene])
-  # print(data.frame(cell_type = factor(sub("__.*", "", colnames(cor_tmp))),
-  #                  patient_group = factor(sub(".*__", "", colnames(cor_tmp))),
-  #                  row.names = colnames(cor_tmp)))
-  
-for (j in c("png", "pdf")){
-  p <- pheatmap::pheatmap(cor_tmp, 
-                     annotation_col = data.frame(cell_type = as.character(sub("__.*", 
-                                                                        "", 
-                                                                        colnames(cor_tmp))),
-                                                 patient_group = as.character(sub(".*__", 
-                                                                            "",
-                                                                            colnames(cor_tmp))),
-                                                 row.names = colnames(cor_tmp)),
-                     annotation_colors = ann_cols[1:2],
-                     breaks = seq(0, 1, length.out = 100),
-                     filename = paste0("../results/", figNo, ".", j),
-                     fontsize = 10, 
-                     fontsize_row = 4, 
-                     fontsize_col = 4,
-                     border_color = NA,
-                     show_rownames = FALSE,
-                     show_colnames = FALSE,
-                     main = paste(titles$outnames[titles$gexnames == VDJgene], 
-                                   "genes,", correl, "correlation"),
-                     color = c(colorRampPalette(c("lightblue1", 
-                                                  "lightblue2", 
-                                                  "firebrick2"))(99)),
-                     cellwidth = 8,
-                     cellheight = 6
-                      )
-}
-  
-  return(p)
-  
+p_list <- list()
+for (i in as.character(sort(unique(cell_summary$c_gene_10x))) ){
+  p_list[[i]] <- list()
+  for (j in sort(unique(cell_summary$cluster_cellType_manual_main))) {
+    p_list[[i]][[j]] <- ggplot(cell_summary[cell_summary$cluster_cellType_manual_main == j & 
+                                             cell_summary$c_gene_10x == i, ], 
+                              aes(x = patient_group, y = per,  fill = patient_group)) + 
+                     theme_classic() +
+                     geom_violin(scale = "width",
+                                 draw_quantiles = c(0.25, 0.5, 0.75),
+                                 trim = TRUE,
+                                 alpha = 0.8) +
+                     #geom_boxplot() +
+                     geom_jitter(size = 0.5) +
+                     ylab(paste0("fraction ", i)) + 
+                     xlab("") +
+                     ggtitle(paste0(j)) +
+                     theme(legend.position = "none") +
+                     scale_fill_manual(values = scales::hue_pal()(4)) +
+                     stat_compare_means(method = "t.test", 
+                                        comparisons = list(c("CTRL", "SSA-"), 
+                                                           c("CTRL", "SSA+"), 
+                                                           c("CTRL", "SSAB")), 
+                                        label = "p.format",
+                                        size = 3.5 
+                                        #vjust = 0.5
+                                        ) +
+                     scale_y_continuous(labels = scales::percent_format(accuracy = 1L)
+                                        , limits = c(0, 1.4)
+                                        )
+        
+  }
 }
 
-cor.p.v_call <- VDJ_cor(gex.meta, "pearson", "v_call", "Fig3B")
-cor.p.c_call <- VDJ_cor(gex.meta, "pearson", "c_gene_10x", "SFig8A")
-cor.p.d_call <- VDJ_cor(gex.meta, "pearson", "d_call", "SFig8B")
-cor.p.j_call <- VDJ_cor(gex.meta, "pearson", "j_call", "SFig8C")
+
+plot_grid(plotlist = p_list[["IGHM"]])
+
+
+ggsave2("../results/Fig3A.png", 
+        plot_grid(p3, p_legend, ncol = 1, labels = NULL, align = "h", rel_heights = c(1, 0.1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 20, height = 14, unit = "cm")
+
+ggsave2("../results/Fig3A.pdf", 
+        plot_grid(p3, p_legend, ncol = 1, labels = NULL, align = "h", rel_heights = c(1, 0.1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 20, height = 14, unit = "cm")
 
 
 ```
 
 
 #### plot FiG3B VDJ correlation main 
-#### plot SFig S8A-C main
+#### plot SFig8A-C main
  
 ```{r}
 
 colors_cellTypeMain2 <- colors_cellType[c("memory5", "dn3", "memory3", "naive4", "naive6")]
-
 names(colors_cellTypeMain2) <- sort(unique(gex.meta$cluster_cellType_manual_main))
 
 #VDJ gene usage correlation
@@ -744,6 +656,8 @@ VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usa
   
   tmp <- as.data.frame.matrix(table(list(i[, VDJgene], i$celltype_patient_group)))
   
+  tmp <- t(t(tmp)/colSums(tmp))
+  
   cor_tmp <- cor(tmp, method = correl)
   print(head(cor_tmp))
   cor_tmp[is.na(cor_tmp)] <- 0
@@ -756,7 +670,7 @@ VDJ_cor <- function(i, #seurat object meta data containing data for VDJ gene usa
                    cell_type = colors_cellTypeMain2)
   
   titles <- data.frame(gexnames = c("v_call", "d_call", "j_call", "c_gene_10x"),
-                       outnames = c("IGHV", "IGHD", "IGHJ", "IGH c"))
+                       outnames = c("IGHV", "IGHD", "IGHJ", "IGH constant"))
   
   # print(titles$outnames[titles$gexnames == VDJgene])
   # print(data.frame(cell_type = factor(sub("__.*", "", colnames(cor_tmp))),
@@ -773,7 +687,7 @@ for (j in c("png", "pdf")){
                                                                             colnames(cor_tmp))),
                                                  row.names = colnames(cor_tmp)),
                      annotation_colors = ann_cols[1:2],
-                     breaks = seq(0, 1, length.out = 100),
+                     #breaks = seq(0, 1, length.out = 100),
                      filename = paste0("../results/", figNo, "_main",".", j),
                      fontsize = 10, 
                      fontsize_row = 4, 
@@ -781,6 +695,7 @@ for (j in c("png", "pdf")){
                      border_color = NA,
                      show_rownames = FALSE,
                      show_colnames = FALSE,
+                     clustering_method = "ward.D2",
                      main = paste(titles$outnames[titles$gexnames == VDJgene], 
                                    "genes,", correl, "correlation"),
                      color = c(colorRampPalette(c("lightblue1", 
@@ -789,7 +704,7 @@ for (j in c("png", "pdf")){
                      cellwidth = 8,
                      cellheight = 10
                       )
-}
+   }
   
   return(p)
   
@@ -802,6 +717,7 @@ cor.p.j_call <- VDJ_cor(gex.meta, "pearson", "j_call", "SFig8C")
 
 
 ```
+
 
 #### plot Fig3C, IGHV usage per patient group
 
@@ -1365,63 +1281,6 @@ ggsave2(paste0("../results/SFig16.pdf"),
 
 
 ### clonal expansion
-#### plot Fig4A, cloneType per cell type fine based on compairr data (cellTypeFine)
-
-```{r}
-
-gex$cloneType_airr <- gsub("<=", "≤", gex$cloneType_airr)
-
-p1 <- DimPlot(gex, 
-              group.by = "cloneType_airr", 
-              split.by = "patient_group", 
-              reduction = "umap_2", pt.size = 0.6, ncol = 2, 
-              raster = TRUE,
-              order = c("Single (0 < X ≤ 1)",
-                        "Small (1 < X ≤ 5)",
-                        "Medium (5 < X ≤ 20)",
-                        "Large (20 < X ≤ 100)"), 
-              cols = c(brewer.pal(4, "Dark2")),
-              na.value = "white") +
-  ggtitle("clonotype") +  
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") + 
-  theme(axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        legend.position = "none")
-
-gex.meta$cloneType_airr <- gsub("<=", "≤", gex.meta$cloneType_airr)
-gex.meta$cloneType_airr <- factor(gex.meta$cloneType_airr, levels = c("Large (20 < X ≤ 100)",
-                                                                      "Medium (5 < X ≤ 20)",
-                                                                      "Small (1 < X ≤ 5)",
-                                                                      "Single (0 < X ≤ 1)"))
-
-p2 <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)), 
-             aes(x = cluster_cellType_manual_fine, 
-                 fill = cloneType_airr)) +
-      theme_classic() +
-      geom_bar(position = "fill") + 
-      ylab("proportion of cells") + 
-      xlab("") + 
-      facet_grid(rows = vars(patient_group)) + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold")) +
-      scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "")
-
-ggsave2("../results/Fig4A.png", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 30, height = 14, unit = "cm")
-
-ggsave2("../results/Fig4A.pdf", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 30, height = 14, unit = "cm")
-
-
-
-```
-
 #### plot Fig4A, cloneType per cell type fine based on compairr data (cellTypeMain)
 
 ```{r}
@@ -1460,20 +1319,28 @@ p2 <- ggplot(gex.meta %>% filter(!is.na(cloneType_airr)),
       ylab("proportion of cells") + 
       xlab("") + 
       facet_grid(rows = vars(patient_group)) + 
-      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold")) +
+      theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+            legend.position = "bottom") +
       scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "")
 
-ggsave2("../results/Fig4A_main.png", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 30, height = 14, unit = "cm")
 
-ggsave2("../results/Fig4A_main.pdf", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
+p_legend <- get_legend(p2) %>% ggpubr::as_ggplot()
+
+p2 <- p2 + theme(legend.position = "none")
+
+p3 <- plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h", rel_widths = c(1.5, 1))
+
+ggsave2("../results/Fig4A.png", 
+        plot_grid(p3, p_legend, ncol = 1, labels = NULL, align = "h", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"), 
-        width = 30, height = 14, unit = "cm")
+        width = 20, height = 14, unit = "cm")
+
+ggsave2("../results/Fig4A.pdf", 
+        plot_grid(p3, p_legend, ncol = 1, labels = NULL, align = "h", rel_heights = c(1, 0.1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 20, height = 14, unit = "cm")
 
 
 ```
@@ -2009,8 +1876,6 @@ colnames(CDR3_data) <- c("CDR3", "group")
 
 tmp <- as.data.frame.matrix(table(gex.meta$cluster_no_airr,
                                   gex.meta$orig.ident))
-length(CDR3_data$CDR3)
-length(unique(CDR3_data$CDR3))
 
 #get clonotypes present in ≥ 2 samples
 tmp <- tmp[rowSums(tmp > 0) > 1, ]
@@ -2018,16 +1883,16 @@ tmp2 <- as.data.frame(t(rowsum(t(tmp), group = pheno$patient_group[1:27])))
 tmp2 <- as.data.frame((tmp2 > 0) * 1)
 tmp2$ident <- as.character(rownames(tmp2))
 
-m <- unique(gex.meta[(gex.meta$cluster_no_airr %in% rownames(tmp2)) & !gex.meta$patient_group == "CTRL", 
+m <- unique(gex.meta[(gex.meta$cluster_no_airr %in% rownames(tmp2)) & 
+                       !gex.meta$patient_group == "CTRL", 
                      c("junction_aa", "patient_group")])
-m <- m[!duplicated(m$junction_aa),]
+m <- m[!duplicated(m$junction_aa), ]
 colnames(m) <- c("CDR3", "group")
-
 m <- rbind(m, CDR3_data)
-
 
 res <- stringdist::stringdistmatrix(m$CDR3, m$CDR3,  method = "lv")
 res <- as.data.frame(Matrix(res, sparse = T, dimnames = list(m$CDR3, m$CDR3)))
+#res <- res[c(1:100, 900:1000, 2400:2500, 3500:3600), c(1:100, 900:1000, 2400:2500, 3500:3600)] 
 
 ann_cols <- list(group = c(Corsiero_et_al = brewer.pal(9, "YlOrRd")[2],
                            Visser_et_al = brewer.pal(9, "YlOrRd")[5],  
@@ -2036,21 +1901,51 @@ ann_cols <- list(group = c(Corsiero_et_al = brewer.pal(9, "YlOrRd")[2],
                            `SSA+` = "#00BFC4", 
                            SSAB = "#C77CFF"))
 
+#annotation <- data.frame(group = factor(m$group[c(1:100, 900:1000, 2400:2500, 3500:3600)]), row.names = m$CDR3[c(1:100, 900:1000, 2400:2500, 3500:3600)])
+
 annotation <- data.frame(group = factor(m$group), row.names = m$CDR3)
 
-for (i in c("png", "pdf")){
+for (i in c("png")){
+  
   print(i)
-pheatmap(res, 
-         show_rownames = FALSE, 
-         show_colnames = FALSE, 
-         filename = paste0("../results/Fig4D_.", i),
-         annotation_col = data.frame(group = factor(m$group), row.names = m$CDR3),
-         annotation_row = data.frame(group = factor(m$group), row.names = m$CDR3),
-         annotation_colors = ann_cols[1], 
-         legend = T
-         )
+  
+  h1 <- pheatmap(res, 
+           show_rownames = FALSE, 
+           show_colnames = FALSE, 
+           filename = paste0("../results/Fig4D.", i),
+           annotation_col = data.frame(group = factor(m$group), row.names = m$CDR3),
+           annotation_row = data.frame(group = factor(m$group), row.names = m$CDR3),
+           annotation_colors = ann_cols[1], 
+           legend = TRUE,
+           use_raster = TRUE,
+           clustering_method = "ward.D2")
+  
+  saveRDS(h1, paste0("../results/CDR3_lv_distance_heatmap_all.rds"))
+  
+  p_list <- list()
+  for (j in unique(m$group)[c(2, 3, 1, 4:6)]){
+    
+    print(j)
+    print(dim(res[(m$group %in% j), ]))
+    
+    p_list[[j]] <- pheatmap(res[, which(m$group %in% j)],
+            cluster_rows = h1$tree_row,
+            cluster_cols = TRUE,
+            annotation_row = data.frame(group = factor(m$group), row.names = m$CDR3),
+            annotation_col = data.frame(group = factor(m$group), row.names = m$CDR3),
+            annotation_colors = ann_cols[1],
+            filename = paste0("../results/Fig4D", "_", j, ".", i),
+            clustering_method = "ward.D2",
+            legend = TRUE,
+            show_rownames = FALSE, 
+            show_colnames = FALSE, 
+            main = j )
+    
+  }
+  
+  saveRDS(p_list, paste0("../results/CDR3_lv_distance_heatmap_byGroup.rds"))
+  
 }
-dev.off()
 
 
 ```
@@ -2192,53 +2087,6 @@ ggsave2(paste0("../results/SFig18B.pdf"),
 
 
 ## mutation status
-####  plot Fig3D, mutation load per cell type fine
-
-```{r}
-
-p1 <- DimPlot(gex, 
-              group.by = "mu_load", 
-              split.by = "patient_group", 
-              reduction = "umap_2", pt.size = 0.6, ncol = 2, 
-              raster = TRUE, 
-              cols = c(brewer.pal(4, "Dark2")),
-              order = c("unmutated", "low", "med", "high", NA),
-              na.value = "white") +
-  ggtitle("Mutation load") +
-  xlab("UMAP 1") + 
-  ylab("UMAP 2") + 
-  theme(axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        legend.position = "none")
-
-
-p2 <- ggplot(gex.meta %>% filter(!is.na(mu_load)), 
-             aes(x = cluster_cellType_manual_fine, 
-                 fill = mu_load)) +
-          theme_classic() +
-          geom_bar(position = "fill") + 
-          ylab("proportion of cells") +
-          xlab("") +
-          facet_grid(rows = vars(patient_group)) + 
-          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold")) +
-          scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "Mutation load")
-
-ggsave2("../results/Fig3D.png", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 30, height = 14, unit = "cm")
-
-ggsave2("../results/Fig3D.pdf", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h") + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 30, height = 14, unit = "cm")
-
-
-```
-
-
 ####  plot Fig3D, mutation load per cell type main
 
 ```{r}
@@ -2267,87 +2115,30 @@ p2 <- ggplot(gex.meta %>% filter(!is.na(mu_load)),
           ylab("proportion of cells") +
           xlab("") +
           facet_grid(rows = vars(patient_group)) + 
-          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold")) +
+          theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, face = "bold"),
+                legend.position = "bottom") +
           scale_fill_brewer(palette = "Dark2", na.value = "grey", name = "Mutation load")
 
-ggsave2("../results/Fig3D_main.png", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h", rel_widths = c(1.5, 1)) + 
+p_legend <- get_legend(p2) %>% ggpubr::as_ggplot()
+
+p2 <- p2 + theme(legend.position = "none")
+
+p3 <- plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h", rel_widths = c(1.5, 1))
+
+
+# !!! Plot mutation load, fraction unmutated per celltypeMain
+
+ggsave2("../results/Fig3D.png", 
+        plot_grid(p3, p_legend, ncol = 1, labels = NULL, align = "h", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"), 
-        width = 25, height = 14, unit = "cm")
+        width = 20, height = 14, unit = "cm")
 
-ggsave2("../results/Fig3D_main.pdf", 
-        plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h", rel_widths = c(1.5, 1)) + 
+ggsave2("../results/Fig3D.pdf", 
+        plot_grid(p3, p_legend, ncol = 1, labels = NULL, align = "h", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
           border("white"), 
-        width = 25, height = 14, unit = "cm")
-
-
-```
-
-
-#### plot Fig3E, total VDJ mutation frequency - celltypeFine - patient_group
-
-```{r}
-
-p1 <- ggplot(gex.meta, 
-            aes(x = cluster_cellType_manual_fine, 
-                y = mu_freq_total, 
-                fill = patient_group)) +
-      theme_classic() +
-      ggtitle("VDJ mutations") +
-      theme(axis.text.x = element_text(angle = 90, 
-                                       hjust = 1, 
-                                       vjust = 0.5),
-            plot.title = element_text(size = 12)) +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
-      scale_fill_discrete(name = "") +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
-                  draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE) 
-
-ggsave2(paste0("../results/Fig3E.png"), 
-          p1,
-          width = 15, height = 10, unit = "cm")
-
-ggsave2(paste0("../results/Fig3E.pdf"), 
-          p1,
-          width = 15, height = 10, unit = "cm")
-
-
-```
-
-
-#### plot Fig3E, total VDJ mutation frequency - celltypeFine - patient_group - box
-
-```{r}
-
-p1 <- ggplot(gex.meta, 
-            aes(x = cluster_cellType_manual_fine, 
-                y = mu_freq_total, 
-                fill = patient_group)) +
-      theme_classic() +
-      ggtitle("VDJ mutations") +
-      theme(axis.text.x = element_text(angle = 90, 
-                                       hjust = 1, 
-                                       vjust = 0.5),
-            plot.title = element_text(size = 12)) +
-      ylab("mutated bp (%)") +
-      xlab("") +
-      scale_y_continuous(labels = scales::percent_format(accuracy = 1L), limits = c(0, 0.15)) +
-      scale_fill_discrete(name = "") +
-  geom_boxplot(alpha = 0.8, na.rm = TRUE, outlier.shape = NA)
-
-ggsave2(paste0("../results/Fig3E_box.png"), 
-          p1,
-          width = 15, height = 8, unit = "cm")
-
-ggsave2(paste0("../results/Fig3E_box.pdf"), 
-          p1,
-          width = 15, height = 8, unit = "cm")
+        width = 20, height = 14, unit = "cm")
 
 
 ```
@@ -2357,32 +2148,79 @@ ggsave2(paste0("../results/Fig3E_box.pdf"),
 
 ```{r}
 
-p1 <- ggplot(gex.meta, 
-            aes(x = cluster_cellType_manual_main, 
+p_list1 <- list()
+for (i in sort(unique(gex.meta$cluster_cellType_manual_main))) {
+p_list1[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_main == i, ], 
+            aes(x = patient_group, 
                 y = mu_freq_total, 
                 fill = patient_group)) +
       theme_classic() +
-      ggtitle("VDJ mutations") +
+      ggtitle(i) +
       theme(axis.text.x = element_text(angle = 90, 
                                        hjust = 1, 
                                        vjust = 0.5),
-            plot.title = element_text(size = 12)) +
-      ylab("mutated bp (%)") +
+            plot.title = element_text(size = 12),
+            legend.position = "bottom",
+            plot.margin = unit(c(0, 0, 0, 0), "lines"),
+            title = element_text(face = "bold")) +
+      ylab("") +
       xlab("") +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1L), limits = c(0, 0.3)) +
       scale_fill_discrete(name = "") +
-      geom_violin(alpha = 0.8, 
-                  scale = "width", 
+      geom_violin(alpha = 0.8,
+                  scale = "width",
                   draw_quantiles = c(0.25, 0.5, 0.75),
-                  trim = TRUE) 
+                  trim = TRUE) +
+      #geom_boxplot(na.rm = TRUE, outlier.shape = NA) +
+      geom_jitter(size = 0.05, alpha = 0.05) +
+      stat_compare_means(method = "t.test", 
+                         comparisons = list(#c("CTRL", "SSA-"), 
+                                            #c("CTRL", "SSA+"), 
+                                            c("CTRL", "SSAB")), 
+                         label = "p.format",
+                         size = 3.5,
+                         method.args = list(exact = TRUE)
+                         #vjust = 0.5
+                         )
+  }
 
-ggsave2(paste0("../results/Fig3E_main.png"), 
-          p1,
-          width = 12, height = 10, unit = "cm")
 
-ggsave2(paste0("../results/Fig3E_main.pdf"), 
-          p1,
-          width = 12, height = 10, unit = "cm")
+#draw y label
+y_label <- ggdraw() + 
+  draw_label("VDJ, mutated bp (%)", 
+             fontface = 'bold',
+             hjust = 0.5, 
+             angle = 90, 
+             vjust = 0)
+
+p_legend <- p_list1[[1]] %>% ggpubr::as_ggplot()
+
+p_list1[[1]] <- p_list1[[1]] + theme(legend.position = "none")
+
+for (i in 2:length(p_list1)){
+p_list1[[i]] <- p_list1[[i]] + theme(axis.text.y = element_blank(), 
+                                   axis.ticks.y = element_blank(), 
+                                   axis.title.y = element_blank()
+                                   ) + 
+  theme(legend.position = "none")
+}
+
+p4 <- plot_grid(plotlist = p_list1, nrow = 1, rel_widths = c(1.25, 1, 1, 1, 1), labels = NULL, align = "vh") + 
+          bgcolor("white") + 
+          border("white")
+
+
+ggsave2(paste0("../results/Fig3E.png"), 
+          plot_grid(y_label, p4, nrow = 1, rel_widths = c(0.05, 1), align = "h") + 
+          bgcolor("white") + 
+          border("white"),
+          width = 22, height = 10, unit = "cm")
+
+ggsave2(paste0("../results/Fig3E.pdf"), 
+          plot_grid(y_label, p4, nrow = 1, rel_widths = c(0.05, 1), align = "h") + 
+          bgcolor("white") + 
+          border("white"),
+          width = 22, height = 10, unit = "cm")
 
 
 ```
@@ -2423,8 +2261,10 @@ p_list[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i & gex.
                                        hjust = 1, 
                                        vjust = 0.5),
             plot.title = element_text(size = 12),
-            legend.position = "none") +
-      ylab("mutated bp (%)") +
+            plot.margin = unit(c(0, 0, 0, 0), "lines"),
+            legend.position = "none",
+            title = element_text(face = "bold")) +
+      ylab("VDJ mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
       scale_fill_discrete(name = "") +
@@ -2438,7 +2278,7 @@ p_list[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i & gex.
 
 #get label
 y_label <- ggdraw() + 
-  draw_label("mutated bp (%)", 
+  draw_label("VDJ, mutated bp (%)", 
              fontface = 'bold',
              #x = 0.1,
              hjust = 0.5, 
@@ -2472,11 +2312,43 @@ p2 <- plot_grid(y_label, p1,
 
 ggsave2(paste0("../results/Fig3F.png"),
         p_list[["Memory_Classical"]],
-          width = 15, height = 10, unit = "cm")
+          width = 18, height = 10, unit = "cm")
 
 ggsave2(paste0("../results/Fig3F.pdf"),
         p_list[["Memory_Classical"]],
-          width = 15, height = 10, unit = "cm")
+          width = 18, height = 10, unit = "cm")
+
+gap <- 0
+p3 <- plot_grid(plotlist = list(y_label, 
+                                p_list1[[1]],
+                                NULL,
+                                p_list1[[2]],
+                                NULL,
+                                p_list1[[3]],
+                                NULL,
+                                p_list1[[4]],
+                                NULL,
+                                p_list1[[5]],
+                                NULL,
+                                p_list[["Memory_Classical"]] + ylab("")), 
+                ncol = 12, labels = NULL, align = "hv", 
+                rel_widths = c(0.4, 1, gap, 1, gap, 1, gap, 1, gap, 1, 0.6, 3.5)) + 
+  bgcolor("white") + 
+  border("white")
+
+
+ggsave2(paste0("../results/Fig3E-F.png"),
+        plot_grid(p3, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
+  bgcolor("white") + 
+  border("white"),
+          width = 47, height = 10, unit = "cm")
+
+ggsave2(paste0("../results/Fig3E-F.pdf"),
+        plot_grid(p3, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
+  bgcolor("white") + 
+  border("white"),
+          width = 47, height = 10, unit = "cm")
+
 
 ggsave2(paste0("../results/SFig15.png"),
         plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
@@ -2489,6 +2361,7 @@ ggsave2(paste0("../results/SFig15.pdf"),
           bgcolor("white") + 
           border("white"),
           width = 30, height = 25, unit = "cm")
+
 
 ```
 
@@ -2869,15 +2742,9 @@ ggsave2(paste0("../results/SFig13B.pdf"),
 
 ```{r}
 
-# "cdr3_aa_length"               
-# "cdr3_aa_gravy"               
-# "cdr3_aa_bulk"                 
-# "cdr3_aa_aliphatic"
-# "cdr3_aa_polarity"             
-# "cdr3_aa_charge"              
-# "cdr3_aa_basic"               
-# "cdr3_aa_acidic"
-# "cdr3_aa_aromatic"
+cdr3_attr <- c("cdr3_aa_length", "cdr3_aa_gravy","cdr3_aa_bulk",
+               "cdr3_aa_aliphatic", "cdr3_aa_polarity", "cdr3_aa_charge", 
+               "cdr3_aa_basic", "cdr3_aa_acidic", "cdr3_aa_aromatic")
 
 #CDR3 aa length
 p1 <- ggplot(gex.meta,
@@ -2891,8 +2758,12 @@ p1 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("length (bp)") +
       xlab("") +
-      scale_y_continuous(limits = c(5, 28)) +
-      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
+      scale_y_continuous(limits = c(4, 31)) +
+      geom_violin(alpha = 0.8,
+              scale = "width",
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE,
+              na.rm = TRUE)
 
 
 #grand average of hydrophobicity
@@ -2907,8 +2778,12 @@ p2 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("hydrophobicity score") +
       xlab("") +
-      scale_y_continuous(limits = c(-2.5, 1.5)) +
-      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
+      scale_y_continuous(limits = c(-3, 3)) +
+      geom_violin(alpha = 0.8,
+              scale = "width",
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE,
+              na.rm = TRUE)
 
 
 #average bulkiness of amino acids
@@ -2923,8 +2798,12 @@ p3 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("average bulkiness of amino acids") +
       xlab("") +
-      scale_y_continuous(limits = c(10, 18)) +
-      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
+      scale_y_continuous(limits = c(5, 19)) +
+      geom_violin(alpha = 0.8,
+              scale = "width",
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE,
+              na.rm = TRUE)
 
 
 #cdr3_aa_aliphatic
@@ -2939,8 +2818,12 @@ p4 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("aliphatic index") +
       xlab("") +
-      scale_y_continuous(limits = c(0, 1.5)) +
-      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
+      scale_y_continuous(limits = c(0, 2.2)) +
+      geom_violin(alpha = 0.8,
+              scale = "width",
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE,
+              na.rm = TRUE)
 
 
 #cdr3_aa_polarity
@@ -2955,8 +2838,12 @@ p5 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("average polarity") +
       xlab("") +
-      scale_y_continuous(limits = c(7, 9)) +
-      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
+      scale_y_continuous(limits = c(6, 11)) +
+      geom_violin(alpha = 0.8,
+              scale = "width",
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE,
+              na.rm = TRUE)
 
 
 #cdr3_aa_charge
@@ -2971,8 +2858,12 @@ p6 <- ggplot(gex.meta,
             legend.position = "none") +
       ylab("net charge") +
       xlab("") +
-      scale_y_continuous(limits = c(-3, 3)) +
-      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
+      scale_y_continuous(limits = c(-7, 5)) +
+      geom_violin(alpha = 0.8,
+              scale = "width",
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE,
+              na.rm = TRUE)
 
 #cdr3_aa_basic
 p7 <- ggplot(gex.meta,
@@ -2987,7 +2878,11 @@ p7 <- ggplot(gex.meta,
       ylab("% of pos that are Arg, His or Lys") +
       xlab("") +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1L), limits = c(0, 0.5)) +
-      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
+      geom_violin(alpha = 0.8,
+              scale = "width",
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE,
+              na.rm = TRUE)
 
 
 #cdr3_aa_acidic
@@ -3003,7 +2898,11 @@ p8 <- ggplot(gex.meta,
       ylab("% of pos. that are Asp or Glu") +
       xlab("") +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1L), limits = c(0, 0.5)) +
-      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
+      geom_violin(alpha = 0.8,
+              scale = "width",
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE,
+              na.rm = TRUE)
 
 
 #cdr3_aa_aromatic
@@ -3019,7 +2918,11 @@ p9 <- ggplot(gex.meta,
       ylab("% of pos. that are His, Phe, Trp or Tyr") +
       xlab("") +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1L), limits = c(0, 0.5)) +
-      geom_boxplot(size = 0.3, alpha = 0.8, outlier.shape = NA, na.rm = TRUE)
+      geom_violin(alpha = 0.8,
+              scale = "width",
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE,
+              na.rm = TRUE)
 
 #get legend
 p_legend <- ggplot(gex.meta,
