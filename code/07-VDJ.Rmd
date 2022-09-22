@@ -592,11 +592,11 @@ for (i in as.character(sort(unique(cell_summary$c_gene_10x))) ){
                      ggtitle(paste0(j)) +
                      theme(legend.position = "none") +
                      scale_fill_manual(values = scales::hue_pal()(4)) +
-                     stat_compare_means(method = "t.test", 
+                     stat_compare_means(method = "wilcox.test", 
                                         comparisons = list(c("CTRL", "SSA-"), 
                                                            c("CTRL", "SSA+"), 
                                                            c("CTRL", "SSAB")), 
-                                        label = "p.format",
+                                        label = "p",
                                         size = 3.5 
                                         #vjust = 0.5
                                         ) +
@@ -1948,6 +1948,70 @@ for (i in c("png")){
 }
 
 
+p_list <- readRDS("../results/CDR3_lv_distance_heatmap_byGroup.rds")
+
+corder <- c(p_list$`SSA-`$tree_col$labels[p_list$`SSA-`$tree_col$order],
+  p_list$`SSA+`$tree_col$labels[p_list$`SSA+`$tree_col$order],
+  p_list$SSAB$tree_col$labels[p_list$SSAB$tree_col$order],
+  p_list$Corsiero_et_al$tree_col$labels[p_list$Corsiero_et_al$tree_col$order],
+  p_list$Visser_et_al$tree_col$labels[p_list$Visser_et_al$tree_col$order],
+  p_list$Wang_et_al$tree_col$labels[p_list$Wang_et_al$tree_col$order])
+  
+h1 <- pheatmap(res[corder, corder], 
+           show_rownames = FALSE, 
+           show_colnames = FALSE, 
+           filename = paste0("../results/Fig4D_test_.", "png"),
+           annotation_col = data.frame(group = factor(m$group), row.names = m$CDR3),
+           annotation_row = data.frame(group = factor(m$group), row.names = m$CDR3),
+           annotation_colors = ann_cols[1], 
+           legend = TRUE,
+           use_raster = TRUE,
+           cluster_rows = FALSE,
+           cluster_cols = FALSE)
+
+
+# cl1 <- paste0("SSA-", cutree(p_list$`SSA-`$tree_col, k = 4 ))
+# cl2 <- paste0("SSA+", cutree(p_list$`SSA+`$tree_col, k = 4 ))
+# cl3 <- paste0("SSAB", cutree(p_list$SSAB$tree_col, k = 4 ))
+# cl4 <- paste0("Corsiero", cutree(p_list$Corsiero_et_al$tree_col, k = 3 ))
+# cl5 <- paste0("Visser",cutree(p_list$Visser_et_al$tree_col, k = 3 ))
+# cl6 <- paste0("Wang", cutree(p_list$Wang_et_al$tree_col, k = 1 ))
+
+cl1 <- paste0("SSA-", cutree(p_list$`SSA-`$tree_col, k = 1))
+cl2 <- paste0("SSA+", cutree(p_list$`SSA+`$tree_col, k = 1 ))
+cl3 <- paste0("SSAB", cutree(p_list$SSAB$tree_col, k = 1 ))
+cl4 <- paste0("Corsiero", cutree(p_list$Corsiero_et_al$tree_col, k = 1 ))
+cl5 <- paste0("Visser",cutree(p_list$Visser_et_al$tree_col, k = 1 ))
+cl6 <- paste0("Wang", cutree(p_list$Wang_et_al$tree_col, k = 1 ))
+
+
+cl_all <- factor(c(cl1, cl2, cl3, cl4, cl5, cl6))
+
+o <- c(p_list$`SSA-`$tree_col$labels,
+       p_list$`SSA+`$tree_col$labels,
+       p_list$`SSAB`$tree_col$labels,
+       p_list$Corsiero_et_al$tree_col$labels,
+       p_list$Visser_et_al$tree_col$labels,
+       p_list$Wang_et_al$tree_col$labels)
+
+res2 <- rowsum(res[o, o], cl_all)/c(table(cl_all))
+res2 <- rowsum(t(res2), cl_all)/c(table(cl_all))
+res2 <- res2[ c(2:4, 1, 5:6), c(2:4, 1, 5:6)]
+
+h1 <- pheatmap(res2, 
+           show_rownames = TRUE, 
+           show_colnames = TRUE, 
+           filename = paste0("../results/Fig4D_test.", "png"),
+           #annotation_col = data.frame(group = factor(colnames(res2)), row.names = colnames(res2)),
+           #annotation_row = data.frame(group = factor(colnames(res2)), row.names = colnames(res2)),
+           #annotation_colors = ann_cols[1], 
+           legend = TRUE,
+           use_raster = TRUE,
+           cluster_rows = FALSE,
+           cluster_cols = FALSE)
+
+
+
 ```
 
 
@@ -2139,7 +2203,7 @@ ggsave2("../results/Fig3D.pdf",
           bgcolor("white") + 
           border("white"), 
         width = 20, height = 14, unit = "cm")
-
+dim(gex)
 
 ```
 
@@ -2147,6 +2211,13 @@ ggsave2("../results/Fig3D.pdf",
 #### plot Fig3E, total VDJ mutation frequency - celltypeMain - patient_group
 
 ```{r}
+
+meanlist <- list()
+for (i in sort(unique(gex.meta$cluster_cellType_manual_main))) {
+  gex.meta[gex.meta$cluster_cellType_manual_main == i, ] %>% 
+    
+  }
+
 
 p_list1 <- list()
 for (i in sort(unique(gex.meta$cluster_cellType_manual_main))) {
@@ -2171,16 +2242,14 @@ p_list1[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_main == i, ],
                   scale = "width",
                   draw_quantiles = c(0.25, 0.5, 0.75),
                   trim = TRUE) +
-      #geom_boxplot(na.rm = TRUE, outlier.shape = NA) +
       geom_jitter(size = 0.05, alpha = 0.05) +
       stat_compare_means(method = "t.test", 
                          comparisons = list(#c("CTRL", "SSA-"), 
                                             #c("CTRL", "SSA+"), 
                                             c("CTRL", "SSAB")), 
-                         label = "p.format",
+                         label = "p",
                          size = 3.5,
                          method.args = list(exact = TRUE)
-                         #vjust = 0.5
                          )
   }
 
@@ -2635,7 +2704,7 @@ ggsave2(paste0("../results/SFig12B.pdf"),
 ```
 
 
-#### plot SFig13A, CDR3 mutation count ratio R/S - cell type fine - patient_group,
+#### plot SFig13A, CDR3 mutation count ratio R/S - cell type fine - patient_group, celltypeMain
 
 ```{r}
 gex.meta$mu_count_cdr3_RSratio <- log2((gex.meta$mu_count_cdr3_r + 1) / 
@@ -2649,7 +2718,7 @@ gex.meta$mu_count_cdr3_RSratio[(gex.meta$mu_count_cdr3_r +
 nrow(gex.meta[!is.na(gex.meta$mu_count_cdr3_RSratio), ])
 
 p2 <- ggplot(gex.meta, 
-             aes(x = cluster_cellType_manual_fine, 
+             aes(x = cluster_cellType_manual_main, 
                  y = mu_count_cdr3_RSratio, 
                  fill = patient_group)) +
       theme_classic() +
@@ -2670,11 +2739,11 @@ p2 <- ggplot(gex.meta,
 
 ggsave2(paste0("../results/SFig13A.png"), 
           p2,
-          width = 30, height = 10, unit = "cm")
+          width = 20, height = 10, unit = "cm")
 
 ggsave2(paste0("../results/SFig13A.pdf"), 
           p2,
-          width = 30, height = 10, unit = "cm")
+          width = 20, height = 10, unit = "cm")
 
 
 ```
@@ -2736,6 +2805,61 @@ ggsave2(paste0("../results/SFig13B.pdf"),
 
 ```
 
+#### plot SFig13B, fraction of CDR3 mutated cells per sample and celltypeMain
+
+```{r}
+
+p3 <- as_tibble(gex.meta) %>% 
+  select(cluster_cellType_manual_main, 
+         patient_group,
+         orig.ident,
+         mu_count_cdr3_r, 
+         mu_count_cdr3_s) %>% 
+  replace_na(list(mu_count_cdr3_r = 0, mu_count_cdr3_s = 0)) %>%
+  mutate(mu_cdr3_binary = mu_count_cdr3_r,
+         mu_cdr3_binary = (mu_cdr3_binary > 0) * 1,
+         mu_cdr3_binary = recode(mu_cdr3_binary, `0` = "Unmutated", `1` = "Mutated")) %>%
+  group_by(cluster_cellType_manual_main,
+           patient_group,
+           orig.ident, 
+           mu_cdr3_binary) %>%
+  summarise(cdr3_n = n()) %>%
+  mutate(cdr3_freq = cdr3_n / sum(cdr3_n)) %>% 
+  filter(mu_cdr3_binary == "Mutated") %>%
+  ggplot(aes(x = cluster_cellType_manual_main, 
+             y = cdr3_freq, 
+             fill = patient_group)) +
+  geom_violin(alpha = 0.8, 
+              scale = "width", 
+              draw_quantiles = c(0.25, 0.5, 0.75),
+              trim = TRUE) +
+  geom_jitter(size = 0.05, alpha = 0.05) +
+  ylab("Proportion of cells with \nreplacement mutations within CDR3") +
+  xlab("") +
+  ggtitle("Replacement mutations in CDR3") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   hjust = 1, 
+                                   vjust = 0.5),
+        plot.title = element_text(size = 12),
+        legend.title = element_blank()) +
+  stat_compare_means(method = "anova", hide.ns = TRUE, label = "p.signif") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1L), name = "") 
+
+ggsave2(paste0("../results/SFig13B.png"), 
+          plot_grid(p3, labels = NULL, align = "h")+ 
+          bgcolor("white") + 
+          border("white"),
+          width = 20, height = 10, unit = "cm")
+
+ggsave2(paste0("../results/SFig13B.pdf"), 
+          plot_grid(p3, labels = NULL, align = "h")+ 
+          bgcolor("white") + 
+          border("white"),
+          width = 20, height = 10, unit = "cm")
+
+
+```
 
 ## CDR3 attributes
 #### plot SFig14, CDR3 aa attributes

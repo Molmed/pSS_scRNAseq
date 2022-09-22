@@ -157,11 +157,16 @@ DGE_list_out <- lapply(DGE_list, function(x){
   
 })
 
+
+
 DGE_list_out <- as.data.frame(do.call(rbind, DGE_list_out))
 
 write.csv(DGE_list_out, 
           paste0("../results/DGE_B-cells_celltypeMain_all_FDR", FDR_cutoff, ".csv"), 
           row.names = FALSE)
+
+# DGE_list_out[ ,c("celltypeMain", "gene")] %>% arrange(gene)
+# sort(table(DGE_list_out$gene), decreasing = T)
 
 
 ```
@@ -227,15 +232,11 @@ DGE_list_p <- lapply(DGE_list, function(a) {
 
   return(a)
   
-  rm(gex_tmp)
-  rm(p)
-  rm(x)
-  rm(y)
-  rm(exp)
-  rm(a)
+  rm(gex_tmp, p, x, y, exp, a)
   
-   }
-  )
+  }
+  
+)
 
 
 ####---- plot dotplots to list
@@ -309,6 +310,27 @@ ggsave2("../results/Fig2A.pdf",
 
 
 ```
+
+
+### IFN response genes in DE list ?
+```{r}
+
+DGE_list_p_df <- as.data.frame(do.call(rbind, DGE_list_p))
+DGE_list_p_df[ ,c("celltypeMain", "gene")] %>% arrange(gene)
+
+
+# get hallmark gene sets
+HM <- getGenesets("/Users/gusarv/Downloads/MSigDB_Hallmark_2020.txt")
+
+IFN <- unique(c(HM$`Interferon Alpha Response`, 
+                HM$`Interferon Gamma Response`))
+  
+DGE_list_p_df_ifn <- DGE_list_p_df[DGE_list_p_df$gene %in% IFN, ]
+DGE_list_p_df_ifn[ ,c("celltypeMain", "gene")] %>% arrange(gene)
+
+
+```
+
 
 
 ## enrichment tests for celltypesMain (MSigDB_Hallmark_2020 and GO_Biological_Process_2021)

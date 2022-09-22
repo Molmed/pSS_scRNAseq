@@ -634,7 +634,7 @@ p_out[[i]] <- ggplot(cell_summary[cell_summary$cluster_cellType_manual_main == i
                      geom_violin(scale = "width", 
                                  draw_quantiles = c(0.25, 0.5, 0.75),
                                  trim = TRUE,
-                                 alpha = 0.8) + 
+                                 alpha = 0.8) +
                      geom_jitter(size = 0.3) +
                      ylab("") + 
                      xlab("") +
@@ -644,8 +644,9 @@ p_out[[i]] <- ggplot(cell_summary[cell_summary$cluster_cellType_manual_main == i
                                         comparisons = list(c("CTRL", "SSA-"), 
                                                            c("CTRL", "SSA+"), 
                                                            c("CTRL", "SSAB")), 
-                                        label = "p.format",
-                                        size = 3.5 
+                                        label = "p",
+                                        size = 3.5 #,
+                                        #label.y = c(29, 35, 40)
                                         #vjust = 0.5
                                         ) +
                      theme(axis.text.x = element_text(angle = 90, 
@@ -657,6 +658,9 @@ p_out[[i]] <- ggplot(cell_summary[cell_summary$cluster_cellType_manual_main == i
                      scale_y_continuous(labels = scales::percent_format(accuracy = 1L), 
                                         limits = c(0, (maxval * 1.4)))
 }
+
+
+#compare_means(len ~ supp, data = ToothGrowth)
 
 #draw y label
 y_label <- ggdraw() + 
@@ -692,6 +696,19 @@ ggsave2("../results/Fig1F.pdf",
           border("white"), 
         width = 25, height = 9, unit = "cm")
 
+
+c1 <- c(table(gex$cluster_cellType_manual_main))["Naive"]/ ncol(gex) #0.5103686
+c2 <- table(gex$cluster_cellType_manual_main)["Memory_DN"]/ncol(gex) #0.1571336
+c3 <- table(gex$cluster_cellType_manual_main)["Memory_IgM"]/ncol(gex) # 0.1239884
+c4 <- table(gex$cluster_cellType_manual_main)["Memory_Classical"]/ncol(gex) #0.07606669
+c5 <- table(gex$cluster_cellType_manual_main)["Transitional"]/ncol(gex) # 0.06464936
+
+c6 <- table(gex$cluster_cellType_manual_main)["Memory_Stressed"]/ncol(gex) # 0.06129006
+c7 <- table(gex$cluster_cellType_manual_main)["Memory_Platelet"]/ncol(gex) # 0.006098428
+c8 <- table(gex$cluster_cellType_manual_main)["Plasma_cell"]/ncol(gex) # 0.0004048391
+
+sum(c1, c2, c3, c4, c5) #0.9322067
+sum(c1, c2, c3, c4, c5, c6, c7) #0.9322067
 
 ```
 

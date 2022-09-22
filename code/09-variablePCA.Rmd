@@ -547,7 +547,7 @@ p5.1 <- ggplot(p_pheno[1:15, ], aes(x = -log10(PC1),
 
 ```{r}
 
-ggsave2(paste0("../results/Fig5_A-C_2.png"),
+ggsave2(paste0("../results/Fig5_A-C.png"),
           plot_grid(p1.1, p3.1, p5.1, 
                     nrow = 1, 
                     ncol = 3, 
@@ -558,7 +558,7 @@ ggsave2(paste0("../results/Fig5_A-C_2.png"),
           border("white"),
           width = 42, height = 12, unit = "cm")
 
-ggsave2(paste0("../results/Fig5_A-C_2.pdf"),
+ggsave2(paste0("../results/Fig5_A-C.pdf"),
           plot_grid(p1.1, p3.1, p5.1, 
                     nrow = 1, 
                     ncol = 3, 
@@ -719,7 +719,7 @@ p1 <- plot_grid(plotlist = p_list_PC1[pheno_var[1:15]],
           bgcolor("white") + 
           border("white")
 
-ggsave2(paste0("../results/SFig19_2.png"),
+ggsave2(paste0("../results/SFig19.png"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -729,7 +729,7 @@ ggsave2(paste0("../results/SFig19_2.png"),
           border("white"),
           width = 20, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig19_2.pdf"),
+ggsave2(paste0("../results/SFig19.pdf"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -904,22 +904,22 @@ p2.2 <- plot_grid(p2.1, p_legend,
           border("white")
 
 
-ggsave2(paste0("../results/Fig5D-E_2.png"),
+ggsave2(paste0("../results/Fig5D-E.png"),
           plot_grid(p1.2, NULL, p2.2, 
                     ncol = 3, 
                     labels = NULL, 
                     align = "hv",
-                    rel_widths = c(1, 0.1, 1.2)) + 
+                    rel_widths = c(1, 0.1, 1.3)) + 
           bgcolor("white") + 
           border("white"),
           width = 45, height = 18, unit = "cm", dpi = 200)
 
-ggsave2(paste0("../results/Fig5D-E_2.pdf"),
+ggsave2(paste0("../results/Fig5D-E.pdf"),
           plot_grid(p1.2, NULL, p2.2, 
                     ncol = 3, 
                     labels = NULL, 
                     align = "hv",
-                    rel_widths = c(1, 0.1, 1.2)) + 
+                    rel_widths = c(1, 0.1, 1.3)) + 
           bgcolor("white") + 
           border("white"),
           width = 45, height = 18, unit = "cm", dpi = 200)
