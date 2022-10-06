@@ -3,6 +3,7 @@
 ####----- read pheno file
 
 pheno <- as.data.frame(read_excel("/Users/gusarv/Documents/projekt/SjS/Info/pheno/24_clin_data_all_220411GN_forR.xlsx"))
+#pheno <- as.data.frame(read_excel("/Users/gusarv/Documents/projekt/SjS/Info/pheno/24_clin_data_all_220411GN_forR.xlsx"))
 
 pheno <- pheno[, c("Single cell_Sample_id_publ",
                    "Age symptom onset",
@@ -69,7 +70,5 @@ pheno$patient_group <- factor(pheno$patient_group, levels = names(pat_annot))
 rownames(pheno) <- pheno$orig.ident
 
 saveRDS(pheno, paste0("../results/pheno_", Sys.Date(), ".rds"))
-
-
 
 

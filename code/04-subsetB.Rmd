@@ -14,8 +14,7 @@ source("./00a_dependencies.R")
 ```
 
 
-## load data, filter to only include B cell clusters and remove sample P024 
-### (containing a low number of B cells and plasma cells)
+## load data, filter to only include B cell clusters and remove sample P024 (containing a low number of B cells and plasma cells)
 
 ```{r}
 

@@ -56,7 +56,7 @@ p2 <- LabelPoints(plot = VariableFeaturePlot(gex),
         theme_classic() +
         ggtitle(paste0(length(VariableFeatures(gex)), " Variable features - allCells (protein_coding)"))
 
-ggsave2("../results/VariableFeatures_allCells.png", 
+ggsave2("../results/GEX_variableFeatures_allCells.png", 
         plot_grid(p1, p2, ncol = 2, labels = "AUTO", align = "h"), 
         width = 30, height = 15, unit = "cm")
 
@@ -136,7 +136,7 @@ p2 <- DimPlot(object = gex,
                   NoLegend() +
                   ggtitle("Harmony_1, by Sample")
 
-ggsave2("../results/PCA_harmony_allCells_.png", 
+ggsave2("../results/GEX_PCA_harmony_allCells.png", 
         plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h"), 
         width = 30, height = 15, unit = "cm")
 
@@ -181,30 +181,6 @@ gex <- FindClusters(gex,
                     resolution = 0.4, 
                     verbose = TRUE, 
                     graph.name = "RNA_nn")
-
-table(gex@meta.data$seurat_clusters)
-
-```
-
-
-## hclust - check cluster relations
-
-```{r}
-
-cluster_means <-
-  sapply(as.character(unique(gex$seurat_clusters)), function(x) {
-    rowMeans(gex@assays$RNA@data[, gex$seurat_clusters == x])
-  })
-
-adj <- (1 - cor(cluster_means)) / 2
-h <- hclust(as.dist(adj), method = "ward.D2")
-
-png("../results/hclust_clusters_allCells.png", 
-    width = 1500, 
-    height = 1500, 
-    units = "px")
-plot(as.dendrogram(h))
-dev.off()
 
 
 ```
@@ -287,11 +263,11 @@ gex$celltype <- as.factor(gex$celltype)
 
 ```
 
+
 ## plot
-### plot Fig1B, UMAP of allCells
+### plot SFig1A, Celltypes per sample
 
 ```{r}
-
 
 p3 <- DimPlot(gex, 
                reduction = "umap_1", 
@@ -308,21 +284,6 @@ p3 <- DimPlot(gex,
                 axis.ticks = element_blank(),
                 legend.position = "none",
                 plot.title = element_text(hjust = 0))
-
-ggsave2("../results/Fig1B.png", 
-        p3, 
-        width = 12, height = 12, unit = "cm", dpi = 300)
-
-counts <- as.data.frame.matrix(table(gex@meta.data$celltype, gex@meta.data$orig.ident))
-write.csv(counts, "../results/cellcounts_celltypes_orig.ident_GEX3_DIMRED1.csv", row.names = TRUE)
-
-
-```
-
-
-### plot SFig1A, Celltypes per sample
-
-```{r}
 
 cells <- as_tibble(gex@meta.data) %>%
   group_by(orig.ident) %>%

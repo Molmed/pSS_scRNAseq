@@ -39,9 +39,6 @@ annot[!grepl("^chr[123456789XYMT]", annot[, "chromosome_name"]), "chromosome_nam
 saveRDS(annot, "../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
 #annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
 
-cat("head(annot): \n")
-print(head(annot))
-
 
 ```
 
@@ -50,7 +47,7 @@ print(head(annot))
 
 ```{r}
 
-#scDblFinder requires around 3 min for this data set using 16 cores
+# scDblFinder requires around 3 min for this data set using 16 cores
 gex <-
   as.Seurat(
     scDblFinder(
@@ -130,7 +127,7 @@ discarded_stats <- as_tibble(gex@meta.data) %>%
   )
 
 write.csv(discarded_stats, 
-          paste0("../results/stats_discarded.csv"), 
+          paste0("../results/GEX_stats_discarded.csv"), 
           row.names = FALSE, 
           quote = FALSE)
 
@@ -149,7 +146,7 @@ p_discarded_stats <- discarded_stats %>%
                      sum(discarded_stats$cells), "/", 
                      sum(discarded_stats$total_discarded), ")"))
 
-ggsave2(paste0("../results/Discarded_cellcounts.png"), 
+ggsave2(paste0("../results/GEX_discarded_cellcounts.png"), 
           p_discarded_stats,
           width = 25, height = 20, unit = "cm")
 
@@ -197,7 +194,7 @@ p_legend <- plotColData(as.SingleCellExperiment(gex),
 
 p_out[["legend"]] <- get_legend(p_legend) %>% ggpubr::as_ggplot()
 
-ggsave2(paste0("../results/SFigXX.png"), 
+ggsave2(paste0("../results/SFig23.png"), 
         plot_grid(plotlist = p_out, ncol = 2, labels = NULL, align = "hv") + 
           bgcolor("white") + 
           border("white"),

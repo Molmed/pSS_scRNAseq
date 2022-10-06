@@ -200,7 +200,7 @@ HM <- getGenesets("/Users/gusarv/Downloads/MSigDB_Hallmark_2020.txt")
 
 IFN <- unique(c(HM$`Interferon Alpha Response`, 
                 HM$`Interferon Gamma Response`))
-
+sort(IFN)
 #cluster_cellType_manual_main
 ALL_expr <- AggregateExpression(gex.slim,
                                 slot = "counts",
@@ -461,18 +461,11 @@ pc_out_ld$category <- colors_df$category[match(pc_out_ld$var, colors_df$names)]
   
   #scatterplot loadings
   tmp1 <- pc_out_ld %>% 
-    arrange(desc(PC1)) %>% 
+    select(PC1, PC2) %>% 
+    arrange(desc(PC1), desc(PC2)) %>% 
     slice(c(1:nvar, (nrow(pc_out_ld) - nvar + 1):nrow(pc_out_ld)))
   
-  tmp2 <- pc_out_ld %>% 
-    arrange(desc(PC1)) %>% 
-    slice(c(1:nvar, (nrow(pc_out_ld) - nvar + 1):nrow(pc_out_ld)))
-  
-  tmp3 <- full_join(tmp1, tmp2, by = "variable", copy = FALSE, suffix = c("", ""))
-  
-  tmp3$variable[c(1:8, 17:24)]
-  
-  p3.1 <- ggplot(tmp3) + 
+  p3.1 <- ggplot(tmp1) + 
     geom_text_repel(size = 3,
                     aes(x = PC1, 
                         y = PC2, 

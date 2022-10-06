@@ -21,73 +21,13 @@ source("./00a_dependencies.R")
 
 gex <- readRDS("../results/GEX5_DIMRED2.rds")
 
-#add patient group
-colnames(gex@meta.data)[colnames(gex@meta.data) == "patient_group"] <- "patient_group1"
-pat_annot <- c(CTRL = "CTRL", `SSA-` = "DNEG", `SSA+` = "SSA", `SSAB` = "SSAB")
-gex$patient_group <- names(pat_annot)[match(gex$patient_group1, pat_annot)]
-gex$patient_group <- factor(gex$patient_group, levels = names(pat_annot))
-
-
 ```
 
 ## colors - cellType 
 
 ```{r}
 
-#create named color vector
-colors_cellType <- c(naive= rev(brewer.pal(7, "Greens")),
-                     dn = brewer.pal(5, "Blues"),
-                     memory = brewer.pal(6, "YlOrRd"),
-                     memory_stressed = c("gray80", "gray60", "gray40"),
-                     memory_platelet = brewer.pal(3, "RdPu")[2],
-                     plasma_cells = brewer.pal(3, "Purples")[3])
-#show_col(colors_cellType)
-
-# 23 cell clusters:
-# Naive 7 - green
-# DN 5 - blue
-# Memory_IgM - ?
-# Memory_Classical - ?
-# Memory_Stressed 3 - gray
-# Memory_Platelet 1 - pink
-# Plasma_cells 1 - purple
-
-#names(table(gex$cluster_cluster_cellType_manual_fine))
-colors_clusters <- colors_cellType[c("naive1", "naive2", "naive3", 
-                                   "memory1", "naive4", "memory2",
-                                   "naive4", "dn1", "memory_stressed1", 
-                                   "dn2", "naive5", "dn3", 
-                                   "memory3", "dn4", "memory4",
-                                   "dn5", "memory5", "memory4", 
-                                   "memory_stressed2", "memory_platelet", "naive6",
-                                   "memory_stressed3", "plasma_cells")] 
-
-# cellTypeFine (16)
-#table(gex$cluster_cellType_manual_fine)
-colors_cellTypeFine <- colors_cellType[c("memory5",
-                                         "dn1", "dn2", "dn3", "dn4", "dn5",
-                                         "memory1", "memory3", "memory4", 
-                                         "memory_platelet",
-                                         "memory_stressed1", "memory_stressed2",
-                                         "naive2", "naive4", "naive6", 
-                                         "plasma_cells")]
-
-# cellTypeMain (7)
-#table(gex$cluster_cellType_manual_main)
-colors_cellTypeMain <- colors_cellType[c("memory5", "dn3", "memory3", "memory_platelet", "memory_stressed1",
-                                         "naive4", "plasma_cells", "naive6")]
-
-#show_col(colors_cellTypeMain)
-
-# cellType scpred
-colors_scpred1 <- colors_cellType[c("memory5", "dn3", "memory3", 
-                                    "naive2", "naive4", "memory_stressed1")] #6
-
-colors_scpred2 <- colors_cellType[c("memory5", "memory4", 
-                                    "dn2", "dn3", "dn4", "dn5", 
-                                    "memory2", "memory1",
-                                    "naive2", "naive4", "memory_stressed1")] #11
-
+source("./00c_colors.R")
 
 ```
 
@@ -151,25 +91,23 @@ dev.off()
 #https://pubmed.ncbi.nlm.nih.gov/33815362/
 
 #Transitional (CD19+IgD+CD27-CD10+)
-#Na??ve (CD19+IgD+CD27-CD10-)
+#Naive (CD19+IgD+CD27-CD10-)
 #IgM Memory (CD19+IgD+CD27+)
 #Classical Memory (CD19+IgD-CD27+)
 #Double Negative (CD19+IgD-CD27-)
 
 stewart <- readRDS("../suppl/Stewart_et_al_2021/E-MTAB-9544_rds/scPure2_HB6_UMAP3D.rds")
 
-#VlnPlot(stewart, c("nCount_RNA","nFeature_RNA", "percent.mt"), group.by = "library_id")
-
 #filter and process
 stewart <- subset(stewart, subset = nFeature_RNA > 200 & nFeature_RNA < 3000 & percent.mt < 10)
-#stewart <- stewart[rowSums(stewart@assays$RNA@counts) != 0, ]
+stewart <- stewart[rowSums(stewart@assays$RNA@counts) != 0, ]
 
-# stewart <- stewart %>%
-#   NormalizeData() %>% 
-#   FindVariableFeatures() %>% 
-#   ScaleData() %>% 
-#   RunPCA() %>% 
-#   RunUMAP(dims = 1:50)
+stewart <- stewart %>%
+   NormalizeData() %>%
+   FindVariableFeatures() %>%
+   ScaleData() %>%
+   RunPCA() %>%
+   RunUMAP(dims = 1:50)
 
 
 ####------------- per sorted cell type
@@ -249,6 +187,7 @@ names(gex@meta.data)[names(gex@meta.data) == scPredcols[3]] <- paste0(scPredcols
 ## add cellType predictions to seurat object
 
 ```{r}
+
 ####---- add cluster cell type classification based on majority fraction of predicted cell type in cluster
 annot.df <- data.frame(cluster = rownames(hm1), 
                        annot_sort = colnames(hm1)[apply(hm1, 1, which.max)], 
@@ -323,9 +262,9 @@ annotation_main <- c(
   Plasma_cell = 22
 )
 
-
 gex@meta.data["cluster_cellType_manual_main"] <- names(annotation_main)[match(gex$seurat_clusters,
                                                                      annotation_main)] 
+
 
 ```
 
@@ -422,7 +361,10 @@ p1 <- DimPlot(gex,
               reduction = "umap_2", 
               group.by = "cluster_cellType_manual_fine",
               pt.size = 0.1, 
-              cols = unname(colors_cellTypeFine)) + 
+              cols = unname(colors_cellTypeFine),
+              shuffle = TRUE,
+              raster = TRUE,
+              raster.dpi = c(1024, 1024)) + 
   xlab("UMAP 1") + 
   ylab("UMAP 2") + 
     theme(plot.title = element_blank(),
@@ -451,13 +393,7 @@ for (i in ig.features) {
 
 p2 <- plot_grid(plotlist = p, ncol = 3, align = "hv", scale = 1.1) 
 
-ggsave2(paste0("../results/Fig1B-C.png"), 
-        plot_grid(p1, p2, 
-                  ncol = 2, 
-                  rel_widths = c(1.1, 1)) + 
-          bgcolor("white") + 
-          border("white"), 
-        width = 29, height = 15, unit = "cm")
+
 
 ggsave2(paste0("../results/Fig1B-C.pdf"), 
         plot_grid(p1, p2, 
@@ -465,7 +401,30 @@ ggsave2(paste0("../results/Fig1B-C.pdf"),
                   rel_widths = c(1.1, 1)) + 
           bgcolor("white") + 
           border("white"), 
-        width = 29, height = 15, unit = "cm")
+        width = 29, height = 15, unit = "cm", dpi = 300)
+
+p1 <- DimPlot(gex, 
+              reduction = "umap_2", 
+              group.by = "cluster_cellType_manual_fine",
+              pt.size = 0.05,
+              shuffle = TRUE,
+              cols = unname(colors_cellTypeFine),
+              raster = FALSE) + 
+  xlab("UMAP 1") + 
+  ylab("UMAP 2") + 
+    theme(plot.title = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          legend.position = "bottom",
+          legend.text = element_text(size = 6.5, face = "bold" ))
+
+ggsave2(paste0("../results/Fig1B-C.png"), 
+        plot_grid(p1, p2, 
+                  ncol = 2, 
+                  rel_widths = c(1.1, 1)) + 
+          bgcolor("white") + 
+          border("white"), 
+        width = 43.5, height = 22.5, unit = "cm", dpi = 300)
 
 
 ```
@@ -508,9 +467,6 @@ ggsave2(paste0("../results/Fig1D.pdf"),
 
 
 ```
-
-
-
 
 
 ###  plot Fig1E, patient subtypes per cell type main
@@ -583,21 +539,14 @@ ggsave2("../results/Fig1E.pdf",
         width = 11, height = 8, unit = "cm")
 
 
-(table(gex$cluster_cellType_manual_fine)["Naive"] +
-  table(gex$cluster_cellType_manual_fine)["Naive_IFN"]) / ncol(gex) #0.5101796
-
-table(gex$cluster_cellType_manual_fine)["Naive"] / ncol(gex) #0.4536527 
-table(gex$cluster_cellType_manual_fine)["Memory_IgM"]/ncol(gex) #0.09386987
-table(gex$cluster_cellType_manual_fine)["Memory_Cl"]/ncol(gex) #0.07603787
-
 ```
 
 
-### plot Fig1F, violins split by cell type main (test)
+### plot Fig1F, violins split by cell type main
 
 ```{r}
 
-# add violin plot for Fig1F per celltype fine per orig.ident/patient_group
+# violin plot per celltype main per orig.ident/patient_group
 cell_summary <- as_tibble(gex@meta.data) %>%
   select(orig.ident, cluster_cellType_manual_main, patient_group) %>%
   add_count(orig.ident, cluster_cellType_manual_main, .drop = FALSE) %>%
@@ -659,9 +608,6 @@ p_out[[i]] <- ggplot(cell_summary[cell_summary$cluster_cellType_manual_main == i
                                         limits = c(0, (maxval * 1.4)))
 }
 
-
-#compare_means(len ~ supp, data = ToothGrowth)
-
 #draw y label
 y_label <- ggdraw() + 
   draw_label("proportion of cells in sample", 
@@ -696,19 +642,6 @@ ggsave2("../results/Fig1F.pdf",
           border("white"), 
         width = 25, height = 9, unit = "cm")
 
-
-c1 <- c(table(gex$cluster_cellType_manual_main))["Naive"]/ ncol(gex) #0.5103686
-c2 <- table(gex$cluster_cellType_manual_main)["Memory_DN"]/ncol(gex) #0.1571336
-c3 <- table(gex$cluster_cellType_manual_main)["Memory_IgM"]/ncol(gex) # 0.1239884
-c4 <- table(gex$cluster_cellType_manual_main)["Memory_Classical"]/ncol(gex) #0.07606669
-c5 <- table(gex$cluster_cellType_manual_main)["Transitional"]/ncol(gex) # 0.06464936
-
-c6 <- table(gex$cluster_cellType_manual_main)["Memory_Stressed"]/ncol(gex) # 0.06129006
-c7 <- table(gex$cluster_cellType_manual_main)["Memory_Platelet"]/ncol(gex) # 0.006098428
-c8 <- table(gex$cluster_cellType_manual_main)["Plasma_cell"]/ncol(gex) # 0.0004048391
-
-sum(c1, c2, c3, c4, c5) #0.9322067
-sum(c1, c2, c3, c4, c5, c6, c7) #0.9322067
 
 ```
 
@@ -766,7 +699,6 @@ p <- DimPlot(gex,
     theme(axis.text = element_blank(),
           axis.ticks = element_blank(),
           plot.title = element_blank())
-
 
 ggsave2(paste0("../results/SFig3A.png"), 
         p, 
@@ -912,24 +844,14 @@ ggsave2("../results/SFig3D.pdf",
         width = 25, height = 10, unit = "cm")
 
 
-(table(gex$cluster_cellType_manual_fine)["Naive"] +
-  table(gex$cluster_cellType_manual_fine)["Naive_IFN"]) / ncol(gex) #0.5103686
-
-table(gex$cluster_cellType_manual_fine)["Naive"] / ncol(gex) #0.4538247 
-
-table(gex$cluster_cellType_manual_fine)["Memory_IgM"]/ncol(gex) #0.09387099 
-
-table(gex$cluster_cellType_manual_fine)["Memory_Classical"]/ncol(gex) #0.07606669
-
-
 ```
 
 
-### plot SFig3E, violins split by cell type (fine)
+### plot SFig3E, violins split by cell type fine
 
 ```{r}
 
-# add violin plot for Fig1F per celltype fine per orig.ident/patient_group
+# violin plot per celltype fine per orig.ident/patient_group
 cell_summary <- as_tibble(gex@meta.data) %>%
   select(orig.ident, cluster_cellType_manual_fine, patient_group) %>%
   add_count(orig.ident, cluster_cellType_manual_fine, .drop = FALSE) %>%
@@ -938,7 +860,7 @@ cell_summary <- as_tibble(gex@meta.data) %>%
   mutate(per =  prop.table(n)) %>%
   drop_na()
 
-# reorder factor for celltypeFine to match the Fig1E
+# reorder factor for celltypeFine to match the SFig3D
 theorder <- unique(names(sort(table(gex@meta.data$cluster_cellType_manual_fine)[gex@meta.data$cluster_cellType_manual_fine], decreasing = TRUE)))
 cell_summary$cluster_cellType_manual_fine <- factor(cell_summary$cluster_cellType_manual_fine,
                                          levels = theorder)
@@ -1045,6 +967,3 @@ saveRDS(gex, file = "../results/GEX6_BANNOT.rds")
 sessionInfo()
 
 ```
-
-
-

@@ -50,7 +50,7 @@ gex <- CreateSeuratObject(gex_data,
 
 counts <- as.data.frame(table(gex@meta.data$orig.ident))
 colnames(counts) <- c("sample", "cells")
-write.csv(counts, "../results/cellcounts_GEX1_RAW.txt")
+write.csv(counts, "../results/GEX_cellcounts_RAW.txt")
 
 
 ####-----  rm tmp objects
@@ -60,28 +60,30 @@ rm(samples, samples.dirs, gex_data)
 gex@meta.data$orig.ident <- gsub("P007[ab]", "P007", gex@meta.data$orig.ident)
 gex@meta.data$orig.ident <- gsub("P008[ab]", "P008", gex@meta.data$orig.ident)
 
+
 ```
 
 
-## add pheno info
+## load pheno file
 
 ```{r}
 
-pheno <- read.table("../suppl/pheno/pSS_pheno_211208.csv", sep = ",", header = TRUE)
-colnames(pheno)[c(1, 3)] <- c("Sample_id", "orig.ident")
-pheno$orig.ident <- gsub("P007[ab]", "P007", pheno$orig.ident)
-pheno$orig.ident <- gsub("P008[ab]", "P008", pheno$orig.ident)
-pheno <- unique(pheno[, c(1, 3, 5, 7:8, 11:12)])
-head(pheno); dim(pheno)
 
-pheno$patient_group <- paste0(ifelse(pheno$SSA == "YES", "SSA", ""), 
-                            "_", 
-                            ifelse(pheno$SSB == "YES", "SSB", ""))
-pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
-pheno$patient_group <- names(pat_annot)[match(pheno$patient_group, pat_annot)]
-pheno$patient_group[grep("^C00", pheno$orig.ident) ] <- "CTRL"
-pheno$patient_group <- factor(pheno$patient_group, levels = c("CTRL", "DNEG", "SSA", "SSAB"))
+source("./00b_pheno.R")
 
+#Four non-overlapping groups
+#1. SSAB: SSA+/SSB+
+#2. SSA+: SSA+/SSB-
+#3. SSA-: SSA-/SSB-
+#4. CTRL: CTRL
+
+
+```
+
+
+## add pheno info to gex
+
+```{r}
 
 meta.data.tmp <- gex@meta.data
 meta.data.tmp$cell <- row.names(meta.data.tmp)
@@ -89,26 +91,10 @@ meta.data.tmp <- merge(meta.data.tmp, pheno, by = "orig.ident", all.x = TRUE)
 row.names(meta.data.tmp) <- meta.data.tmp$cell
 meta.data.tmp$cell <- NULL
 
-gex <- AddMetaData(gex, meta.data.tmp); head(gex@meta.data); table(gex@meta.data$orig.ident)
+gex <- AddMetaData(gex, meta.data.tmp)
 
 Idents(object = gex) <- "orig.ident"
 
-
-```
-
-
-## Add patient group
-
-```{r}
-
-gex$patient_group <- paste0(ifelse(gex$SSA == "YES", "SSA", ""), 
-                            "_", 
-                            ifelse(gex$SSB == "YES", "SSB", ""))
-
-pat_annot <- c(SSAB = "SSA_SSB", SSA = "SSA_", DNEG="NA_NA", DNEG="_")
-gex$patient_group <- names(pat_annot)[match(gex$patient_group, pat_annot)]
-gex$patient_group[grep("^C00", gex$orig.ident) ] <- "CTRL"
-gex$patient_group <- factor(gex$patient_group, levels = c("CTRL", "DNEG", "SSA", "SSAB"))
 
 ```
 
