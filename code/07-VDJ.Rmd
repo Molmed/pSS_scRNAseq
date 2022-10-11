@@ -1500,7 +1500,7 @@ dev.off()
 ####---------
 #1)
 #Corsiero_et_al_2014
-#Accumulation of self-reactive na??ve and memory B cell reveals sequential defects in B cell tolerance checkpoints in Sj??gren's syndrome
+#Accumulation of self-reactive naive and memory B cell reveals sequential defects in B cell tolerance checkpoints in Sjögren's syndrome
 #https://pubmed.ncbi.nlm.nih.gov/25535746/
 
 corsiero_2 <- read_excel("../suppl/Corsiero_et_al_2014/STable2.xlsx")

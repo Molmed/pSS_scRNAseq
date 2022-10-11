@@ -2,8 +2,7 @@
 
 ####----- read pheno file
 
-pheno <- as.data.frame(read_excel("/Users/gusarv/Documents/projekt/SjS/Info/pheno/24_clin_data_all_220411GN_forR.xlsx"))
-#pheno <- as.data.frame(read_excel("/Users/gusarv/Documents/projekt/SjS/Info/pheno/24_clin_data_all_220411GN_forR.xlsx"))
+pheno <- as.data.frame(read_excel("../suppl/pheno/pSS_Pheno.xlsx"))
 
 pheno <- pheno[, c("Single cell_Sample_id_publ",
                    "Age symptom onset",

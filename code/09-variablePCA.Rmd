@@ -89,7 +89,8 @@ cells_main <- dplyr::select(gex.slim@meta.data,
 
 colnames(cells_main)[2:ncol(cells_main)] <- paste0(colnames(cells_main)[2:ncol(cells_main)], "_%")
 
-saveRDS(cells_main, file = "../results/forPCA_cellsMain.rds")
+#saveRDS(cells_main, file = "../results/forPCA_cellsMain.rds")
+cells_main <- readRDS("../results/forPCA_cellsMain.rds")
 
 
 ```
@@ -222,7 +223,8 @@ IFN_main <- pivot_wider(IFN_main,
 
 colnames(IFN_main)[2:ncol(IFN_main)] <- paste0(colnames(IFN_main)[2:ncol(IFN_main)], "_IFNscore")
 
-saveRDS(IFN_main, file = "../results/forPCA_IFN_main.rds")
+#saveRDS(IFN_main, file = "../results/forPCA_IFN_main.rds")
+IFN_main <- readRDS("../results/forPCA_IFN_main.rds")
 
 
 ```
@@ -321,46 +323,16 @@ colors_df$category <- factor(colors_df$category, levels = unique(colors_df$categ
 
 ```{r}
 
-# !!! change selection process to only include variables differing between CTRL and pSS
+#selecting variables with significant differences between pSS samples and CTRLs
 m <- apply(var_df[, 2:ncol(var_df)], 2, function(x){glm(x ~pheno$group)} ) 
 m <- lapply(m, summary)
 m <- as.data.frame(t(sapply(m, function(x){x$coefficients[2, 4]})))
 
-#selecting variables with significant differences between patient groups
-# m <- apply(var_df[, 2:ncol(var_df)], 2, function(x){glm(x ~pheno$patient_group)} ) 
-# m <- lapply(m, summary)
-# m <- t(sapply(m, function(x){x$coefficients[2:4, 4]}))
-
-#sell1 <- rowMin(m)
 sell <- names(m)[m < 0.1]
-#sell <- rownames(m)[sell1 < 0.05]
-length(sell)
-#pc_df <- full_join(pheno[, c(1:2, 8:(ncol(pheno)-1))], var_df[, c("orig.ident", sell)])
-#pc_df <- as.data.frame(var_df[, c("orig.ident", sell)])
+length(sell) #[1] 30
 
 pc_df <- as.data.frame(var_df)
 rownames(pc_df) <- var_df$orig.ident
-
-#pc_df <- as.data.frame(pc_df[, colSums(pc_df > 0) >= 3])
-#table(colSums(pc_df > 0) >= 3)
-
-#variance or cv selection
-# sell <- apply(pc_df, 2, function(x){var(x, na.rm = TRUE)/mean(x, na.rm = TRUE)}) #cv
-# sell <- apply(pc_df, 2, function(x){var(x, na.rm = TRUE)}) # variance
-# sell <- names(sort(sell, decreasing = TRUE)[1:75])
-
-
-#VST selection
-# vars <- apply(pc_df[, -1], 2, function(x){var(x, na.rm = TRUE)})
-# means <- apply(pc_df[, -1], 2, function(x){mean(x, na.rm = TRUE)})
-# #plot(log(means + 0.01), log(vars + 0.01))
-# #m <- loess.smooth(log(means + 0.01), log(vars + 0.01))
-# #lines(m)
-# m <- loess(log(vars + 0.01) ~ log(means + 0.01))
-# sell <- setNames(abs(log(vars + 0.01) - predict(m)), colnames(pc_df)[-1])
-# #plot(log(means + 0.01), n)
-# sell <- names(sell)[names(sort(sell, decreasing = TRUE)[1:50])]
-
 
 # nipals package
 pc_out <- nipals::nipals(pc_df[, sell], 
@@ -428,7 +400,7 @@ pc_out_ld$category <- colors_df$category[match(pc_out_ld$var, colors_df$names)]
           legend.title=element_blank())
 
   #number of variables to display in barplot
-  nvar <- 12
+  # nvar <- 12
   
   #plot loadings PC1
   p2.1 <- pc_out_ld %>% 
@@ -460,12 +432,14 @@ pc_out_ld$category <- colors_df$category[match(pc_out_ld$var, colors_df$names)]
     scale_fill_brewer(palette = "Dark2")
   
   #scatterplot loadings
-  tmp1 <- pc_out_ld %>% 
-    select(PC1, PC2) %>% 
-    arrange(desc(PC1), desc(PC2)) %>% 
-    slice(c(1:nvar, (nrow(pc_out_ld) - nvar + 1):nrow(pc_out_ld)))
+  # tmp1 <- pc_out_ld %>% 
+  #   select(PC1, PC2) %>% 
+  #   arrange(desc(PC1), desc(PC2)) %>% 
+  #   slice(c(1:nvar, (nrow(pc_out_ld) - nvar + 1):nrow(pc_out_ld)))
+  # 
+  # tmp1$variable
   
-  p3.1 <- ggplot(tmp1) + 
+  p3.1 <- ggplot(pc_out_ld) + 
     geom_text_repel(size = 3,
                     aes(x = PC1, 
                         y = PC2, 
@@ -498,28 +472,30 @@ pc_out_ld$category <- colors_df$category[match(pc_out_ld$var, colors_df$names)]
 pc_out_full <- full_join(pc_out_sc, pheno, by = c("orig.ident", "patient_group")) %>%
   full_join(pc_df, by = "orig.ident") 
 
-# test for correlations between principal components and phenotype data
-p_pheno <- data.frame(row.names = colnames(pc_out_full[, 8:(ncol(pc_out_full))]))
+
+# test for correlations between principal components and phenotype data for pSS samples
+p_pheno1 <- data.frame(row.names = colnames(pc_out_full[, 8:25]))
 for (i in c("PC1", "PC2")){
-  m <- apply(pc_out_full[, rownames(p_pheno)], 2, function(x){glm(pc_out_full[, i] ~ x)} ) 
+  m <- apply(pc_out_full[!pc_out_full$group == "CTRL", rownames(p_pheno1)], 
+             2, 
+             function(x){glm(pc_out_full[!pc_out_full$group == "CTRL", i] ~ x)} ) 
   m <- lapply(m, summary)
-  p_pheno[, i] <- c(t(sapply(m, function(x){x$coefficients[2, 4]})))
+  p_pheno1[, i] <- c(t(sapply(m, function(x){x$coefficients[2, 4]})))
 }
 
-p_pheno$group <- as.factor(c(rep("age", times = 2),
+p_pheno1$group <- as.factor(c(rep("age", times = 2),
                    rep("auto-Ab", times = 7),
-                   rep("other", times = 9),
-                   as.character(na.omit(colors_df$category[match(rownames(p_pheno), rownames(colors_df))]))))
+                   rep("other", times = 9)))
 
-p_pheno <- p_pheno[!(row.names(p_pheno) %in% c("SSA_Ro52", "SSA_Ro60", "SSA_and_SSB")),]
+p_pheno1 <- p_pheno1[!(row.names(p_pheno1) %in% c("SSA_Ro52", "SSA_Ro60", "SSA_and_SSB")), ]
 
 
-p5.1 <- ggplot(p_pheno[1:15, ], aes(x = -log10(PC1),
+p5.1 <- ggplot(p_pheno1[1:15, ], aes(x = -log10(PC1),
                                     y = -log10(PC2),
                                     color = group)) +
   geom_point() +
   geom_text_repel(size = 2,
-                  aes(label = rownames(p_pheno[1:15, ]))) +
+                  aes(label = rownames(p_pheno1[1:15, ]))) +
   geom_hline(yintercept = -log10(0.05), linetype = 2, alpha = 0.4, size = 0.5) + 
   geom_vline(xintercept = -log10(0.05), linetype = 2, alpha = 0.4, size = 0.5) +
   ylab(expression(paste("-log10(", italic("P"), ") PC2"))) +
@@ -570,11 +546,7 @@ ggsave2(paste0("../results/Fig5_A-C.pdf"),
 
 ```{r}
 
-#pheno_var <- colnames(pheno[, 2:(ncol(pheno)-1)])
-#pheno_var <- rownames(p_pheno)[p_pheno$PC1 <= 0.05]
-pheno_var <- c(colnames(pc_out_full)[c(8:10, 13:14, 16:25)], sell)
-
-## function for keeping patient group colors
+## keep patient group colors
 scale_fill_pss <- function(...){
     ggplot2:::manual_scale(
         'color', 
@@ -586,114 +558,85 @@ scale_fill_pss <- function(...){
     )
 }
 
+# function for plotting parameters vs PC1/PC2
+plotPCs <- function(df_in, #PCA data frame
+                    ctrl_filter, #"yes" if CTRL samples are filtered out
+                    pc, #PC1 or PC2
+                    pheno_var #names of variables to plot
+                    ) {
+    p_list <- list()
+    for (i in pheno_var){
+    
+      print(i)
+      
+      tmp <- select(df_in,
+                    i, 
+                    PC1,
+                    patient_group)
+      
+      ifelse(ctrl_filter == "yes", 
+             tmp <- tmp[tmp$patient_group != "CTRL", ], 
+             tmp <- tmp)
 
-# plot PC1 to list
-p_list_PC1 <- list()
-for (i in pheno_var){
-
-  print(i)
-  
-  tmp <- select(pc_out_full,
-                i, 
-                PC1,
-                patient_group) %>% drop_na()
-
-  # plot binary variables as boxplots and continous as scatter plots
-  ifelse(max(tmp[, 1]) == 1,
-  p_list_PC1[[i]] <- ggplot(tmp, 
-                            aes_string(x = as.factor(tmp[, i]), 
-                                       y = "PC1")) + 
-    geom_boxplot(outlier.shape = NA, na.rm = TRUE) +
-    geom_jitter(aes(color = patient_group, na.rm = TRUE)) +
-    ggtitle(i) +
-    xlab("") +
-    ylim(-0.35, 0.45) +
-    #annotate("text", y = 0.32, x = 2, label = paste0("p = ", signif(p_pheno[i, 1], digits = 2))) +
-    stat_compare_means(method = "t.test", label = "p.format", vjust = 0.5, na.rm = TRUE) +
-    scale_x_discrete(labels = c("0" = "No", 
-                                "1" = "Yes"),
-                     drop = FALSE) +
-    theme_classic(base_size = 12) +
-    theme(plot.title = element_text(size = 11), 
-          legend.position = "bottom",
-          legend.title = element_blank()), 
-  p_list_PC1[[i]] <- ggplot(tmp, 
-                            aes_string(x = tmp[, i], 
-                                       y = "PC1")) + 
-    geom_point(aes(color = patient_group)) +
-    scale_fill_pss() +
-    ggtitle(i) +
-    xlab("") +
-    ylim(-0.35, 0.45) +
-    geom_smooth(method = lm, se = FALSE, color = "black", weight = 0.5) +
-    stat_cor(method = "pearson", na.rm = TRUE) +
-    scale_x_continuous(breaks = seq(0, 
-                                    signif(max(tmp[, 1]) * 1.1, digits = 1), 
-                                    by =  signif((max(tmp[, 1]) * 1.1) / 3, digits = 1)),
-                       limits = c(0, signif(max(tmp[, 1]) * 1.1, digits = 1))) +
-    theme_classic(base_size = 12) +
-    theme(plot.title = element_text(size = 10), 
-          legend.position = "bottom",
-          legend.title = element_blank())
-  )
-  
-  p_legend <- get_legend(p_list_PC1[[i]]) %>% ggpubr::as_ggplot()
-  
-  p_list_PC1[[i]] <- p_list_PC1[[i]] + theme(legend.position = "none")
-  
+      tmp <- tmp %>% drop_na()
+      
+      print(dim(tmp))
+      print(tmp)
+      
+      # plot binary variables as boxplots and continous as scatter plots
+      ifelse(max(tmp[, 1]) == 1,
+      p_list[[i]] <- ggplot(tmp,
+                            aes_string(x = as.factor(tmp[, i]),
+                                       y = pc)) + 
+        geom_boxplot(outlier.shape = NA, na.rm = TRUE) +
+        geom_jitter(aes(color = patient_group, na.rm = TRUE)) +
+        scale_fill_pss() +
+        ggtitle(i) +
+        xlab("") +
+        ylim(-0.35, 0.45) +
+        #annotate("text", y = 0.32, x = 2, label = paste0("p = ", signif(p_pheno[i, 1], digits = 2))) +
+        stat_compare_means(method = "t.test", label = "p.format", vjust = 0.5, na.rm = TRUE) +
+        scale_x_discrete(labels = c("0" = "No", 
+                                    "1" = "Yes"),
+                         drop = FALSE) +
+        theme_classic(base_size = 12) +
+        theme(plot.title = element_text(size = 11), 
+              legend.position = "bottom",
+              legend.title = element_blank()), 
+      p_list[[i]] <- ggplot(tmp, 
+                                aes_string(x = tmp[, i], 
+                                           y = pc)) + 
+        geom_point(aes(color = patient_group)) +
+        scale_fill_pss() +
+        ggtitle(i) +
+        xlab("") +
+        ylim(-0.35, 0.45) +
+        geom_smooth(method = lm, se = FALSE, color = "black", weight = 0.5) +
+        stat_cor(method = "pearson", na.rm = TRUE) +
+        scale_x_continuous(breaks = seq(0, 
+                                        signif(max(tmp[, 1]) * 1.1, digits = 1), 
+                                        by =  signif((max(tmp[, 1]) * 1.1) / 3, digits = 1)),
+                           limits = c(0, signif(max(tmp[, 1]) * 1.1, digits = 1))) +
+        theme_classic(base_size = 12) +
+        theme(plot.title = element_text(size = 10), 
+              legend.position = "bottom",
+              legend.title = element_blank())
+      )
+      
+      p_legend <- get_legend(p_list_PC1[[i]]) %>% ggpubr::as_ggplot()
+      
+      p_list_PC1[[i]] <- p_list_PC1[[i]] + theme(legend.position = "none")
+      
+    }
+    
+    return(p_list)
+    
 }
 
-
-# plot PC2 to list
-p_list_PC2 <- list()
-for (i in pheno_var){
-
-  print(i)
-  
-  tmp <- select(pc_out_full,
-                i, 
-                PC2,
-                patient_group) %>% drop_na()
-  
-  # plot binary variables as boxplots and continous as scatter plots
-  ifelse(max(tmp[, 1]) == 1,
-  p_list_PC2[[i]] <- ggplot(tmp, 
-                            aes_string(x = as.factor(tmp[, i]), 
-                                       y = "PC2")) + 
-    geom_boxplot(outlier.shape = NA, na.rm = TRUE) +
-    geom_jitter(aes(color = patient_group, na.rm = TRUE)) +
-    ggtitle(i) +
-    xlab("") +
-    ylim(-0.35, 0.45) +
-    #annotate("text", y = 0.32, x = 2, label = paste0("p = ", signif(p_pheno[i, 2], digits = 2))) +
-    stat_compare_means(method = "t.test", label = "p.format", vjust = 0.5, na.rm = TRUE) +
-    scale_x_discrete(labels = c("0" = "No", 
-                                "1" = "Yes")) +
-    theme_classic(base_size = 12) +
-    theme(plot.title = element_text(size = 11), 
-          legend.position = "none",
-          legend.title = element_blank()),
-  p_list_PC2[[i]] <- ggplot(tmp, 
-                            aes_string(x = tmp[, i], 
-                                       y = "PC2")) + 
-    geom_point(na.rm = TRUE, aes(color = patient_group)) +
-    scale_fill_pss() +
-    ggtitle(i) +
-    xlab("") +
-    ylim(-0.35, 0.45) +
-    geom_smooth(method = lm, se = FALSE, color = "black", weight = 0.5) +
-    stat_cor(method = "pearson", na.rm = TRUE) +
-    scale_x_continuous(breaks = seq(0, 
-                                    signif(max(tmp[, 1]) * 1.1, digits = 1), 
-                                    by = signif((max(tmp[, 1]) * 1.1) / 3, digits = 1)),
-                       limits = c(0, signif(max(tmp[, 1]) * 1.1, digits = 1))) +
-    theme_classic(base_size = 12) +
-    theme(plot.title = element_text(size = 11), 
-          legend.position = "none",
-          legend.title = element_blank()))
-  
-}
-
+p_list_PC1_cpar <- plotPCs(pc_out_full, "yes", "PC1", colnames(pc_out_full)[c(8:10, 13:14, 16:25)])
+p_list_PC1_var <- plotPCs(pc_out_full, "no", "PC1", sell)
+p_list_PC2_cpar <- plotPCs(pc_out_full, "yes", "PC2", colnames(pc_out_full)[c(8:10, 13:14, 16:25)])
+p_list_PC2_var <- plotPCs(pc_out_full, "no", "PC2", sell)
 
 
 ```
@@ -704,7 +647,7 @@ for (i in pheno_var){
 ```{r}
 
 # plot all clinical variables for PC1 and PC2
-p1 <- plot_grid(plotlist = p_list_PC1[pheno_var[1:15]], 
+p1 <- plot_grid(plotlist = p_list_PC1_cpar, 
                     nrow = 5, 
                     ncol = 3, 
                     labels = NULL, 
@@ -740,7 +683,7 @@ ggsave2(paste0("../results/SFig19.pdf"),
 
 ```{r}
 
-p1 <- plot_grid(plotlist = p_list_PC2[pheno_var[1:15]], 
+p1 <- plot_grid(plotlist = p_list_PC2_cpar, 
                     nrow = 5, 
                     ncol = 3, 
                     labels = NULL, 
@@ -778,7 +721,7 @@ ggsave2(paste0("../results/SFig20_2.pdf"),
 
 # plot GEX and VDJ variables for PC1 and PC2
 #length(pheno_var[16:length(pheno_var)]) #[1] 30
-p1 <- plot_grid(plotlist = p_list_PC1[pheno_var[16:length(pheno_var)]], 
+p1 <- plot_grid(plotlist = p_list_PC1_var, 
                     nrow = 6, 
                     ncol = 5, 
                     labels = NULL, 
@@ -786,7 +729,7 @@ p1 <- plot_grid(plotlist = p_list_PC1[pheno_var[16:length(pheno_var)]],
           bgcolor("white") + 
           border("white")
 
-ggsave2(paste0("../results/SFig21_2.png"),
+ggsave2(paste0("../results/SFig21.png"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -796,7 +739,7 @@ ggsave2(paste0("../results/SFig21_2.png"),
           border("white"),
           width = 30, height = 30, unit = "cm")
 
-ggsave2(paste0("../results/SFig21_2.pdf"),
+ggsave2(paste0("../results/SFig21.pdf"),
           plot_grid(p1, p_legend, 
                     ncol = 1, 
                     labels = NULL, 
@@ -814,7 +757,7 @@ ggsave2(paste0("../results/SFig21_2.pdf"),
 
 ```{r}
 
-p1 <- plot_grid(plotlist = p_list_PC2[pheno_var[16:length(pheno_var)]], 
+p1 <- plot_grid(plotlist = p_list_PC2_var, 
                     nrow = 6, 
                     ncol = 5, 
                     labels = NULL, 
@@ -855,7 +798,7 @@ p_pat_var <- c("SSA", "SSB", "ANA", "RF",
   "Age_symptom_onset", "Age_diagnosis",
   "Focus_score_Greenspan", "P-IgG", "Leucopenia")
 
-p1.1 <- plot_grid(plotlist = p_list_PC1[p_pat_var], 
+p1.1 <- plot_grid(plotlist = p_list_PC1_cpar[p_pat_var], 
                     nrow = 3, 
                     ncol = 3, 
                     labels = NULL, 
@@ -873,13 +816,13 @@ p1.2 <- plot_grid(p1.1, p_legend,
           border("white")
 
 # plot select GEX and VDJ variables for PC1 
-# p_gex_var <- c("Memory_%", "DN_%", "Naive_%", "Transitional_%",
-#   "Memory_IFNscore", "DN_IFNscore", "Naive_IFNscore", "Transitional_IFNscore", 
-#   "Memory_VDJmutation", "Transitional_VDJmutation",
-#   "IGHV1-69_%", "IGHV3-66_%")
+p_gex_var <- c("Memory_%", "DN_%", "Naive_%", "Transitional_%",
+  "Memory_IFNscore", "DN_IFNscore", "Naive_IFNscore", "Transitional_IFNscore",
+  "Memory_VDJmutation", "Transitional_VDJmutation",
+  "IGHV1-69_%", "IGHV3-66_%")
 
-p_gex_var <- tmp3$variable[c(1:6, 19:24)]
-
+#p_gex_var <- tmp3$variable[c(1:6, 19:24)]
+names(p_list_PC1)
 p2.1 <- plot_grid(plotlist = p_list_PC1[p_gex_var], 
                     nrow = 3, 
                     ncol = 4, 

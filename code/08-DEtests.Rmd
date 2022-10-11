@@ -20,7 +20,6 @@ source("./00a_dependencies.R")
 
 gex <- readRDS("../results/GEX7_BVDJ.rds")
 
-
 ```
 
 

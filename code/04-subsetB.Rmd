@@ -4,7 +4,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-# subset B-cells {#Subset_B-cells}
+# subset B-cells for further processing {#Subset_B-cells}
 ## soad packages
 
 ```{r}
