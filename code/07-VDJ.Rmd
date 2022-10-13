@@ -625,7 +625,7 @@ ggsave2("../results/Fig3A.png",
 ```
 
 
-#### plot FiG3B VDJ correlation main 
+#### plot Fig3B VDJ correlation main 
 #### plot SFig8A-C main
  
 ```{r}
@@ -1129,7 +1129,7 @@ saveRDS(patient_group_alphaDiversity, "../results/VDJ_clono_patient_group_alphaD
 ```
 
 
-#### plot SFig16
+#### plot SFig17
 
 ```{r}
 
@@ -1155,7 +1155,7 @@ p_legend <- get_legend(p2.1) %>% ggpubr::as_ggplot()
 p2 <- p2.1 + theme(legend.position = "none")
 
 
-ggsave2(paste0("../results/SFig16.png"),
+ggsave2(paste0("../results/SFig17.png"),
           plot_grid(p1, p2, p_legend,
                     nrow = 1, labels = NULL, 
                     align = "vh", axis = "l", rel_widths = c(1, 1, 0.4)) + 
@@ -1163,7 +1163,7 @@ ggsave2(paste0("../results/SFig16.png"),
           border("white"),
           width = 22, height = 12, unit = "cm")
 
-ggsave2(paste0("../results/SFig16.pdf"),
+ggsave2(paste0("../results/SFig17.pdf"),
           plot_grid(p1, p2, p_legend,
                     nrow = 1, labels = NULL, 
                     align = "vh", axis = "l", rel_widths = c(1, 1, 0.4)) + 
@@ -1712,9 +1712,12 @@ for (i in c("png", "pdf")) {
   
 }
 
+```
 
 
+#### plot Fig4E-F
 
+```{r}
 
 cl1 <- paste0("SSA-", cutree(p_list$`SSA-`$tree_col, k = 1))
 cl2 <- paste0("SSA+", cutree(p_list$`SSA+`$tree_col, k = 1 ))
@@ -1722,7 +1725,6 @@ cl3 <- paste0("SSAB", cutree(p_list$SSAB$tree_col, k = 1 ))
 cl4 <- paste0("Corsiero", cutree(p_list$Corsiero$tree_col, k = 1 ))
 cl5 <- paste0("Visser",cutree(p_list$Visser$tree_col, k = 1 ))
 cl6 <- paste0("Wang", cutree(p_list$Wang$tree_col, k = 1 ))
-
 
 cl_all <- factor(c(cl1, cl2, cl3, cl4, cl5, cl6))
 
@@ -1738,18 +1740,6 @@ mean_mx <- rowsum(t(mean_mx), cl_all)/c(table(cl_all))
 mean_mx <- mean_mx[ c(2:4, 1, 5:6), c(2:4, 1, 5:6)]
 colnames(mean_mx) <- sort(unique(m$group))
 round(mean_mx, digits =1)
-h1 <- pheatmap(res2, 
-           show_rownames = TRUE, 
-           show_colnames = TRUE, 
-           filename = paste0("../results/Fig4E.", "png"),
-           #annotation_col = data.frame(group = factor(colnames(res2)), row.names = colnames(res2)),
-           #annotation_row = data.frame(group = factor(colnames(res2)), row.names = colnames(res2)),
-           #annotation_colors = ann_cols[1], 
-           legend = TRUE,
-           use_raster = TRUE,
-           cluster_rows = FALSE,
-           cluster_cols = FALSE)
-
 
 res_tmp <- as.matrix((res > 6) * 1)
 perc_mx <- rowsum(res_tmp[o, o], cl_all)/c(table(cl_all))
@@ -1807,7 +1797,6 @@ p_df_mean_mx  <- mean_mx %>% rstatix::cor_gather()
   
 p_df <- cbind(p_df, p_df_count_mx[,3], p_df_perc_mx[,3], p_df_mean_mx[,3])
 
-
 colnames(p_df)[3:6] <- c("min_dist","count", "perc", "mean_dist")
 p_df$var1 <- factor(p_df$var1, levels = c("SSA-", "SSA+", "SSAB", "Corsiero", "Visser", "Wang"))
 p_df$var2 <- factor(p_df$var2, levels = c("SSA-", "SSA+", "SSAB", "Corsiero", "Visser", "Wang"))
@@ -1828,7 +1817,6 @@ p1 <- ggplot(p_df) +
       guides(color = guide_colourbar(order = 1),
              size =  guide_legend(order = 2)) +
   ggtitle("min edit distance")
-
 
 p2 <- ggplot(p_df) + 
       geom_point(aes(x = var1, 
@@ -1882,6 +1870,8 @@ ggsave2(paste0("../results/Fig4F.pdf"),
 
 
 ```
+
+
 
 
 #### plot SFig18A, clonotypes per patient per cellTypeMain
@@ -1943,7 +1933,7 @@ ggsave2(paste0("../results/SFig18A.pdf"),
 ```
 
 
-#### plot SFig17B, clonotypes per patient per cellTypeFine
+#### plot SFig18B, clonotypes per patient per cellTypeFine
 
 ```{r}
 tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
@@ -2327,6 +2317,7 @@ ggsave2(paste0("../results/SFig15.pdf"),
 #### plot SFig16 mu freq for IGHV4-34, per celltype and sample.
 
 ```{r}
+
 #select top10 used IGHV genes
 vdj_gene <- countGenes(gex@meta.data, 
                        gene = "v_call", 
@@ -2370,12 +2361,13 @@ p_list[[i]] <- ggplot(gex.meta[gex.meta$cluster_cellType_manual_fine == i &
                                        hjust = 1, 
                                        vjust = 0.5,
                                        color = colors_samples),
-            plot.title = element_text(size = 12),
+            plot.title = element_text(size = 10),
             legend.position = "none") +
       ylab("mutated bp (%)") +
       xlab("") +
       scale_y_continuous(labels = scales::percent_format(accuracy = 1L)) +
-      scale_fill_discrete(name = "") +
+      scale_x_discrete(drop=FALSE) +
+      scale_fill_discrete(name = "", drop = FALSE) +
       geom_violin(alpha = 0.8, 
                   scale = "width", 
                   draw_quantiles = c(0.25, 0.5, 0.75),
@@ -2419,14 +2411,6 @@ p2 <- plot_grid(y_label, p1,
           rel_widths = c(0.03, 1)) + 
   bgcolor("white") + 
   border("white")
-
-# ggsave2(paste0("../results/Fig3H.png"),
-#         p_list[["Memory_Classical"]],
-#           width = 15, height = 10, unit = "cm")
-# 
-# ggsave2(paste0("../results/Fig3H.pdf"),
-#         p_list[["Memory_Classical"]],
-#           width = 15, height = 10, unit = "cm")
 
 ggsave2(paste0("../results/SFig16.png"),
         plot_grid(p2, p_legend, ncol = 1, labels = NULL, align = "hv", rel_heights = c(1, 0.1)) + 
@@ -2694,6 +2678,7 @@ ggsave2(paste0("../results/SFig13B.pdf"),
 
 ```
 
+
 #### plot SFig13B, fraction of CDR3 mutated cells per sample and celltypeMain
 
 ```{r}
@@ -2749,6 +2734,7 @@ ggsave2(paste0("../results/SFig13B.pdf"),
 
 
 ```
+
 
 ## CDR3 attributes
 #### plot SFig14, CDR3 aa attributes
