@@ -1692,7 +1692,6 @@ corder <- c(p_list$`SSA-`$tree_col$labels[p_list$`SSA-`$tree_col$order],
   p_list$Visser$tree_col$labels[p_list$Visser$tree_col$order],
   p_list$Wang$tree_col$labels[p_list$Wang$tree_col$order])
   
-
 for (i in c("png", "pdf")) {
 
   print(i)
@@ -1711,6 +1710,7 @@ for (i in c("png", "pdf")) {
            )
   
 }
+
 
 ```
 
@@ -1877,6 +1877,7 @@ ggsave2(paste0("../results/Fig4F.pdf"),
 #### plot SFig18A, clonotypes per patient per cellTypeMain
 
 ```{r}
+
 tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
                   patient_group = gex.meta$patient_group)
 tmp <- tmp[order(tmp$patient_group), ]
@@ -1936,6 +1937,7 @@ ggsave2(paste0("../results/SFig18A.pdf"),
 #### plot SFig18B, clonotypes per patient per cellTypeFine
 
 ```{r}
+
 tmp <- data.frame(orig.ident = gex.meta$orig.ident, 
                   patient_group = gex.meta$patient_group)
 tmp <- tmp[order(tmp$patient_group), ]
@@ -2050,9 +2052,6 @@ p2 <- p2 + theme(legend.position = "none")
 
 p3 <- plot_grid(p1, p2, ncol = 2, labels = NULL, align = "h", rel_widths = c(1.5, 1))
 
-
-# !!! Plot mutation load, fraction unmutated per celltypeMain
-
 ggsave2("../results/Fig3D.pdf", 
         plot_grid(p3, p_legend, ncol = 1, labels = NULL, align = "h", rel_heights = c(1, 0.1)) + 
           bgcolor("white") + 
@@ -2090,13 +2089,6 @@ ggsave2("../results/Fig3D.png",
 #### plot Fig3E, total VDJ mutation frequency - celltypeMain - patient_group
 
 ```{r}
-
-meanlist <- list()
-for (i in sort(unique(gex.meta$cluster_cellType_manual_main))) {
-  gex.meta[gex.meta$cluster_cellType_manual_main == i, ] %>% 
-    
-  }
-
 
 p_list1 <- list()
 for (i in sort(unique(gex.meta$cluster_cellType_manual_main))) {
@@ -2156,7 +2148,6 @@ p_list1[[i]] <- p_list1[[i]] + theme(axis.text.y = element_blank(),
 p4 <- plot_grid(plotlist = p_list1, nrow = 1, rel_widths = c(1.25, 1, 1, 1, 1), labels = NULL, align = "vh") + 
           bgcolor("white") + 
           border("white")
-
 
 ggsave2(paste0("../results/Fig3E.png"), 
           plot_grid(y_label, p4, nrow = 1, rel_widths = c(0.05, 1), align = "h") + 
