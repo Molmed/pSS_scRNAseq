@@ -1,6 +1,6 @@
 #!/bin/bash -l
 
-#run immcantation on bianca for B VDJ output from cellranger
+#run immcantation for B cell VDJ output from cellranger
 #210923
 
 cd $projdir

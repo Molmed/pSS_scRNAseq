@@ -20,7 +20,7 @@ source("./00a_dependencies.R")
 ```{r}
 
 gex <- readRDS("../results/GEX2_FILTERED.rds")
-annot <- readRDS("../suppl/annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
+annot <- readRDS("../annot/refdata-gex-GRCh38-2020-A.genes.gtf.annot.rds")
 
 ```
 
