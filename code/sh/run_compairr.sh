@@ -5,7 +5,6 @@
 # run compairr to cluster VDJ clonotypes
 # https://github.com/uio-bmi/compairr
 
-wd=/Users/gusarv/Documents/projekt/SjS/data/pss_bcells_scRNAseq
 
 cd $wd
 

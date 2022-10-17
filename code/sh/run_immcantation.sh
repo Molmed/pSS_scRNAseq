@@ -1,14 +1,7 @@
 #!/bin/bash -l
-#SBATCH -A sens2020501
-#SBATCH -t 8:00:00
-#SBATCH -p core
-#SBATCH -n 16
-#SBATCH -J immcantation
 
 #run immcantation on bianca for B VDJ output from cellranger
 #210923
-
-projdir=/castor/project/proj_nobackup/sjs1/R/pss_bcells_scRNAseq/data/clono_B_VDJ_tmp
 
 cd $projdir
 
