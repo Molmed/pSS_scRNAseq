@@ -514,6 +514,25 @@ ggsave2(paste0("../results/Fig5_A-C.pdf"),
 
 ```{r}
 
+# test <- glm(pc_out_full[, "PC1"] ~ pc_out_full[, "Age_symptom_onset"])
+# test_s <- summary(test)
+# test_s$coefficients[2,4]
+# 
+# test2 <- glm(pc_out_full[, "PC1"] ~ pc_out_full[, "SSA"])
+
+p_pheno2 <- data.frame(row.names = sell)
+for (i in c("PC1", "PC2")){
+  m <- apply(pc_out_full[, rownames(p_pheno2)], 
+             2, 
+             function(x){glm(pc_out_full[, i] ~ x)} ) 
+  m <- lapply(m, summary)
+  p_pheno2[, i] <- c(t(sapply(m, function(x){x$coefficients[2, 4]})))
+}
+
+p_pheno2$group <- as.factor(c(rep("var", times = nrow(p_pheno2))))
+
+p_pheno <- rbind(p_pheno1, p_pheno2)
+
 ## keep patient group colors
 scale_fill_pss <- function(...){
     ggplot2:::manual_scale(
@@ -567,14 +586,19 @@ plotPCs <- function(df_in, #PCA data frame
         geom_boxplot(outlier.shape = NA, na.rm = TRUE) +
         geom_jitter(aes(color = patient_group, na.rm = TRUE)) +
         scale_fill_pss() +
-        ggtitle(i) +
-        xlab("") +
-        ylim(-0.35, 0.45) +
-        #annotate("text", y = 0.32, x = 2, label = paste0("p = ", signif(p_pheno[i, 1], digits = 2))) +
-        stat_compare_means(method = "t.test", label = "p.format", vjust = 0.5, na.rm = TRUE) +
+        annotate(geom = "text",
+                 x = 0,
+                 y = 0.4,
+                 hjust = -0.2,
+                 label = paste0("P = ", signif(p_pheno[i, pc], digits = 2)), 
+                 color = "black") +
         scale_x_discrete(labels = c("0" = "No", 
                                     "1" = "Yes"),
                          drop = FALSE) +
+        ggtitle(i) +
+        xlab("") +
+        ylim(-0.35, 0.45) +
+        #stat_compare_means(method = "t.test", label = "p.format", vjust = 0.5, na.rm = TRUE) +
         theme_classic(base_size = 12) +
         theme(plot.title = element_text(size = 11), 
               legend.position = "bottom",
@@ -587,8 +611,14 @@ plotPCs <- function(df_in, #PCA data frame
         ggtitle(i) +
         xlab("") +
         ylim(-0.35, 0.45) +
-        geom_smooth(method = lm, se = FALSE, color = "black", weight = 0.5) +
-        stat_cor(method = "pearson", na.rm = TRUE) +
+        geom_smooth(method = glm, se = FALSE, color = "black", weight = 0.5) +
+        annotate(geom = "text",
+                 x = 0,
+                 y = 0.4,
+                 hjust = -0.2,
+                 label = paste0("P = ", signif(p_pheno[i, pc], digits = 2)), 
+                 color = "black") +
+        #stat_cor(method = "pearson", na.rm = TRUE) +
         scale_x_continuous(breaks = seq(0, 
                                         signif(max(tmp[, 1]) * 1.1, digits = 1), 
                                         by =  signif((max(tmp[, 1]) * 1.1) / 3, digits = 1)),

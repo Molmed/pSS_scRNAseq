@@ -558,6 +558,15 @@ cell_summary <-  as_tibble(gex.meta) %>%
   mutate(per =  prop.table(n)) %>%
   drop_na()
 
+#Get average percent IGHM in classical memory B cells per patient group
+cell_summary %>% filter(cluster_cellType_manual_main == "Memory_Classical", c_gene_10x == "IGHM") %>% group_by(patient_group) %>% summarize(Mean = mean(per, na.rm=TRUE))
+
+#ANOVA for the average percent IGHM in classical memory B cells per patient group
+tmp <- cell_summary %>% filter(cluster_cellType_manual_main == "Memory_Classical", c_gene_10x == "IGHM") %>% group_by(patient_group) 
+aov.model <- aov(tmp$per ~ tmp$patient_group)
+summary(aov.model)
+
+
 p_list <- list()
 for (i in as.character(sort(unique(cell_summary$c_gene_10x))) ){
   p_list[[i]] <- list()
@@ -733,6 +742,33 @@ for (i in 1:nrow(vdj_gene)){
 # get 45 most used IGHV genes
 vdj_gene <- vdj_gene[order(vdj_gene$seq_count, decreasing = TRUE), ]
 tmp <- vdj_gene[which(vdj_gene$gene %in% unique(vdj_gene$gene)[1:45]), ]
+
+
+#Get statistical support for observed IGHV differences
+vdj_gene <- countGenes(gex@meta.data, 
+                       gene = "v_call", 
+                       groups = c("orig.ident", "patient_group"), 
+                       mode = "gene",
+                       fill = FALSE)
+
+for (i in c("IGHV1-69", "IGHV3-30-3", "IGHV4-30-4", "IGHV4-39", "IGHV3-66", "IGHV4-34")){
+
+  cat(i)
+  
+  tmp <- vdj_gene %>% 
+            filter(gene == i) %>% 
+            group_by(patient_group) %>% 
+            summarize(Mean = mean(seq_freq, na.rm=TRUE))
+  print(tmp)
+  
+  #ANOVA 
+  tmp <- vdj_gene %>% filter(gene == i) %>% group_by(patient_group) 
+  aov.model <- aov(tmp$seq_freq ~ tmp$patient_group)
+  print(summary(aov.model))
+  print("\n")
+  
+}
+
 
 # plot fc relative to CTRL
 p1 <- ggplot(tmp, aes(x = reorder(gene, -seq_freq), 
@@ -2033,7 +2069,6 @@ p1 <- DimPlot(gex %>% filter(!is.na(mu_load)),
         axis.ticks = element_blank(),
         legend.position = "none")
 
-
 p2 <- ggplot(gex.meta %>% filter(!is.na(mu_load)), 
              aes(x = cluster_cellType_manual_main, 
                  fill = mu_load)) +
@@ -2082,6 +2117,50 @@ ggsave2("../results/Fig3D.png",
           border("white"), 
         width = 40, height = 28, unit = "cm", dpi = 300)
 
+
+
+tmp <- as.data.frame.matrix(table(gex.meta$mu_load, gex.meta$cluster_cellType_manual_main))
+
+#percent "Naive"" cells with unmutated transcripts
+sum(tmp["unmutated", c("Naive", "Transitional")])/sum(tmp[, c("Naive", "Transitional")]) #[1] 0.9041047
+
+#percent "Memory"" cells with mutated transcripts
+1-(sum(tmp["unmutated", c("Memory_Classical", "Memory_DN", "Memory_IgM")])/sum(tmp[, c("Memory_Classical", "Memory_DN", "Memory_IgM")])) #[1] 0.7901087
+
+cell_summary <-  as_tibble(gex.meta) %>% 
+  filter(!is.na(c_gene_10x)) %>%
+  select(orig.ident, cluster_cellType_manual_main, patient_group, mu_load) %>%
+  add_count(orig.ident, cluster_cellType_manual_main, mu_load, .drop = FALSE) %>% 
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_main) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na()
+
+#Get average percent IGHM in classical memory B cells per patient group
+cell_summary %>% 
+  filter(cluster_cellType_manual_main == "Memory_Classical" |
+                        cluster_cellType_manual_main == "Memory_IgM"|
+                        cluster_cellType_manual_main == "Memory_DN",
+                        mu_load == "unmutated") %>% 
+  group_by(patient_group) %>% 
+  summarize(Mean = mean(per, na.rm=TRUE))
+
+cell_summary %>% 
+  filter(cluster_cellType_manual_main == "Memory_IgM",
+                        mu_load == "unmutated") %>% 
+  group_by(patient_group) %>% 
+  summarize(Mean = 1-mean(per, na.rm=TRUE))
+
+
+#ANOVA for the average percent IGHM in classical memory B cells per patient group
+tmp <- cell_summary %>% filter(cluster_cellType_manual_main == "Memory_Classical" |
+                                cluster_cellType_manual_main == "Memory_IgM"|
+                                cluster_cellType_manual_main == "Memory_DN",
+                                mu_load == "unmutated") %>% 
+  group_by(patient_group) 
+
+aov.model <- aov(tmp$per ~ tmp$patient_group)
+summary(aov.model)
 
 ```
 
@@ -2578,8 +2657,30 @@ gex.meta$mu_count_cdr3_RSratio <- log2((gex.meta$mu_count_cdr3_r + 1) /
 #Removed 181168 rows containing non-finite values (stat_ydensity). 
 gex.meta$mu_count_cdr3_RSratio[(gex.meta$mu_count_cdr3_r + 
                                   gex.meta$mu_count_cdr3_s) == 0] <- NA
-
 nrow(gex.meta[!is.na(gex.meta$mu_count_cdr3_RSratio), ])
+
+
+cell_summary <-  as_tibble(gex.meta) %>% 
+  filter(!is.na(mu_count_cdr3_RSratio)) %>%
+  select(orig.ident, cluster_cellType_manual_main, patient_group, mu_count_cdr3_RSratio) %>% 
+  group_by(patient_group) %>% 
+  summarize(Mean = 2^mean(mu_count_cdr3_RSratio, na.rm=TRUE))
+  
+  
+  add_count(orig.ident, cluster_cellType_manual_main, mu_load, .drop = FALSE) %>% 
+  distinct() %>%
+  group_by(orig.ident, cluster_cellType_manual_main) %>%
+  mutate(per =  prop.table(n)) %>%
+  drop_na()
+
+cell_summary %>% 
+  filter(cluster_cellType_manual_main == "Memory_Classical" |
+                        cluster_cellType_manual_main == "Memory_IgM"|
+                        cluster_cellType_manual_main == "Memory_DN",
+                        mu_load == "unmutated") %>% 
+  group_by(patient_group) %>% 
+  summarize(Mean = mean(per, na.rm=TRUE))
+
 
 p2 <- ggplot(gex.meta, 
              aes(x = cluster_cellType_manual_main, 
