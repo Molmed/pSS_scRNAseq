@@ -1010,6 +1010,20 @@ vdj_allele <- countGenes(gex@meta.data,
 vdj_allele1 <- vdj_allele[grepl("^IGHV1-69*", vdj_allele$gene), ] %>% arrange(desc(seq_count))
 tmp1 <- vdj_allele1[which(vdj_allele1$gene %in% unique(vdj_allele1$gene)[1:10]), ]
 
+#check IGHV1-69 allele significance between groups
+vdj_allele_tmp <- countGenes(gex@meta.data, 
+                       gene = "v_call", 
+                       groups = c("patient_group", "orig.ident"), 
+                       mode = "allele",
+                       fill = TRUE)
+
+#ANOVA 
+tmp <- vdj_allele_tmp[grepl("^IGHV1-69*", vdj_allele_tmp$gene), ] %>% 
+  filter(gene == "IGHV1-69*01") %>% group_by(patient_group) %>% ggplot(aes(y = seq_freq, x = patient_group)) + geom_boxplot()
+aov.model <- aov(tmp$seq_freq ~ tmp$patient_group)
+summary(aov.model) #0.0814
+
+
 p1 <- ggplot(tmp1, aes(x = reorder(gene, -seq_freq), 
                        y = seq_freq, 
                        fill = patient_group)) +
