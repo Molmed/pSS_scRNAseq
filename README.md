@@ -6,15 +6,32 @@
 This is a public repository containing scripts used in the publication:
 
 Arvidsson et al.\
-[Multi-modal single cell sequencing of B cells in primary Sjögren’s Syndrome]()\
+[Multi-modal single cell sequencing of B cells in primary Sjögren’s Syndrome]()
 
 ***
 ### Conda environment
 
-Two files for setting up the conda environment in which the analysis was conducted:
+Two files for setting up the analysis conda environment:
 - `conda/environment_pSS.yml`  
 - `conda/environment_pSS_MacOS.yml`
 
+
+### Running the analysis
+1. Clone the repository\
+```
+git clone https://github.com/Molmed/pSS_scRNAseq.git
+```
+
+2. Create and activate the conda environment\
+```
+cd pSS_scRNAseq
+
+conda activate base
+conda install -c conda-forge mamba
+
+mamba env create -n env_pSS -f env_pSS_MacOS.yml
+conda activate env_pSS
+```
 
 ***
 ### Datasets
