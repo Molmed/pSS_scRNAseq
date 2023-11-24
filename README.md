@@ -4,9 +4,7 @@
 ### Citation
 
 This is a public repository containing scripts used in the publication:
-
-Arvidsson et al.\
-[Multi-modal single cell sequencing of B cells in primary Sjögren’s Syndrome]()
+Arvidsson G, Czarnewski P, Johansson A, Raine A, Imgenberg-Kreuz J, Nordlund J, Nordmark G, Syvänen AC. [Multi-modal single cell sequencing of B cells in primary Sjögren's Syndrome](https://pubmed.ncbi.nlm.nih.gov/37610265/). Arthritis Rheumatol. 2023 Aug 23. doi: 10.1002/art.42683. Epub ahead of print. PMID: 37610265.
 
 ***
 ### Conda environment
