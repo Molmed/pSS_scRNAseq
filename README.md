@@ -40,7 +40,7 @@ Datasets used in the study:
 
 | Technology | Dataset | Reference | Accession No |
 |------------|---------|-----------|--------------|
-| 10X scRNAseq 5' v1.1 | Gene expression of B cells from pSS patients | present study | [GSE214974]() |
+| 10X scRNAseq 5' v1.1 | Gene expression of B cells from pSS patients | present study | [GSE214974](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE214974) |
 | 10X scVDJseq | VDJ sequencing of B cell receptor from pSS patients | present study | [10.17044/scilifelab.21269619]() |
 | 10X scRNAseq 5' | Gene expression from sorted B cell subtypes | [Stewart et al. Frontiers in Immunology 2020](https://pubmed.ncbi.nlm.nih.gov/33815362/) | [E-MTAB-9544](https://www.ebi.ac.uk/arrayexpress/experiments/E-MTAB-9544/) |
 | PCR product sequencing | IGH CDR3 sequences from pSS patients | [Corsiero et al. Plos One 2014](https://pubmed.ncbi.nlm.nih.gov/25535746/) | #### |
